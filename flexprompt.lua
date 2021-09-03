@@ -212,7 +212,7 @@ local function sgr(args)
 end
 
 local function lookup_color(args, verbatim)
-    if type(args) == "table" then
+    if not args or type(args) == "table" then
         return args
     end
 
@@ -356,7 +356,18 @@ local function init_segmenter(side, frame_color)
     segmenter.open_cap = open_caps[1]
     segmenter.close_cap = close_caps[2]
 
-    if segmenter.style == "classic" then
+    if segmenter.style == "lean" then
+        --[[
+        separators = flexprompt.separators or "vertical"
+        if type(separators) ~= "table" then
+            separators = flexprompt.choices.separators[separators]
+        end
+        segmenter.separator = " " .. separators[side + 1] .. " "
+        --]]
+        segmenter.separator = " "
+        segmenter.open_cap = ""
+        segmenter.close_cap = ""
+    elseif segmenter.style == "classic" then
         separators = flexprompt.separators or "vertical"
         if type(separators) ~= "table" then
             separators = flexprompt.choices.separators[separators]
@@ -376,6 +387,10 @@ local function init_segmenter(side, frame_color)
 end
 
 local function color_segment_transition(color, symbol, close)
+    if not symbol or symbol == "" then
+        return ""
+    end
+
     local swap = (close and segmenter.style == "classic") or (not close and segmenter.style == "rainbow")
     local fg = swap and "bg" or "fg"
     local bg = swap and "fg" or "bg"
@@ -409,41 +424,40 @@ local function next_segment(text, color, rainbow_text_color)
         return out
     end
 
-    local pad = ""
+    local pad = (segmenter.style == "lean") and "" or " "
 
-    if segmenter.style == "lean" then
-        out = out .. sgr(color.fg)
-    else
+    if true then
         local sep
         local transition_color = color
         local back, fore
+        local classic = segmenter.style == "classic"
+        local rainbow = segmenter.style == "rainbow"
 
         if segmenter.open_cap then
             sep = segmenter.open_cap
             segmenter.open_cap = nil
-            if segmenter.style == "classic" then
+            if classic then
                 transition_color = segmenter.frame_color[fc_back]
                 back = segmenter.frame_color[fc_back].bg
                 fore = segmenter.frame_color[fc_fore].fg
             end
         else
             sep = segmenter.separator
-            if segmenter.style == "classic" then
+            if classic then
                 transition_color = segmenter.frame_color[fc_fore]
             end
         end
 
-        pad = " "
         out = out .. color_segment_transition(transition_color, sep)
         if fore then
             out = out .. sgr(back .. ";" .. fore)
         end
-        out = out .. sgr((segmenter.style == "rainbow") and color.bg or color.fg)
+        out = out .. sgr(rainbow and color.bg or color.fg)
 
-        if segmenter.style == "rainbow" then
+        if rainbow then
             segmenter.back_color = color
             text = sgr(rainbow_text_color.fg) .. text
-        else
+        elseif classic then
             segmenter.back_color = segmenter.frame_color[fc_back]
         end
     end
