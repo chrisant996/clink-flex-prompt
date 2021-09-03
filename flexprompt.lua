@@ -281,6 +281,18 @@ local function connect(lhs, rhs, frame)
 end
 
 --------------------------------------------------------------------------------
+-- Other helpers.
+
+local function get_folder_name(dir)
+    local parent,child = path.toparent(dir)
+    dir = child
+    if #dir == 0 then
+        dir = parent
+    end
+    return dir
+end
+
+--------------------------------------------------------------------------------
 -- Module parsing and rendering.
 
 local function render_module(name, args)
@@ -466,11 +478,50 @@ function flexprompt.get_styled_sgr(name)
     return ""
 end
 
+-- Parse arg "abc:def=mno:xyz" for token "def" returns value "xyz".
+function flexprompt.parse_arg_token(args, name, altname)
+    if not args then
+        return
+    end
+
+    args = ":" .. args .. ":"
+
+    local value
+    if name then
+        value = string.match(args, ":" .. name .. "=([^:]*):")
+        if not value and altname then
+            value = string.match(args, ":" .. altname .. "=([^:]*):")
+        end
+    end
+
+    return value
+end
+
+-- Parsing arg "abc:def=mno:xyz" for a keyword like "abc" or "xyz" returns true.
+function flexprompt.parse_arg_keyword(args, name, altname)
+    if not args then
+        return
+    end
+
+    args = ":" .. args .. ":"
+
+    local value
+    if name then
+        value = string.match(args, ":" .. name .. ":")
+        if not value and altname then
+            value = string.match(args, ":" .. altname .. ":")
+        end
+    end
+
+    return value
+end
+
 --------------------------------------------------------------------------------
 -- Built in modules.
 
 local function render_cwd(args)
-    local color = sgr("brightblue")
+    local color = flexprompt.parse_arg_token(args, "c", "color") or "38;5;33"
+    color = flexprompt.get_styled_sgr(color)
 
     local cwd = os.getcwd()
     return color .. dirStackDepth .. cwd
