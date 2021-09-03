@@ -419,6 +419,17 @@ function pf:transientrightfilter(prompt)
 end
 
 --------------------------------------------------------------------------------
+-- Public API.
+
+-- Add a module.
+-- E.g. flexprompt.add_module("xyz", xyz_render) calls the xyz_render function
+-- when "{xyz}" or "{xyz:args}" is encountered in a prompt string.  The function
+-- receives "args" as its only argument.
+function flexprompt.add_module(name, func)
+    table[string.lower(name)] = func
+end
+
+--------------------------------------------------------------------------------
 -- Built in modules.
 
 local function render_cwd(args)
@@ -434,10 +445,6 @@ end
     cwd = render_cwd,
     time = render_time,
 }
-
-function flexprompt.add_module(name, func)
-    table[string.lower(name)] = func
-end
 
 -- modules (git, npm, mercurial, time, battery, exit code, duration, cwd, ?)
 -- custom modules
