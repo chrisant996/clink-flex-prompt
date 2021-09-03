@@ -285,45 +285,26 @@ local function render_modules(prompt)
     local out = ""
     local init = 1
     while true do
-        local s,e = string.find(prompt, "{(%w+)", init)
+        local s,e,cap = string.find(prompt, "{([^}]*)}", init)
         if not s then
             break
         end
 
-        out = out .. string.sub(prompt, init, s - 1)
         init = e + 1
 
-        local name = string.sub(prompt, s + 1, e)
         local args = nil
-
-        local end_module
-        local next = string.sub(prompt, init, init)
-        if next == ":" then
-            end_module = string.find(prompt, "}", init, true)
-            if start_arg then
-                args = string.sub(prompt, e + 2, end_module - 1)
-            else
-                name = nil
-            end
-        elseif next == "}" then
-            end_module = e + 1
+        local name = string.match(cap, "(%w+):")
+        if name then
+            args = string.sub(cap, #name + 2)
         else
-            name = nil
+            name = cap
         end
 
-        if name then
+        if name and #name > 0 then
             local segment = render_module(name, args)
             if segment then
                 out = out .. segment
-                init = end_module + 1
-            else
-                name = nil
             end
-        end
-
-        if not name then
-            out = out .. string.sub(prompt, s, e)
-            init = e + 1
         end
     end
 
