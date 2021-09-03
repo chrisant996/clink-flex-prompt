@@ -64,36 +64,34 @@ flexprompt.choices.sides =
 -- Only if style != lean.
 flexprompt.choices.ascii_caps =
 {
-                --  Right           Left
-                --  Open    Close   Open    Close
-    vertical    = { "",     "",     "",     ""      },
+                --  Open    Close
+    vertical    = { "",     ""      },
 }
 
 -- Only if style != lean.
 flexprompt.choices.caps =
 {
-                --  Right           Left
-                --  Open    Close   Open    Close
-    vertical    = { "",     "",     "",     ""      },
-    pointed     = { nil,    "",    nil,    ""     },
-    upslant     = { "",    "",    "",    ""     },
-    downslant   = { "",    "",    "",    ""     },
-    round       = { nil,    "",    nil,    ""     },
-    blurred     = { "░▒▓",  "▓▒░",  "▓▒░",  "░▒▓"   },
+                --  Open    Close
+    vertical    = { "",     ""      },
+    pointed     = { "",    ""     },
+    upslant     = { "",    ""     },
+    downslant   = { "",    ""     },
+    round       = { "",    ""     },
+    blurred     = { "░▒▓",  "▓▒░"   },
 }
 
 -- Only if style == classic.
 flexprompt.choices.ascii_separators =
-{               --  Right   Left
-    none        = { "",     "",     },
+{               --  Left    Right
+    none        = { "",     ""      },
     vertical    = { "|",    "|"     },
     slash       = { "/",    "/"     },
     backslash   = { "\\",   "\\"    },
 }
 
--- Only if style != lean.
+-- Only if style == classic.
 flexprompt.choices.separators =
-{               --  Right   Left
+{               --  Left    Right
     vertical    = { "│",    "│"     },
     pointed     = { "",    ""     },
     upslant     = { "",    ""     },
@@ -171,13 +169,17 @@ flexprompt.choices.symbols =
 }
 
 flexprompt.lines = "two"
+flexprompt.style = "classic"
 --flexprompt.spacing = "sparse"
 flexprompt.left_frame = "round"
 flexprompt.right_frame = "round"
 flexprompt.connection = "dotted"
+flexprompt.tails = "blurred"
+flexprompt.heads = "pointed"
+flexprompt.separators = "upslant"
 flexprompt.frame_color = "darkest"
 flexprompt.left_prompt = "{cwd:t=smart}"
-flexprompt.right_prompt = "{time}"
+flexprompt.right_prompt = "{time} asdf {cwd:t=folder}"
 
 flexprompt.use_home_symbol = true
 --flexprompt.use_git_symbol = true
@@ -297,6 +299,40 @@ local function get_folder_name(dir)
 end
 
 --------------------------------------------------------------------------------
+-- Segments.
+
+local segmenter = nil
+
+local function next_segment(text, color)
+    local out = ""
+
+    if not text then
+        if not segmenter.open_cap then
+            -- TODO: apply color.
+            out = out .. segmenter.close_cap
+        end
+        return out
+    end
+
+    local pad = ""
+
+    if style ~= "lean" then
+        pad = " "
+        -- TODO: apply color.
+        if segmenter.open_cap then
+            out = out .. segmenter.open_cap
+            segmenter.open_cap = nil
+        else
+            out = out .. segmenter.separator
+        end
+        -- TODO: apply color.
+    end
+
+    out = out .. pad .. text .. pad
+    return out
+end
+
+--------------------------------------------------------------------------------
 -- Module parsing and rendering.
 
 local function render_module(name, args)
@@ -306,9 +342,45 @@ local function render_module(name, args)
     end
 end
 
-local function render_modules(prompt)
+local function render_modules(prompt, side)
     local out = ""
     local init = 1
+    local open_caps, close_caps, separators
+
+    if side == 0 then
+        open_caps = flexprompt.tails or "vertical"
+        close_caps = flexprompt.heads or "vertical"
+    else
+        open_caps = flexprompt.heads or "vertical"
+        close_caps = flexprompt.tails or "vertical"
+    end
+    if type(open_caps) ~= "table" then
+        open_caps = flexprompt.choices.caps[open_caps]
+    end
+    if type(close_caps) ~= "table" then
+        close_caps = flexprompt.choices.caps[close_caps]
+    end
+
+    segmenter = {}
+    segmenter.style = get_style()
+    segmenter.last_color = flexprompt.colors.default
+    segmenter.open_cap = open_caps[1]
+    segmenter.close_cap = close_caps[2]
+
+    if segmenter.style == "classic" then
+        separators = flexprompt.separators or "vertical"
+        if type(separators) ~= "table" then
+            separators = flexprompt.choices.separators[separators]
+        end
+        segmenter.separator = separators[side + 1]
+    elseif segmenter.style == "rainbow" then
+        separators = flexprompt.choices.caps[flexprompt.separators] or "vertical"
+        if type(separators) ~= "table" then
+            separators = flexprompt.choices.caps[separators]
+        end
+        segmenter.separator = separators[2 - side]
+    end
+
     while true do
         local s,e,cap = string.find(prompt, "{([^}]*)}", init)
         if not s then
@@ -326,12 +398,14 @@ local function render_modules(prompt)
         end
 
         if name and #name > 0 then
-            local segment = render_module(name, args)
+            local segment,color = render_module(name, args)
             if segment then
-                out = out .. segment
+                out = out .. next_segment(segment, color)
             end
         end
     end
+
+    out = out .. next_segment()
 
     return out
 end
@@ -365,10 +439,10 @@ function pf:filter(prompt)
             left1 = left1 .. frame_color .. left_frame[1]
         end
 
-        left1 = left1 .. render_modules(flexprompt.left_prompt)
+        left1 = left1 .. render_modules(flexprompt.left_prompt, 0)
 
         if flexprompt.right_prompt then
-            right1 = render_modules(flexprompt.right_prompt)
+            right1 = render_modules(flexprompt.right_prompt, 1)
         end
 
         if right_frame then
