@@ -1,3 +1,4 @@
+--------------------------------------------------------------------------------
 -- Clink requirements.
 
 if ((clink and clink.version_encoded) or 0) < 10020029 then
@@ -5,9 +6,13 @@ if ((clink and clink.version_encoded) or 0) < 10020029 then
     return
 end
 
+--------------------------------------------------------------------------------
+-- Internals.
+
 flexprompt = {}
 local modules
 
+--------------------------------------------------------------------------------
 -- Color codes.
 
 flexprompt.fg_colors =
@@ -54,6 +59,7 @@ flexprompt.bg_colors =
     brightwhite = "107",
 }
 
+--------------------------------------------------------------------------------
 -- Configuration.
 
 flexprompt.choices = {}
@@ -195,6 +201,7 @@ flexprompt.frame_color = "darkest"
 flexprompt.left_prompt = "{cwd}"
 flexprompt.right_prompt = "{time}"
 
+--------------------------------------------------------------------------------
 -- Configuration helpers.
 
 local function csi(args, code)
@@ -272,6 +279,7 @@ local function connect(lhs, rhs, frame)
     return lhs..rhs..frame
 end
 
+--------------------------------------------------------------------------------
 -- Module parsing and rendering.
 
 local function render_module(name, args)
@@ -311,6 +319,7 @@ local function render_modules(prompt)
     return out
 end
 
+--------------------------------------------------------------------------------
 -- Build prompt.
 
 local pf = clink.promptfilter(5)
@@ -409,6 +418,7 @@ function pf:transientrightfilter(prompt)
     return ""
 end
 
+--------------------------------------------------------------------------------
 -- Built in modules.
 
 local function render_cwd(args)
