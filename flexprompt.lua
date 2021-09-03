@@ -718,6 +718,19 @@ function flexprompt.parse_arg_keyword(args, name, altname)
     return value
 end
 
+-- Parsing text "white,cyan" returns "white", "cyan".
+function flexprompt.parse_colors(text, default, altdefault)
+    local color, altcolor = default, altdefault
+    if text then
+        if string.find(text, ",") then
+            color, altcolor = string.match(text, "([^,]+),([^,]+)")
+        else
+            color = text
+        end
+    end
+    return color, altcolor
+end
+
 -- Test whether dir is part of a git repo.
 function flexprompt.get_git_dir(dir)
     local function has_git_dir(dir)
@@ -835,13 +848,7 @@ local function render_time(args)
     else
         color = "cyan"
     end
-    if colors then
-        if string.find(colors, ",") then
-            color, altcolor = string.match(colors, "([^,]+),([^,]+)")
-        else
-            color = colors
-        end
-    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
     local format = flexprompt.parse_arg_token(args, "f", "format")
     if not format then
