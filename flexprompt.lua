@@ -66,7 +66,7 @@ flexprompt.choices.prompts =
 {
     lean        = { left = { "{cwd}{time}" }, both = { "{cwd}", "{exit}{time}" } },
     classic     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
-    rainbow     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
+    rainbow     = { left = { "{cwd}{exit}{time:color=black}" }, both = { "{cwd}", "{exit}{time}" } },
 }
 
 -- Only if style != lean.
