@@ -158,10 +158,10 @@ flexprompt.choices.spacing =
     sparse      = 1,
 }
 
-flexprompt.choices.flow =
+flexprompt.choices.flows =
 {
-    "concise",
-    "fluent",
+    concise     = "concise",
+    fluent      = "fluent",
 }
 
 flexprompt.choices.transient =
@@ -289,6 +289,11 @@ end
 
 local function get_symbol()
     return flexprompt.choices.symbols[flexprompt.symbol or "angle"] or ">"
+end
+
+local function get_flow()
+    -- Indexing into the flows table validates that the flow name is recognized.
+    return flexprompt.choices.flows[flexprompt.flow or "concise"] or "concise"
 end
 
 local function connect(lhs, rhs, frame, sgr_frame_color)
@@ -669,6 +674,9 @@ end
 -- Function to get style.
 flexprompt.get_style = get_style
 
+-- Function to get flow.
+flexprompt.get_flow = get_flow
+
 -- Get an SGR string to apply the named color as either a foreground or
 -- background color, depending on the style (rainbow style applies colors as
 -- background colors).
@@ -880,6 +888,10 @@ local function render_exit(args)
         altcolor = "brightyellow"
     end
 
+    if flexprompt.get_flow() == "fluent" then
+        text = "exit " .. text
+    end
+
     return text, color, altcolor
 end
 
@@ -903,7 +915,13 @@ local function render_time(args)
         format = "%a %H:%M"
     end
 
-    return os.date(format), color, altcolor
+    local text = os.date(format)
+
+    if flexprompt.get_flow() == "fluent" then
+        text = "at " .. text
+    end
+
+    return text, color, altcolor
 end
 
 --[[local]] modules =
