@@ -61,6 +61,14 @@ flexprompt.choices.sides =
     both        = "both",
 }
 
+-- Default prompt strings based on styles and sides.
+flexprompt.choices.prompts =
+{
+    lean        = { left = { "{cwd}{time}" }, both = { "{cwd}", "{time}" } },
+    classic     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
+    rainbow     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
+}
+
 -- Only if style != lean.
 flexprompt.choices.ascii_caps =
 {
@@ -181,8 +189,8 @@ flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "upslant"
 flexprompt.frame_color = "lightest"
-flexprompt.left_prompt = "{cwd:t=smart}"
-flexprompt.right_prompt = "{time:c=red,brightwhite}"
+--flexprompt.left_prompt = "{cwd:t=smart}"
+--flexprompt.right_prompt = "{time:c=red,brightwhite}"
 
 flexprompt.use_home_symbol = true
 --flexprompt.use_git_symbol = true
@@ -500,6 +508,14 @@ function pf:filter(prompt)
     local style = get_style()
     local lines = get_lines()
 
+    local left_prompt = flexprompt.left_prompt
+    local right_prompt = flexprompt.right_prompt
+    if not left_prompt and not right_prompt then
+        local prompts = flexprompt.choices.prompts[style]["both"]
+        left_prompt = prompts[1]
+        right_prompt = prompts[2]
+    end
+
     local left1 = ""
     local right1 = ""
     local rightframe1 = ""
@@ -524,14 +540,14 @@ function pf:filter(prompt)
             left1 = left1 .. sgr_frame_color .. left_frame[1] .. pad_frame
         end
 
-        left1 = left1 .. render_modules(flexprompt.left_prompt, 0, frame_color)
+        left1 = left1 .. render_modules(left_prompt or "", 0, frame_color)
 
         if lines == 1 and style == "lean" then
             left1 = left1 .. get_symbol_color() .. " " .. get_symbol() .. " "
         end
 
-        if flexprompt.right_prompt then
-            right1 = render_modules(flexprompt.right_prompt, 1, frame_color)
+        if right_prompt then
+            right1 = render_modules(right_prompt, 1, frame_color)
         end
 
         if right_frame then
