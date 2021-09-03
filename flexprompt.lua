@@ -536,8 +536,8 @@ function pf:filter(prompt)
     end
 
     local left1 = ""
-    local right1 = ""
-    local rightframe1 = ""
+    local right1
+    local rightframe1
     local left2 = nil
     local right2 = nil
 
@@ -554,12 +554,14 @@ function pf:filter(prompt)
     -- Line 1 ----------------------------------------------------------------
 
     if true then
+        left1 = render_modules(left_prompt or "", 0, frame_color)
 
         if left_frame then
-            left1 = left1 .. sgr_frame_color .. left_frame[1] .. pad_frame
+            if left1 ~= "" then
+                left1 = pad_frame .. left1
+            end
+            left1 = sgr_frame_color .. left_frame[1] .. left1
         end
-
-        left1 = left1 .. render_modules(left_prompt or "", 0, frame_color)
 
         if lines == 1 and style == "lean" then
             left1 = left1 .. get_symbol_color() .. " " .. get_symbol() .. " "
@@ -570,7 +572,11 @@ function pf:filter(prompt)
         end
 
         if right_frame then
-            rightframe1 = sgr_frame_color .. pad_frame .. right_frame[1]
+            rightframe1 = sgr_frame_color
+            if right1 and right1 ~= "" then
+                rightframe1 = rightframe1 .. pad_frame
+            end
+            rightframe1 = rightframe1 .. right_frame[1]
         end
     end
 
@@ -601,13 +607,13 @@ function pf:filter(prompt)
         right = right1
     else
         right = right2
-        if right_frame then
+        if right1 then
             if style == "lean" then
                 -- Padding around left/right segments for lean style.
                 if #left1 > 0 then left1 = left1 .. " " end
                 if #right1 > 0 then right1 = " " .. right1 end
             end
-            prompt = connect(left1, right1, rightframe1, sgr_frame_color)
+            prompt = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
         end
         prompt = prompt .. sgr() .. "\r\n" .. left2
     end
@@ -624,7 +630,7 @@ function pf:filter(prompt)
 end
 
 function pf:rightfilter(prompt)
-    return right
+    return right or ""
 end
 
 function pf:transientfilter(prompt)
