@@ -418,6 +418,23 @@ function pf:transientrightfilter(prompt)
     return ""
 end
 
+-- Capture the $+ dir stack depth if present at the beginning of PROMPT.
+local dirStackDepth
+local plus_capture = clink.promptfilter(1)
+function plus_capture:filter(prompt)
+    dirStackDepth = ""
+    local plusBegin, plusEnd = prompt:find("^[+]+")
+    if plusBegin == nil then
+        plusBegin, plusEnd = prompt:find("[\n][+]+")
+        if plusBegin then
+            plusBegin = plusBegin + 1
+        end
+    end
+    if plusBegin ~= nil then
+        dirStackDepth = prompt:sub(plusBegin, plusEnd).." "
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Public API.
 
@@ -433,7 +450,10 @@ end
 -- Built in modules.
 
 local function render_cwd(args)
-    return sgr("brightblue") .. os.getcwd()
+    local color = sgr("brightblue")
+
+    local cwd = os.getcwd()
+    return color .. dirStackDepth .. cwd
 end
 
 local function render_time(args)
