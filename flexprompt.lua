@@ -133,12 +133,15 @@ flexprompt.choices.right_frames =
 }
 
 -- Only if separators or connectors or frames.
+local fc_frame = 1
+local fc_back = 2
+local fc_fore = 3
 flexprompt.choices.frame_colors =
-{
-    lightest    = "38;5;249",
-    light       = "38;5;245",
-    dark        = "38;5;241",
-    darkest     = "38;5;237",
+{               --  Frame       Back        Fore
+    lightest    = { "38;5;244", "38;5;240", "38;5;248"  },
+    light       = { "38;5;242", "38;5;238", "38;5;246"  },
+    dark        = { "38;5;240", "38;5;236", "38;5;244"  },
+    darkest     = { "38;5;238", "38;5;234", "38;5;242"  },
 }
 
 flexprompt.choices.spacing =
@@ -169,7 +172,7 @@ flexprompt.choices.symbols =
 }
 
 flexprompt.lines = "two"
-flexprompt.style = "classic"
+flexprompt.style = "lean"
 --flexprompt.spacing = "sparse"
 flexprompt.left_frame = "round"
 flexprompt.right_frame = "round"
@@ -177,9 +180,9 @@ flexprompt.connection = "dotted"
 flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "upslant"
-flexprompt.frame_color = "darkest"
+flexprompt.frame_color = "lightest"
 flexprompt.left_prompt = "{cwd:t=smart}"
-flexprompt.right_prompt = "{time} asdf {cwd:t=folder}"
+flexprompt.right_prompt = "{time:c=red,brightwhite}"
 
 flexprompt.use_home_symbol = true
 --flexprompt.use_git_symbol = true
@@ -201,6 +204,10 @@ local function sgr(args)
 end
 
 local function lookup_color(args, verbatim)
+    if type(args) == "table" then
+        return args
+    end
+
     if args and not args:match("^[0-9]") then
         return flexprompt.colors[args]
     end
@@ -247,18 +254,28 @@ local function get_frame()
 end
 
 local function get_frame_color()
-    local color = lookup_color(flexprompt.choices.frame_colors[flexprompt.frame_color or "light"])
-    if not color then
-        color = lookup_color(flexprompt.frame_color)
+    local frame_color = flexprompt.choices.frame_colors[flexprompt.frame_color or "light"]
+    if not frame_color then
+        frame_color = flexprompt.choices.frame_colors["light"]
     end
-    if color then
-        return sgr(color.fg)
+
+    if type(frame_color) ~= "table" then
+        frame_color = { frame_color, frame_color, frame_color }
     end
-    return sgr(flexprompt.frame_color)
+
+    frame_color = { lookup_color(frame_color[1]), lookup_color(frame_color[2]), lookup_color(frame_color[3]) }
+
+    return frame_color
 end
 
 local function get_symbol_color()
-    local color = lookup_color(flexprompt.symbol_color or "brightblue")
+    local color
+    if flexprompt.symbol_color then
+        color = flexprompt.symbol_color
+    else
+        color = (os.geterrorlevel() == 0) and "brightgreen" or "brightred"
+    end
+    color = lookup_color(color)
     return sgr(color.fg)
 end
 
@@ -266,7 +283,7 @@ local function get_symbol()
     return flexprompt.choices.symbols[flexprompt.symbol or "angle"] or ">"
 end
 
-local function connect(lhs, rhs, frame)
+local function connect(lhs, rhs, frame, sgr_frame_color)
     local lhs_len = console.cellcount(lhs)
     local rhs_len = console.cellcount(rhs)
     local frame_len = console.cellcount(frame)
@@ -281,7 +298,10 @@ local function connect(lhs, rhs, frame)
         end
     end
     if gap > 0 then
-        lhs = lhs .. get_frame_color() .. string.rep(get_connector(), gap)
+        if not sgr_frame_color then
+            sgr_frame_color = sgr(flexprompt.colors.red.fg)
+        end
+        lhs = lhs .. sgr_frame_color .. string.rep(get_connector(), gap)
     end
     return lhs..rhs..frame
 end
@@ -303,48 +323,7 @@ end
 
 local segmenter = nil
 
-local function next_segment(text, color)
-    local out = ""
-
-    if not text then
-        if not segmenter.open_cap then
-            -- TODO: apply color.
-            out = out .. segmenter.close_cap
-        end
-        return out
-    end
-
-    local pad = ""
-
-    if style ~= "lean" then
-        pad = " "
-        -- TODO: apply color.
-        if segmenter.open_cap then
-            out = out .. segmenter.open_cap
-            segmenter.open_cap = nil
-        else
-            out = out .. segmenter.separator
-        end
-        -- TODO: apply color.
-    end
-
-    out = out .. pad .. text .. pad
-    return out
-end
-
---------------------------------------------------------------------------------
--- Module parsing and rendering.
-
-local function render_module(name, args)
-    local func = modules[string.lower(name)]
-    if func then
-        return func(args)
-    end
-end
-
-local function render_modules(prompt, side)
-    local out = ""
-    local init = 1
+local function init_segmenter(side, frame_color)
     local open_caps, close_caps, separators
 
     if side == 0 then
@@ -362,8 +341,10 @@ local function render_modules(prompt, side)
     end
 
     segmenter = {}
+    segmenter.side = side
     segmenter.style = get_style()
-    segmenter.last_color = flexprompt.colors.default
+    segmenter.frame_color = frame_color
+    segmenter.back_color = flexprompt.colors.default
     segmenter.open_cap = open_caps[1]
     segmenter.close_cap = close_caps[2]
 
@@ -374,12 +355,110 @@ local function render_modules(prompt, side)
         end
         segmenter.separator = separators[side + 1]
     elseif segmenter.style == "rainbow" then
-        separators = flexprompt.choices.caps[flexprompt.separators] or "vertical"
+        separators = flexprompt.separators or "vertical"
         if type(separators) ~= "table" then
+            local altseparators = flexprompt.choices.separators[separators]
+            if altseparators then
+                segmenter.altseparator = altseparators[side + 1]
+            end
             separators = flexprompt.choices.caps[separators]
         end
         segmenter.separator = separators[2 - side]
     end
+end
+
+local function color_segment_transition(color, symbol, close)
+    local swap = (close and segmenter.style == "classic") or (not close and segmenter.style == "rainbow")
+    local fg = swap and "bg" or "fg"
+    local bg = swap and "fg" or "bg"
+    if segmenter.style == "rainbow" then
+        if segmenter.back_color.bg == color.bg then
+            return sgr(segmenter.frame_color[fc_frame].fg) .. segmenter.altseparator
+        else
+            return sgr(segmenter.back_color[fg] .. ";" .. color[bg]) .. symbol
+        end
+    else
+        return sgr(segmenter.back_color[bg] .. ";" .. color[fg]) .. symbol
+    end
+end
+
+local function next_segment(text, color, rainbow_text_color)
+    local out = ""
+
+    if not color then
+        color = flexprompt.colors.brightred
+    end
+    if not rainbow_text_color then
+        rainbow_text_color = flexprompt.colors.brightred
+    else
+        rainbow_text_color = lookup_color(rainbow_text_color)
+    end
+
+    if not text then
+        if segmenter.style ~= "lean" and not segmenter.open_cap then
+            out = out .. color_segment_transition(color, segmenter.close_cap, true)
+        end
+        return out
+    end
+
+    local pad = ""
+
+    if segmenter.style == "lean" then
+        out = out .. sgr(color.fg)
+    else
+        local sep
+        local transition_color = color
+        local back, fore
+
+        if segmenter.open_cap then
+            sep = segmenter.open_cap
+            segmenter.open_cap = nil
+            if segmenter.style == "classic" then
+                transition_color = segmenter.frame_color[fc_back]
+                back = segmenter.frame_color[fc_back].bg
+                fore = segmenter.frame_color[fc_fore].fg
+            end
+        else
+            sep = segmenter.separator
+            if segmenter.style == "classic" then
+                transition_color = segmenter.frame_color[fc_fore]
+            end
+        end
+
+        pad = " "
+        out = out .. color_segment_transition(transition_color, sep)
+        if fore then
+            out = out .. sgr(back .. ";" .. fore)
+        end
+        out = out .. sgr((segmenter.style == "rainbow") and color.bg or color.fg)
+
+        if segmenter.style == "rainbow" then
+            segmenter.back_color = color
+            text = sgr(rainbow_text_color.fg) .. text
+        else
+            segmenter.back_color = segmenter.frame_color[fc_back]
+        end
+    end
+
+    out = out .. pad .. text .. pad
+    return out
+end
+
+--------------------------------------------------------------------------------
+-- Module parsing and rendering.
+
+local function render_module(name, args)
+    local func = modules[string.lower(name)]
+    if func then
+        return func(args)
+    end
+end
+
+local function render_modules(prompt, side, frame_color)
+    local out = ""
+    local init = 1
+
+    init_segmenter(side, frame_color)
 
     while true do
         local s,e,cap = string.find(prompt, "{([^}]*)}", init)
@@ -398,14 +477,14 @@ local function render_modules(prompt, side)
         end
 
         if name and #name > 0 then
-            local segment,color = render_module(name, args)
+            local segment,color,rainbow_text_color = render_module(name, args)
             if segment then
-                out = out .. next_segment(segment, color)
+                out = out .. next_segment(segment, lookup_color(color), rainbow_text_color)
             end
         end
     end
 
-    out = out .. next_segment()
+    out = out .. next_segment(nil, flexprompt.colors.default)
 
     return out
 end
@@ -418,6 +497,7 @@ local pf = clink.promptfilter(5)
 local right
 
 function pf:filter(prompt)
+    local style = get_style()
     local lines = get_lines()
 
     local left1 = ""
@@ -431,22 +511,31 @@ function pf:filter(prompt)
         left_frame, right_frame = get_frame()
     end
     local frame_color = get_frame_color()
+    local sgr_frame_color = (left_frame or right_frame) and sgr("0;" .. frame_color[fc_frame].fg) or nil
+
+    -- Padding around left/right segments for lean style.
+    local pad_frame = (style == "lean") and " " or ""
 
     -- Line 1 ----------------------------------------------------------------
 
     if true then
+
         if left_frame then
-            left1 = left1 .. frame_color .. left_frame[1]
+            left1 = left1 .. sgr_frame_color .. left_frame[1] .. pad_frame
         end
 
-        left1 = left1 .. render_modules(flexprompt.left_prompt, 0)
+        left1 = left1 .. render_modules(flexprompt.left_prompt, 0, frame_color)
+
+        if lines == 1 and style == "lean" then
+            left1 = left1 .. get_symbol_color() .. " " .. get_symbol() .. " "
+        end
 
         if flexprompt.right_prompt then
-            right1 = render_modules(flexprompt.right_prompt, 1)
+            right1 = render_modules(flexprompt.right_prompt, 1, frame_color)
         end
 
         if right_frame then
-            rightframe1 = frame_color .. right_frame[1]
+            rightframe1 = sgr_frame_color .. pad_frame .. right_frame[1]
         end
     end
 
@@ -457,19 +546,16 @@ function pf:filter(prompt)
         right2 = ""
 
         if left_frame then
-            left2 = left2 .. frame_color .. left_frame[2]
-        else
+            left2 = left2 .. sgr_frame_color .. left_frame[2]
+        end
+        if not left_frame or style == "lean" then
             left2 = left2 .. get_symbol_color() .. get_symbol()
         end
 
         left2 = left2 .. sgr() .. " "
 
-        if sides == "both" then
-            -- ...
-        end
-
         if right_frame then
-            right2 = right2 .. frame_color .. right_frame[2]
+            right2 = right2 .. sgr_frame_color .. right_frame[2]
         end
     end
 
@@ -481,7 +567,12 @@ function pf:filter(prompt)
     else
         right = right2
         if right_frame then
-            prompt = connect(left1, right1, rightframe1)
+            if style == "lean" then
+                -- Padding around left/right segments for lean style.
+                if #left1 > 0 then left1 = left1 .. " " end
+                if #right1 > 0 then right1 = " " .. right1 end
+            end
+            prompt = connect(left1, right1, rightframe1, sgr_frame_color)
         end
         prompt = prompt .. sgr() .. "\r\n" .. left2
     end
@@ -544,6 +635,9 @@ end
 function flexprompt.add_color(name, fore, back)
     flexprompt.colors[name] = { fg=fore, bg=back }
 end
+
+-- Function to get style.
+flexprompt.get_style = get_style
 
 -- Get an SGR string to apply the named color as either a foreground or
 -- background color, depending on the style (rainbow style applies colors as
@@ -641,9 +735,21 @@ end
 --------------------------------------------------------------------------------
 -- Built in modules.
 
+-- CWD MODULE:  {cwd:c=color_name:t=type_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - type_name is the format to use:
+--      - "full" is the full path.
+--      - "folder" is just the folder name.
+--      - "smart" is the git repo\subdir, or the full path.
 local function render_cwd(args)
-    local color = flexprompt.parse_arg_token(args, "c", "color") or "38;5;33"
-    color = flexprompt.get_styled_sgr(color)
+    local color = flexprompt.parse_arg_token(args, "c", "color")
+    if not color then
+        if flexprompt.get_style() == "rainbow" then
+            color = "blue"
+        else
+            color = "38;5;33"
+        end
+    end
 
     local cwd = os.getcwd()
     local git_dir
@@ -683,13 +789,36 @@ local function render_cwd(args)
         until true
     end
 
-    return color .. dirStackDepth .. cwd
+    return dirStackDepth .. cwd, color, "white"
 end
 
+-- TIME MODULE:  {time:c=color_name,alt_color_name:f=format_string}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--  - format_string is a format string for os.date().
 local function render_time(args)
-    local color = flexprompt.parse_arg_token(args, "c", "color") or "cyan"
-    color = flexprompt.get_styled_sgr(color)
-    return color .. os.date("%a %H:%M")
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    if flexprompt.get_style() == "rainbow" then
+        color = "white"
+        altcolor = "black"
+    else
+        color = "cyan"
+    end
+    if colors then
+        if string.find(colors, ",") then
+            color, altcolor = string.match(colors, "([^,]+),([^,]+)")
+        else
+            color = colors
+        end
+    end
+
+    local format = flexprompt.parse_arg_token(args, "f", "format")
+    if not format then
+        format = "%a %H:%M"
+    end
+
+    return os.date(format), color, altcolor
 end
 
 --[[local]] modules =
