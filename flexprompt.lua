@@ -171,13 +171,17 @@ flexprompt.choices.symbols =
 }
 
 flexprompt.lines = "two"
-flexprompt.spacing = "sparse"
-flexprompt.left_frame = nil--"round"
+--flexprompt.spacing = "sparse"
+flexprompt.left_frame = "round"
 flexprompt.right_frame = "round"
 flexprompt.connection = "dotted"
 flexprompt.frame_color = "darkest"
-flexprompt.left_prompt = "{cwd}"
+flexprompt.left_prompt = "{cwd:t=smart}"
 flexprompt.right_prompt = "{time}"
+
+flexprompt.use_home_symbol = true
+--flexprompt.use_git_symbol = true
+--flexprompt.git_symbol = "git"
 
 --------------------------------------------------------------------------------
 -- Configuration helpers.
@@ -516,6 +520,50 @@ function flexprompt.parse_arg_keyword(args, name, altname)
     return value
 end
 
+-- Test whether dir is part of a git repo.
+function flexprompt.get_git_dir(dir)
+    local function has_git_dir(dir)
+        local dotgit = path.join(dir, '.git')
+        return os.isdir(dotgit) and dotgit
+    end
+
+    local function has_git_file(dir)
+        local dotgit = path.join(dir, '.git')
+        local gitfile
+        if os.isfile(dotgit) then
+            gitfile = io.open(dotgit)
+        end
+        if not gitfile then return end
+
+        local git_dir = gitfile:read():match('gitdir: (.*)')
+        gitfile:close()
+
+        -- gitdir can (apparently) be absolute or relative:
+        local file_when_absolute = git_dir and os.isdir(git_dir) and git_dir
+        if file_when_absolute then
+            -- Don't waste time calling os.isdir on a potentially relative path
+            -- if we already know it's an absolute path.
+            return file_when_absolute
+        end
+        local rel_dir = path.join(dir, git_dir)
+        local file_when_relative = git_dir and os.isdir(rel_dir) and rel_dir
+        if file_when_relative then
+            return file_when_relative
+        end
+    end
+
+    -- Set default path to current directory.
+    if not dir or dir == '.' then dir = os.getcwd() end
+
+    -- Return if it's a git dir.
+    local has = has_git_dir(dir) or has_git_file(dir)
+    if has then return has end
+
+    -- Walk up to parent path.
+    local parent = path.toparent(dir)
+    return (parent ~= dir) and flexprompt.get_git_dir(parent) or nil
+end
+
 --------------------------------------------------------------------------------
 -- Built in modules.
 
@@ -524,6 +572,43 @@ local function render_cwd(args)
     color = flexprompt.get_styled_sgr(color)
 
     local cwd = os.getcwd()
+    local git_dir
+
+    local type = flexprompt.parse_arg_token(args, "t", "type") or "full"
+    if type == "folder" then
+        cwd = get_folder_name(cwd)
+    else
+        repeat
+            if flexprompt.use_home_symbol then
+                local home = os.getenv("HOME")
+                if home and string.find(cwd, home) then
+                    git_dir = flexprompt.get_git_dir(cwd) or false
+                    if not git_dir then
+                        cwd = string.gsub(cwd, home, flexprompt.home_symbol or "~")
+                        break
+                    end
+                end
+            end
+
+            if type == "smart" then
+                if git_dir == nil then -- Don't double-hunt for it!
+                    git_dir = flexprompt.get_git_dir()
+                end
+                if git_dir then
+                    -- Get the root git folder name and reappend any part of the
+                    -- directory that comes after.
+                    -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
+                    local git_root_dir = path.toparent(git_dir)
+                    local appended_dir = string.sub(cwd, string.len(git_root_dir) + 1)
+                    cwd = get_folder_name(git_root_dir)..appended_dir
+                    if flexprompt.use_git_symbol and (flexprompt.git_symbol or "") ~= "" then
+                        cwd = flexprompt.git_symbol .. " " .. cwd
+                    end
+                end
+            end
+        until true
+    end
+
     return color .. dirStackDepth .. cwd
 end
 
@@ -540,4 +625,3 @@ end
 }
 
 -- modules (git, npm, mercurial, time, battery, exit code, duration, cwd, ?)
--- custom modules
