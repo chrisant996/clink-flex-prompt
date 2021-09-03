@@ -180,7 +180,8 @@ flexprompt.choices.symbols =
 }
 
 flexprompt.lines = "two"
-flexprompt.style = "lean"
+flexprompt.style = "rainbow"
+flexprompt.flow = "fluent"
 --flexprompt.spacing = "sparse"
 flexprompt.left_frame = "round"
 flexprompt.right_frame = "round"
@@ -410,6 +411,10 @@ local function color_segment_transition(color, symbol, close)
     end
 end
 
+local function apply_fluent_colors(text, base_color)
+    return string.gsub(text, "\001", sgr(segmenter.frame_color[fc_fore].fg)):gsub("\002", base_color)
+end
+
 local function next_segment(text, color, rainbow_text_color)
     local out = ""
 
@@ -431,43 +436,48 @@ local function next_segment(text, color, rainbow_text_color)
 
     local pad = (segmenter.style == "lean") and "" or " "
 
-    if true then
-        local sep
-        local transition_color = color
-        local back, fore
-        local classic = segmenter.style == "classic"
-        local rainbow = segmenter.style == "rainbow"
+    local sep
+    local transition_color = color
+    local back, fore
+    local classic = segmenter.style == "classic"
+    local rainbow = segmenter.style == "rainbow"
 
-        if segmenter.open_cap then
-            sep = segmenter.open_cap
-            segmenter.open_cap = nil
-            if classic then
-                transition_color = segmenter.frame_color[fc_back]
-                back = segmenter.frame_color[fc_back].bg
-                fore = segmenter.frame_color[fc_fore].fg
-            end
-        else
-            sep = segmenter.separator
-            if classic then
-                transition_color = segmenter.frame_color[fc_fore]
-            end
+    if segmenter.open_cap then
+        sep = segmenter.open_cap
+        segmenter.open_cap = nil
+        if classic then
+            transition_color = segmenter.frame_color[fc_back]
+            back = segmenter.frame_color[fc_back].bg
+            fore = segmenter.frame_color[fc_fore].fg
         end
-
-        out = out .. color_segment_transition(transition_color, sep)
-        if fore then
-            out = out .. sgr(back .. ";" .. fore)
-        end
-        out = out .. sgr(rainbow and color.bg or color.fg)
-
-        if rainbow then
-            segmenter.back_color = color
-            text = sgr(rainbow_text_color.fg) .. text
-        elseif classic then
-            segmenter.back_color = segmenter.frame_color[fc_back]
+    else
+        sep = segmenter.separator
+        if classic then
+            transition_color = segmenter.frame_color[fc_fore]
         end
     end
 
-    out = out .. pad .. text .. pad
+    out = out .. color_segment_transition(transition_color, sep)
+    if fore then
+        out = out .. sgr(back .. ";" .. fore)
+    end
+
+    local base_color
+    if rainbow then
+        base_color = sgr(color.bg .. ";" .. rainbow_text_color.fg)
+    else
+        base_color = sgr(color.fg)
+    end
+
+    out = out .. base_color
+    out = out .. pad .. apply_fluent_colors(text, base_color) .. pad
+
+    if rainbow then
+        segmenter.back_color = color
+    elseif classic then
+        segmenter.back_color = segmenter.frame_color[fc_back]
+    end
+
     return out
 end
 
@@ -745,6 +755,11 @@ function flexprompt.parse_colors(text, default, altdefault)
     return color, altcolor
 end
 
+-- Add control codes around fluent text.
+function flexprompt.make_fluent_text(text)
+    return "\001" .. text .. "\002"
+end
+
 -- Test whether dir is part of a git repo.
 function flexprompt.get_git_dir(dir)
     local function has_git_dir(dir)
@@ -895,7 +910,7 @@ local function render_exit(args)
     end
 
     if flexprompt.get_flow() == "fluent" then
-        text = "exit " .. text
+        text = flexprompt.make_fluent_text("exit ") .. text
     end
 
     return text, color, altcolor
@@ -924,7 +939,7 @@ local function render_time(args)
     local text = os.date(format)
 
     if flexprompt.get_flow() == "fluent" then
-        text = "at " .. text
+        text = flexprompt.make_fluent_text("at ") .. text
     end
 
     return text, color, altcolor

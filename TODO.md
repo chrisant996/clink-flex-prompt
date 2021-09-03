@@ -1,5 +1,4 @@
 ### General
-- [ ] Fluent text coloring.
 - [ ] Lean style use brighter colors.
 
 ### Configuration wizard
