@@ -15,48 +15,26 @@ local modules
 --------------------------------------------------------------------------------
 -- Color codes.
 
-flexprompt.fg_colors =
+flexprompt.colors =
 {
-    normal = "0",
-    bold = "1",
-    default = "39",
-    black = "30",
-    red = "31",
-    green = "32",
-    yellow = "33",
-    blue = "34",
-    magenta = "35",
-    cyan = "36",
-    white = "37",
-    brightblack = "90",
-    brightred = "91",
-    brightgreen = "92",
-    brightyellow = "93",
-    brightblue = "94",
-    brightmagenta = "95",
-    brightcyan = "96",
-    brightwhite = "97",
-}
-
-flexprompt.bg_colors =
-{
-    default = "49",
-    black = "40",
-    red = "41",
-    green = "42",
-    yellow = "43",
-    blue = "44",
-    magenta = "45",
-    cyan = "46",
-    white = "47",
-    brightblack = "100",
-    brightred = "101",
-    brightgreen = "102",
-    brightyellow = "103",
-    brightblue = "104",
-    brightmagenta = "105",
-    brightcyan = "106",
-    brightwhite = "107",
+    bold            = { fg="1"                  },
+    default         = { fg="39",    bg="49"     },
+    black           = { fg="30",    bg="40"     },
+    red             = { fg="31",    bg="41"     },
+    green           = { fg="32",    bg="42"     },
+    yellow          = { fg="33",    bg="43"     },
+    blue            = { fg="34",    bg="44"     },
+    magenta         = { fg="35",    bg="45"     },
+    cyan            = { fg="36",    bg="46"     },
+    white           = { fg="37",    bg="47"     },
+    brightblack     = { fg="90",    bg="100"    },
+    brightred       = { fg="91",    bg="101"    },
+    brightgreen     = { fg="92",    bg="102"    },
+    brightyellow    = { fg="93",    bg="103"    },
+    brightblue      = { fg="94",    bg="104"    },
+    brightmagenta   = { fg="95",    bg="105"    },
+    brightcyan      = { fg="96",    bg="106"    },
+    brightwhite     = { fg="97",    bg="107"    },
 }
 
 --------------------------------------------------------------------------------
@@ -209,18 +187,33 @@ local function csi(args, code)
 end
 
 local function sgr(args)
-    if not args then
+    if args then
+        return "\x1b["..args.."m"
+    else
         return "\x1b[m"
     end
+end
 
-    if not args:match("^[0-9]") then
-        local color = flexprompt.fg_colors[args]
-        if color then
-            args = color
-        end
+local function lookup_color(args, verbatim)
+    if args and not args:match("^[0-9]") then
+        return flexprompt.colors[args]
     end
 
-    return "\x1b["..args.."m"
+    local mode = args:sub(1,3)
+    if mode == "38;" or mode == "48;" then
+        args = args:sub(4)
+        return { fg = "38;"..args, bg = "48;"..args }
+    end
+end
+
+local function get_style()
+    -- Indexing into the styles table validates that the style name is
+    -- recognized.
+    return flexprompt.choices.styles[flexprompt.style or "lean"] or "lean"
+end
+
+local function get_style_ground()
+    return (get_style() == "rainbow") and "bg" or "fg"
 end
 
 local function get_lines()
@@ -248,11 +241,19 @@ local function get_frame()
 end
 
 local function get_frame_color()
-    return sgr(flexprompt.choices.frame_colors[flexprompt.frame_color or "light"])
+    local color = lookup_color(flexprompt.choices.frame_colors[flexprompt.frame_color or "light"])
+    if not color then
+        color = lookup_color(flexprompt.frame_color)
+    end
+    if color then
+        return sgr(color.fg)
+    end
+    return sgr(flexprompt.frame_color)
 end
 
 local function get_symbol_color()
-    return sgr(flexprompt.symbol_color or "brightblue")
+    local color = lookup_color(flexprompt.symbol_color or "brightblue")
+    return sgr(color.fg)
 end
 
 local function get_symbol()
@@ -446,6 +447,25 @@ function flexprompt.add_module(name, func)
     table[string.lower(name)] = func
 end
 
+-- Add a named color.
+-- Named colors must be a table { fg=_sgr_code_, bg=_sgr_code_ }.
+-- The fg and bg are needed for the rainbow style to properly color transitions
+-- between segments.
+function flexprompt.add_color(name, fore, back)
+    flexprompt.colors[name] = { fg=fore, bg=back }
+end
+
+-- Get an SGR string to apply the named color as either a foreground or
+-- background color, depending on the style (rainbow style applies colors as
+-- background colors).
+function flexprompt.get_styled_sgr(name)
+    local color = lookup_color(name)
+    if color then
+        return sgr(color[get_style_ground()])
+    end
+    return ""
+end
+
 --------------------------------------------------------------------------------
 -- Built in modules.
 
@@ -457,7 +477,9 @@ local function render_cwd(args)
 end
 
 local function render_time(args)
-    return sgr("yellow") .. os.date("%a %H:%M")
+    local color = flexprompt.parse_arg_token(args, "c", "color") or "cyan"
+    color = flexprompt.get_styled_sgr(color)
+    return color .. os.date("%a %H:%M")
 end
 
 --[[local]] modules =
