@@ -50,15 +50,15 @@ flexprompt.choices.charsets =
 
 flexprompt.choices.styles =
 {
-    "lean",
-    "classic",
-    "rainbow",
+    lean        = "lean",
+    classic     = "classic",
+    rainbow     = "rainbow",
 }
 
 flexprompt.choices.sides =
 {
-    "left",
-    "both",
+    left        = "left",
+    both        = "both",
 }
 
 -- Only if style != lean.
