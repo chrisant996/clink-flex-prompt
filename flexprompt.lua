@@ -64,7 +64,7 @@ flexprompt.choices.sides =
 -- Default prompt strings based on styles and sides.
 flexprompt.choices.prompts =
 {
-    lean        = { left = { "{cwd}{time}" }, both = { "{cwd}", "{time}" } },
+    lean        = { left = { "{cwd}{time}" }, both = { "{cwd}", "{exit}{time}" } },
     classic     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
     rainbow     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
 }
@@ -778,7 +778,7 @@ end
 --------------------------------------------------------------------------------
 -- Built in modules.
 
--- CWD MODULE:  {cwd:c=color_name:t=type_name}
+-- CWD MODULE:  {cwd:color=color_name:type=type_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - type_name is the format to use:
 --      - "full" is the full path.
@@ -835,7 +835,55 @@ local function render_cwd(args)
     return dirStackDepth .. cwd, color, "white"
 end
 
--- TIME MODULE:  {time:c=color_name,alt_color_name:f=format_string}
+-- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
+--  - 'always' always shows the exit code even when 0.
+--  - color_name is used when the exit code is 0, and is a name like "green", or
+--    an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style when the
+--    exit code is 0.
+--  - 'hex' shows the exit code in hex when > 255 or < -255.
+local function render_exit(args)
+    local text
+    local value = os.geterrorlevel()
+
+    local always = flexprompt.parse_arg_keyword(args, "a", "always")
+    if not always and value == 0 then
+        return
+    end
+
+    local hex = flexprompt.parse_arg_keyword(args, "h", "hex")
+
+    if hex and math.abs(value) > 255 then
+        local lo = bit32.band(value, 0xffff)
+        local hi = bit32.rshift(value, 16)
+        if hi > 0 then
+            hex = string.format("%x", hi) .. string.format("%04.4x", lo)
+        else
+            hex = string.format("%x", lo)
+        end
+        text = "0x" .. hex
+    else
+        text = value
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    if flexprompt.get_style() == "rainbow" then
+        color = "black"
+    else
+        color = "red"
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    if value ~= 0 then
+        color = "red"
+        altcolor = "brightyellow"
+    end
+
+    return text, color, altcolor
+end
+
+-- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 --  - format_string is a format string for os.date().
@@ -861,6 +909,7 @@ end
 --[[local]] modules =
 {
     cwd = render_cwd,
+    exit = render_exit,
     time = render_time,
 }
 
