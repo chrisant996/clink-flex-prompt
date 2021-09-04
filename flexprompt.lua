@@ -536,15 +536,11 @@ local function next_segment(text, color, rainbow_text_color)
     end
 
     local pad = (segmenter.style == "lean" -- Lean has no padding.
-                 or text == "" -- Segment with empty string has no padding.
-                 or (sep == "" and segmenter.style == "classic")) -- Classic with no separator has no padding.
+                 or text == "") -- Segment with empty string has no padding.
                  and "" or " "
 
     if not text then
         if segmenter.style ~= "lean" and not segmenter.open_cap then
-            if sep == "" and pad == "" then
-                out = out .. " "
-            end
             out = out .. color_segment_transition(color, segmenter.close_cap, true)
         end
         return out
@@ -577,7 +573,10 @@ local function next_segment(text, color, rainbow_text_color)
     end
 
     out = out .. base_color
-    out = out .. pad .. apply_fluent_colors(text, base_color) .. pad
+    if pad ~= "" and not (classic and (sep == "" or sep == " ")) then
+        out = out .. pad
+    end
+    out = out .. apply_fluent_colors(text, base_color) .. pad
 
     if rainbow then
         segmenter.back_color = color
