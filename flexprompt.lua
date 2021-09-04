@@ -10,6 +10,7 @@ end
 -- Internals.
 
 flexprompt = {}
+flexprompt.settings = {}
 local modules
 
 --------------------------------------------------------------------------------
@@ -209,24 +210,24 @@ local symbols =
     staged          = "↗",
 }
 
-flexprompt.lines = "two"
-flexprompt.style = "classic"
-flexprompt.flow = "fluent"
---flexprompt.spacing = "sparse"
---flexprompt.left_frame = "round"
---flexprompt.right_frame = "round"
-flexprompt.connection = "solid"
-flexprompt.tails = "blurred"
-flexprompt.heads = "blurred"
-flexprompt.separators = "none"
-flexprompt.frame_color = "dark"
---flexprompt.left_prompt = "{battery:s=100:br}{cwd}{git}"
---flexprompt.right_prompt = "{exit}{duration}{time}"
-flexprompt.left_prompt = "{battery:s=100:br}{cwd}{git}{exit}{duration}{time}"
+flexprompt.settings.lines = "two"
+flexprompt.settings.style = "classic"
+flexprompt.settings.flow = "fluent"
+--flexprompt.settings.spacing = "sparse"
+--flexprompt.settings.left_frame = "round"
+--flexprompt.settings.right_frame = "round"
+flexprompt.settings.connection = "solid"
+flexprompt.settings.tails = "blurred"
+flexprompt.settings.heads = "blurred"
+flexprompt.settings.separators = "none"
+flexprompt.settings.frame_color = "dark"
+--flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}"
+--flexprompt.settings.right_prompt = "{exit}{duration}{time}"
+flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}{exit}{duration}{time}"
 
-flexprompt.use_home_symbol = true
---flexprompt.use_git_symbol = true
---flexprompt.git_symbol = "git"
+flexprompt.settings.use_home_symbol = true
+--flexprompt.settings.use_git_symbol = true
+--flexprompt.settings.git_symbol = "git"
 
 --------------------------------------------------------------------------------
 -- Configuration helpers.
@@ -264,7 +265,7 @@ end
 local function get_style()
     -- Indexing into the styles table validates that the style name is
     -- recognized.
-    return flexprompt.choices.styles[flexprompt.style or "lean"] or "lean"
+    return flexprompt.choices.styles[flexprompt.settings.style or "lean"] or "lean"
 end
 
 local function get_style_ground()
@@ -272,15 +273,15 @@ local function get_style_ground()
 end
 
 local function get_lines()
-    return flexprompt.choices.lines[flexprompt.lines or "one"] or 1
+    return flexprompt.choices.lines[flexprompt.settings.lines or "one"] or 1
 end
 
 local function get_spacing()
-    return flexprompt.choices.spacing[flexprompt.spacing or "normal"] or 0
+    return flexprompt.choices.spacing[flexprompt.settings.spacing or "normal"] or 0
 end
 
 local function get_connector()
-    return flexprompt.choices.connections[flexprompt.connection or "disconnected"] or " "
+    return flexprompt.choices.connections[flexprompt.settings.connection or "disconnected"] or " "
 end
 
 local function lookup_color(args, verbatim)
@@ -313,8 +314,8 @@ local function lookup_color(args, verbatim)
 end
 
 local function get_frame()
-    local l = flexprompt.choices.left_frames[flexprompt.left_frame or "none"]
-    local r = flexprompt.choices.right_frames[flexprompt.right_frame or "none"]
+    local l = flexprompt.choices.left_frames[flexprompt.settings.left_frame or "none"]
+    local r = flexprompt.choices.right_frames[flexprompt.settings.right_frame or "none"]
     if l and #l == 0 then
         l = nil
     end
@@ -325,7 +326,7 @@ local function get_frame()
 end
 
 local function get_frame_color()
-    local frame_color = flexprompt.choices.frame_colors[flexprompt.frame_color or "light"]
+    local frame_color = flexprompt.choices.frame_colors[flexprompt.settings.frame_color or "light"]
     if not frame_color then
         frame_color = flexprompt.choices.frame_colors["light"]
     end
@@ -341,8 +342,8 @@ end
 
 local function get_symbol_color()
     local color
-    if flexprompt.symbol_color then
-        color = flexprompt.symbol_color
+    if flexprompt.settings.symbol_color then
+        color = flexprompt.settings.symbol_color
     else
         color = (os.geterrorlevel() == 0) and "brightgreen" or "brightred"
     end
@@ -351,12 +352,12 @@ local function get_symbol_color()
 end
 
 local function get_symbol()
-    return flexprompt.choices.symbols[flexprompt.symbol or "angle"] or ">"
+    return flexprompt.choices.symbols[flexprompt.settings.symbol or "angle"] or ">"
 end
 
 local function get_flow()
     -- Indexing into the flows table validates that the flow name is recognized.
-    return flexprompt.choices.flows[flexprompt.flow or "concise"] or "concise"
+    return flexprompt.choices.flows[flexprompt.settings.flow or "concise"] or "concise"
 end
 
 local function make_fluent_text(text)
@@ -411,11 +412,11 @@ local function init_segmenter(side, frame_color)
     local open_caps, close_caps, separators
 
     if side == 0 then
-        open_caps = flexprompt.tails or "vertical"
-        close_caps = flexprompt.heads or "vertical"
+        open_caps = flexprompt.settings.tails or "vertical"
+        close_caps = flexprompt.settings.heads or "vertical"
     else
-        open_caps = flexprompt.heads or "vertical"
-        close_caps = flexprompt.tails or "vertical"
+        open_caps = flexprompt.settings.heads or "vertical"
+        close_caps = flexprompt.settings.tails or "vertical"
     end
     if type(open_caps) ~= "table" then
         open_caps = flexprompt.choices.caps[open_caps]
@@ -434,7 +435,7 @@ local function init_segmenter(side, frame_color)
 
     if segmenter.style == "lean" then
         --[[
-        separators = flexprompt.separators or "vertical"
+        separators = flexprompt.settings.separators or "vertical"
         if type(separators) ~= "table" then
             separators = flexprompt.choices.separators[separators]
         end
@@ -444,7 +445,7 @@ local function init_segmenter(side, frame_color)
         segmenter.open_cap = ""
         segmenter.close_cap = ""
     elseif segmenter.style == "classic" then
-        separators = flexprompt.separators or "vertical"
+        separators = flexprompt.settings.separators or "vertical"
         if type(separators) ~= "table" then
             separators = flexprompt.choices.separators[separators]
         else
@@ -455,7 +456,7 @@ local function init_segmenter(side, frame_color)
         end
         segmenter.separator = separators[side + 1]
     elseif segmenter.style == "rainbow" then
-        separators = flexprompt.separators or "vertical"
+        separators = flexprompt.settings.separators or "vertical"
         if type(separators) ~= "table" then
             local altseparators = flexprompt.choices.separators[separators]
             if altseparators then
@@ -663,8 +664,8 @@ function pf:filter(prompt)
     local style = get_style()
     local lines = get_lines()
 
-    local left_prompt = flexprompt.left_prompt
-    local right_prompt = flexprompt.right_prompt
+    local left_prompt = flexprompt.settings.left_prompt
+    local right_prompt = flexprompt.settings.right_prompt
     if not left_prompt and not right_prompt then
         local prompts = flexprompt.choices.prompts[style]["both"]
         left_prompt = prompts[1]
@@ -1095,7 +1096,7 @@ local rainbow_battery_colors =
 
 local function get_battery_status()
     local level, acpower, charging
-    local batt_symbol = flexprompt.battery_symbol or "%"
+    local batt_symbol = flexprompt.settings.battery_symbol or "%"
 
     local status = os.getbatterystatus()
     level = status.level
@@ -1106,7 +1107,7 @@ local function get_battery_status()
         return "", 0
     end
     if charging then
-        batt_symbol = flexprompt.charging_symbol or "↑"
+        batt_symbol = flexprompt.settings.charging_symbol or "↑"
     end
 
     return level..batt_symbol, level
@@ -1143,10 +1144,10 @@ local function render_battery(args)
     prev_battery_status = batteryStatus
     prev_battery_level = level
 
-    if flexprompt.battery_idle_refresh and not cached_battery_coroutine then
+    if flexprompt.settings.battery_idle_refresh and not cached_battery_coroutine then
         local t = coroutine.create(update_battery_prompt)
         cached_battery_coroutine = t
-        clink.addcoroutine(t, flexprompt.battery_refresh_interval or 15)
+        clink.addcoroutine(t, flexprompt.settings.battery_refresh_interval or 15)
     end
 
     -- Hide when on AC power and fully charged, or when level is less than or
@@ -1213,12 +1214,12 @@ local function render_cwd(args)
         cwd = get_folder_name(cwd)
     else
         repeat
-            if flexprompt.use_home_symbol then
+            if flexprompt.settings.use_home_symbol then
                 local home = os.getenv("HOME")
                 if home and string.find(cwd, home) then
                     git_dir = flexprompt.get_git_dir(cwd) or false
                     if not git_dir then
-                        cwd = string.gsub(cwd, home, flexprompt.home_symbol or "~")
+                        cwd = string.gsub(cwd, home, flexprompt.settings.home_symbol or "~")
                         break
                     end
                 end
@@ -1240,8 +1241,8 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    if flexprompt.use_git_symbol and (flexprompt.git_symbol or "") ~= "" then
-                        cwd = flexprompt.git_symbol .. " " .. cwd
+                    if flexprompt.settings.use_git_symbol and (flexprompt.settings.git_symbol or "") ~= "" then
+                        cwd = flexprompt.settings.git_symbol .. " " .. cwd
                     end
                 end
             end
