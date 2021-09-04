@@ -77,9 +77,9 @@ flexprompt.choices.sides =
 -- Default prompt strings based on styles and sides.
 flexprompt.choices.prompts =
 {
-    lean        = { left = { "{battery}{cwd}{time}" }, both = { "{battery}{cwd}", "{exit}{time}" } },
-    classic     = { left = { "{battery}{cwd}{exit}{time}" }, both = { "{battery}{cwd}", "{exit}{time}" } },
-    rainbow     = { left = { "{battery:breakright}{cwd}{exit}{time:color=black}" }, both = { "{battery:breakright}{cwd}", "{exit}{time}" } },
+    lean        = { left = { "{battery}{cwd}{git}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{time}" } },
+    classic     = { left = { "{battery}{cwd}{git}{exit}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{time}" } },
+    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{time:color=black}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{time}" } },
 }
 
 -- Only if style != lean.
@@ -193,6 +193,22 @@ flexprompt.choices.symbols =
     percent     = "%",
 }
 
+local symbols =
+{
+    branch          = "",
+    conflict        = "!",
+    addcount        = "+",
+    modifycount     = "*",
+    deletecount     = "-",
+    renamecount     = "",   -- Empty string counts renames as modified.
+    summarycount    = "±",
+    untrackedcount  = "?",
+    aheadbehind     = "",   -- Optional symbol preceding ahead/behind counts.
+    aheadcount      = "↓",
+    behindcount     = "↑",
+    staged          = "↗",
+}
+
 flexprompt.lines = "two"
 flexprompt.style = "classic"
 flexprompt.flow = "fluent"
@@ -204,7 +220,7 @@ flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "none" --{ "updiagonal", "downdiagonal" } --"vertical"
 flexprompt.frame_color = "darkest"
-flexprompt.left_prompt = "{battery:s=100:br}{user:t=computer}{cwd}"
+flexprompt.left_prompt = "{battery:s=100:br}{cwd}{git}"
 flexprompt.right_prompt = "{exit}{duration}{time}"
 
 flexprompt.use_home_symbol = true
@@ -876,6 +892,9 @@ flexprompt.can_use_extended_colors = can_use_extended_colors
 -- Public API; git functions.
 
 -- Test whether dir is part of a git repo.
+-- @return  nil for not in a git repo, or the name of a git dir or file.
+--
+-- Synchronous call.
 function flexprompt.get_git_dir(dir)
     local function has_git_dir(dir)
         local dotgit = path.join(dir, '.git')
@@ -917,6 +936,127 @@ function flexprompt.get_git_dir(dir)
     -- Walk up to parent path.
     local parent = path.toparent(dir)
     return (parent ~= dir) and flexprompt.get_git_dir(parent) or nil
+end
+
+-- Get the name of the current branch.
+-- @return  branch name.
+--
+-- Synchronous call.
+function flexprompt.get_git_branch(git_dir)
+    git_dir = git_dir or flexprompt.get_git_dir()
+
+    -- If git directory not found then we're probably outside of repo or
+    -- something went wrong.  The same is when head_file is nil.
+    local head_file = git_dir and io.open(path.join(git_dir, 'HEAD'))
+    if not head_file then return end
+
+    local HEAD = head_file:read()
+    head_file:close()
+
+    -- If HEAD matches branch expression, then we're on named branch otherwise
+    -- it is a detached commit.
+    local branch_name = HEAD:match('ref: refs/heads/(.+)')
+
+    return branch_name or 'HEAD detached at '..HEAD:sub(1, 7)
+end
+
+-- Get the status of working dir.
+-- @return  nil for clean, or a table with dirty counts.
+--
+-- Uses async coroutine call.
+function flexprompt.get_git_status()
+    local file = io.popenyield("git --no-optional-locks status --porcelain 2>nul")
+    local w_add, w_mod, w_del, w_unt = 0, 0, 0, 0
+    local s_add, s_mod, s_del, s_ren = 0, 0, 0, 0
+
+    for line in file:lines() do
+        local kindStaged, kind = string.match(line, "(.)(.) ")
+
+        if kind == "A" then
+            w_add = w_add + 1
+        elseif kind == "M" then
+            w_mod = w_mod + 1
+        elseif kind == "D" then
+            w_del = w_del + 1
+        elseif kind == "?" then
+            w_unt = w_unt + 1
+        end
+
+        if kindStaged == "A" then
+            s_add = s_add + 1
+        elseif kindStaged == "M" then
+            s_mod = s_mod + 1
+        elseif kindStaged == "D" then
+            s_del = s_del + 1
+        elseif kindStaged == "R" then
+            s_ren = s_ren + 1
+        end
+    end
+    file:close()
+
+    if symbols.renamecount == "" then
+        s_mod = s_mod + s_ren
+        s_ren = 0
+    end
+
+    local working
+    local staged
+
+    if w_add + w_mod + w_del + w_unt > 0 then
+        working = {}
+        working.add = w_add
+        working.modify = w_mod
+        working.delete = w_del
+        working.untracked = w_unt
+    end
+
+    if s_add + s_mod + s_del + s_ren > 0 then
+        staged = {}
+        staged.add = s_add
+        staged.modify = s_mod
+        staged.delete = s_del
+        staged.rename = s_ren
+    end
+
+    local status
+    if working or staged then
+        status = {}
+        status.working = working
+        status.staged = staged
+    end
+    return status
+end
+
+-- Gets the number of commits ahead/behind from upstream.
+-- @return  ahead, behind.
+--
+-- Uses async coroutine call.
+function flexprompt.get_git_ahead_behind()
+    local file = io.popenyield("git rev-list --count --left-right @{upstream}...HEAD 2>nul")
+    local ahead, behind = "0", "0"
+
+    for line in file:lines() do
+        ahead, behind = string.match(line, "(%d+)[^%d]+(%d+)")
+    end
+    file:close()
+
+    return ahead, behind
+end
+
+-- Gets the conflict status.
+-- @return  true for conflict, or false for no conflicts.
+--
+-- Uses async coroutine call.
+function flexprompt.get_git_conflict()
+    local file = io.popenyield("git diff --name-only --diff-filter=U 2>nul")
+
+    for line in file:lines() do
+        file:close()
+        return true;
+    end
+    file:close()
+
+    return false
 end
 
 --------------------------------------------------------------------------------
@@ -1215,6 +1355,175 @@ local function render_exit(args)
 end
 
 --------------------------------------------------------------------------------
+-- GIT MODULE:  {git:nostaged:noaheadbehind:color_options}
+--  - 'nostaged' omits the staged details.
+--  - 'noaheadbehind' omits the ahead/behind details.
+--  - color_options override status colors as follows:
+--      - clean=color_name,alt_color_name       When status is clean.
+--      - conflict=color_name,alt_color_name    When a conflict exists.
+--      - dirty=color_name,alt_color_name       When status is dirty.
+--      - remote=color_name,alt_color_name      For ahead/behind details.
+--      - staged=color_name,alt_color_name      For staged details.
+--      - unknown=color_name,alt_color_name     When status is unknown.
+
+local git = {}
+local cached_info = {}
+
+local function append_text(lhs, rhs)
+    if #lhs > 0 and #rhs > 0 then
+        return lhs .. " " .. rhs
+    else
+        return lhs .. rhs
+    end
+end
+
+-- Add status details to the segment text.  Depending on git.status_details this
+-- may show verbose counts for operations, or a concise overall count.
+--
+-- Synchronous call.
+local function add_details(text, details)
+    if git.status_details then
+        if details.add > 0 then
+            text = append_text(text, symbols.addcount .. details.add)
+        end
+        if details.modify > 0 then
+            text = append_text(text, symbols.modifycount .. details.modify)
+        end
+        if details.delete > 0 then
+            text = append_text(text, symbols.deletecount .. details.delete)
+        end
+        if (details.rename or 0) > 0 then
+            text = append_text(text, symbols.renamecount .. details.rename)
+        end
+    else
+        text = append_text(text, symbols.summarycount .. (details.add + details.modify + details.delete + (details.rename or 0)))
+    end
+    if (details.untracked or 0) > 0 then
+        text = append_text(text, symbols.untrackedcount .. details.untracked)
+    end
+    return text
+end
+
+-- Collects git status info.
+--
+-- Uses async coroutine calls.
+local function collect_git_info()
+    local status = flexprompt.get_git_status()
+    local conflict = flexprompt.get_git_conflict()
+    local ahead, behind = flexprompt.get_git_ahead_behind()
+    return { status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
+end
+
+local function parse_color_token(args, colors)
+    local parsed_colors = flexprompt.parse_arg_token(args, colors.token, colors.alttoken)
+    local color, altcolor = flexprompt.parse_colors(parsed_colors, colors.name, colors.altname)
+    return color, altcolor
+end
+
+local git_colors =
+{
+    clean       = { token="c",  alttoken="clean",       name="green",   altname="black" },
+    conflict    = { token="!",  alttoken="conflict",    name="red",     altname="brightwhite" },
+    dirty       = { token="d",  alttoken="dirty",       name="yellow",  altname="black" },
+    remote      = { token="r",  alttoken="remote",      name="cyan",    altname="black" },
+    staged      = { token="s",  alttoken="staged",      name="magenta", altname="black" },
+    unknown     = { token="u",  alttoken="unknown",     name="white",   altname="black" },
+}
+
+local function render_git(args)
+    local git_dir = flexprompt.get_git_dir()
+    if not git_dir then
+        return
+    end
+
+    local branch = flexprompt.get_git_branch(git_dir)
+    if not branch then
+        return
+    end
+
+    -- Discard cached info if from a different repo or branch.
+    if (cached_info.git_dir ~= git_dir) or (cached_info.git_branch ~= branch) then
+        cached_info = {}
+        cached_info.git_dir = git_dir
+        cached_info.git_branch = branch
+    end
+
+    -- Use coroutine to collect status info asynchronously.
+    local info = clink.promptcoroutine(collect_git_info)
+
+    -- Use cached info until coroutine is finished.
+    if not info then
+        info = cached_info.git_info or {}
+    else
+        cached_info.git_info = info
+    end
+
+    -- Segments.
+    local segments = {}
+
+    -- Local status.
+    local style = flexprompt.get_style()
+    local gitStatus = info.status
+    local gitConflict = info.conflict
+    local gitUnknown = not info.finished
+    local text = branch
+    local colors = git_colors.clean
+    if style ~= "lean" then
+        text = append_text(symbols.branch, text)
+    end
+    if gitConflict then
+        colors = git_colors.conflict
+        if symbols.conflict and #symbols.conflict then
+            text = append_text(text, symbols.conflict)
+        end
+    elseif gitStatus and gitStatus.working then
+        colors = git_colors.dirty
+        text = add_details(text, gitStatus.working)
+    elseif gitUnknown then
+        colors = git_colors.unknown
+    end
+    local color, altcolor = parse_color_token(args, colors)
+    table.insert(segments, { text, color, altcolor })
+
+    -- Staged status.
+    local noStaged = flexprompt.parse_arg_keyword(args, "ns", "nostaged")
+    if not noStaged and gitStatus and gitStatus.staged then
+        text = ""
+        if symbols.staged and #symbols.staged then
+            text = append_text(text, symbols.staged)
+        end
+        colors = git_colors.staged
+        text = add_details(text, gitStatus.staged)
+        color, altcolor = parse_color_token(args, colors)
+        table.insert(segments, { text, color, altcolor })
+    end
+
+    -- Remote status (ahead/behind).
+    local noAheadBehind = flexprompt.parse_arg_keyword(args, "nab", "noaheadbehind")
+    if not noAheadBehind then
+        local ahead = info.ahead or "0"
+        local behind = info.behind or "0"
+        if ahead ~= "0" or behind ~= "0" then
+            text = ""
+            if symbols.aheadbehind and #symbols.aheadbehind > 0 then
+                text = append_text(text, symbols.aheadbehind)
+            end
+            colors = git_colors.remote
+            if ahead ~= "0" then
+                text = append_text(text, symbols.aheadcount .. ahead)
+            end
+            if behind ~= "0" then
+                text = append_text(text, symbols.behindcount .. behind)
+            end
+            color, altcolor = parse_color_token(args, colors)
+            table.insert(segments, { text, color, altcolor })
+        end
+    end
+
+    return segments
+end
+
+--------------------------------------------------------------------------------
 -- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1291,6 +1600,7 @@ end
     cwd = render_cwd,
     duration = render_duration,
     exit = render_exit,
+    git = render_git,
     time = render_time,
     user = render_user,
 }

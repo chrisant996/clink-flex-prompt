@@ -1,3 +1,6 @@
+### Bugs
+- [ ] Still problems with separators "none" in "classic" style.
+
 ### General
 - [ ] ASCII mode; no icons.
 - [ ] When to show symbols.
