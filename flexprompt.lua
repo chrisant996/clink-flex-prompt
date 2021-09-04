@@ -190,9 +190,8 @@ flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "vertical"
 flexprompt.frame_color = "lightest"
---flexprompt.left_prompt = "{cwd:t=smart}"
-flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{cwd:t=smart}"
---flexprompt.right_prompt = "{time:c=red,brightwhite}"
+flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{user}{cwd:t=smart}"
+flexprompt.right_prompt = "{exit}{duration}{time}"
 
 flexprompt.use_home_symbol = true
 --flexprompt.use_git_symbol = true
@@ -963,25 +962,26 @@ local function render_battery(args)
 end
 
 --------------------------------------------------------------------------------
--- CWD MODULE:  {cwd:color=color_name:type=type_name}
+-- CWD MODULE:  {cwd:color=color_name,alt_color_name:type=type_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
 --  - type_name is the format to use:
 --      - "full" is the full path.
 --      - "folder" is just the folder name.
 --      - "smart" is the git repo\subdir, or the full path.
 
 local function render_cwd(args)
-    local color = flexprompt.parse_arg_token(args, "c", "color")
-    if not color then
-        local style = flexprompt.get_style()
-        if style == "rainbow" then
-            color = "blue"
-        elseif style == "classic" then
-            color = "38;5;39"
-        else
-            color = "38;5;33"
-        end
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        color = "blue"
+    elseif style == "classic" then
+        color = "38;5;39"
+    else
+        color = "38;5;33"
     end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
     local cwd = os.getcwd()
     local git_dir
@@ -1110,6 +1110,36 @@ local function render_time(args)
 end
 
 --------------------------------------------------------------------------------
+-- USER MODULE:  {user:type=type_name:color=color_name,alt_color_name}
+--  - type_name is any of 'computer', 'user', or 'both' (the default).
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local function render_user(args)
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        color = "38;5;90"
+    elseif style == "classic" then
+        color = "38;5;165"
+    else
+        color = "38;5;135"
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    local type = flexprompt.parse_arg_token(args, "t", "type") or "both"
+    local user = (type ~= "computer") and os.getenv("username") or ""
+    local computer = (type ~= "user") and os.getenv("computername") or ""
+    if #user > 0 and #computer > 0 then
+        user = user .. "@"
+    end
+
+    local text = user..computer
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- Module table.
 -- Initialized with the built-in modules.
 -- Custom modules can be added with flexprompt.add_module().
@@ -1120,5 +1150,6 @@ end
     cwd = render_cwd,
     exit = render_exit,
     time = render_time,
+    user = render_user,
 }
 

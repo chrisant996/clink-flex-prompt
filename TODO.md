@@ -6,10 +6,9 @@
 - [ ] Configuration wizard.
 
 ### Modules
-- [ ] Battery.
+- [ ] Duration.
 - [ ] Git.
 - [ ] Npm.
-- [ ] User.
 
 ---
 Chris Antos - sparrowhawk996@gmail.com
