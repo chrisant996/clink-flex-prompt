@@ -1054,6 +1054,7 @@ local function render_cwd(args)
     local style = flexprompt.get_style()
     if style == "rainbow" then
         color = "blue"
+        altcolor = "white"
     elseif style == "classic" then
         color = flexprompt.can_use_extended_colors() and "38;5;39" or "cyan"
     else
@@ -1120,7 +1121,8 @@ local function render_duration(args)
     if not flexprompt.can_use_extended_colors() then
         color = "darkyellow"
     elseif flexprompt.get_style() == "rainbow" then
-        color = "38;5;202"
+        color = "yellow"
+        altcolor = "black"
     else
         color = "38;5;214"
     end
@@ -1186,6 +1188,7 @@ local function render_exit(args)
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
         color = "black"
+        altcolor = "red"
     else
         color = "red"
     end
@@ -1248,6 +1251,7 @@ local function render_user(args)
         color = "magenta"
     elseif style == "rainbow" then
         color = "38;5;90"
+        altcolor = "white"
     elseif style == "classic" then
         color = "38;5;171"
     else
