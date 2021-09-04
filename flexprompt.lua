@@ -802,7 +802,7 @@ end
 -- when "{xyz}" or "{xyz:args}" is encountered in a prompt string.  The function
 -- receives "args" as its only argument.
 function flexprompt.add_module(name, func)
-    table[string.lower(name)] = func
+    modules[string.lower(name)] = func
 end
 
 -- Add a named color.
