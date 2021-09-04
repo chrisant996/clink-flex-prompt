@@ -1216,10 +1216,10 @@ local function render_cwd(args)
         repeat
             if flexprompt.settings.use_home_symbol then
                 local home = os.getenv("HOME")
-                if home and string.find(cwd, home) then
+                if home and string.find(string.lower(cwd), string.lower(home)) == 1 then
                     git_dir = flexprompt.get_git_dir(cwd) or false
                     if not git_dir then
-                        cwd = string.gsub(cwd, home, flexprompt.settings.home_symbol or "~")
+                        cwd = (flexprompt.settings.home_symbol or "~") .. string.sub(cwd, #home + 1)
                         break
                     end
                 end
