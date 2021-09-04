@@ -100,6 +100,7 @@ flexprompt.choices.ascii_separators =
 -- Only if style == classic.
 flexprompt.choices.separators =
 {               --  Left    Right
+    none        = { "",     ""      },
     vertical    = { "│",    "│"     },
     pointed     = { "",    ""     },
     upslant     = { "",    ""     },
@@ -180,7 +181,7 @@ flexprompt.choices.symbols =
 }
 
 flexprompt.lines = "two"
-flexprompt.style = "lean"
+flexprompt.style = "classic"
 flexprompt.flow = "fluent"
 --flexprompt.spacing = "sparse"
 flexprompt.left_frame = "round"
@@ -188,8 +189,8 @@ flexprompt.right_frame = "round"
 flexprompt.connection = "dotted"
 flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
-flexprompt.separators = "vertical"
-flexprompt.frame_color = "lightest"
+flexprompt.separators = "none" --{ "updiagonal", "downdiagonal" } --"vertical"
+flexprompt.frame_color = "darkest"
 flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{user:t=computer}{cwd:t=smart}"
 flexprompt.right_prompt = "{exit}{duration}{time}"
 
@@ -446,15 +447,6 @@ local function next_segment(text, color, rainbow_text_color)
         rainbow_text_color = lookup_color(rainbow_text_color)
     end
 
-    if not text then
-        if segmenter.style ~= "lean" and not segmenter.open_cap then
-            out = out .. color_segment_transition(color, segmenter.close_cap, true)
-        end
-        return out
-    end
-
-    local pad = (segmenter.style == "lean" or text == "") and "" or " "
-
     local sep
     local transition_color = color
     local back, fore
@@ -475,11 +467,29 @@ local function next_segment(text, color, rainbow_text_color)
         end
     end
 
+    local pad = (segmenter.style == "lean" -- Lean has no padding.
+                 or text == "" -- Segment with empty string has no padding.
+                 or (sep == "" and segmenter.style == "classic")) -- Classic with no separator has no padding.
+                 and "" or " "
+
+    if not text then
+        if segmenter.style ~= "lean" and not segmenter.open_cap then
+            if sep == "" and pad == "" then
+                out = out .. " "
+            end
+            out = out .. color_segment_transition(color, segmenter.close_cap, true)
+        end
+        return out
+    end
+
     out = out .. color_segment_transition(transition_color, sep)
     if fore then
         out = out .. sgr(back .. ";" .. fore)
     end
 
+    -- A module with an empty string is a segment break.  When there's no
+    -- separator, force a break by showing one connector character using the
+    -- frame color.
     if text == "" and sep == "" and (rainbow or classic) then
         text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. get_connector())
     end
