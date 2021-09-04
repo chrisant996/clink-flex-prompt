@@ -397,7 +397,16 @@ local function color_segment_transition(color, symbol, close)
         return ""
     end
 
-    local swap = (close and segmenter.style == "classic") or (not close and segmenter.style == "rainbow")
+    local swap
+    if segmenter.style == "classic" then
+        swap = close
+    elseif segmenter.style == "rainbow" then
+        swap = not close
+        if not segmenter.open_cap and not close and segmenter.side == 0 then
+            swap = false
+        end
+    end
+
     local fg = swap and "bg" or "fg"
     local bg = swap and "fg" or "bg"
     if segmenter.style == "rainbow" then
