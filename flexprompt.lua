@@ -64,9 +64,9 @@ flexprompt.choices.sides =
 -- Default prompt strings based on styles and sides.
 flexprompt.choices.prompts =
 {
-    lean        = { left = { "{cwd}{time}" }, both = { "{cwd}", "{exit}{time}" } },
-    classic     = { left = { "{cwd}{exit}{time}" }, both = { "{cwd}", "{exit}{time}" } },
-    rainbow     = { left = { "{cwd}{exit}{time:color=black}" }, both = { "{cwd}", "{exit}{time}" } },
+    lean        = { left = { "{battery}{cwd}{time}" }, both = { "{battery}{cwd}", "{exit}{time}" } },
+    classic     = { left = { "{battery}{cwd}{exit}{time}" }, both = { "{battery}{cwd}", "{exit}{time}" } },
+    rainbow     = { left = { "{battery}{battery:break}{cwd}{exit}{time:color=black}" }, both = { "{battery}{battery:break}{cwd}", "{exit}{time}" } },
 }
 
 -- Only if style != lean.
@@ -180,7 +180,7 @@ flexprompt.choices.symbols =
 }
 
 flexprompt.lines = "two"
-flexprompt.style = "rainbow"
+flexprompt.style = "lean"
 flexprompt.flow = "fluent"
 --flexprompt.spacing = "sparse"
 flexprompt.left_frame = "round"
@@ -188,9 +188,10 @@ flexprompt.right_frame = "round"
 flexprompt.connection = "dotted"
 flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
-flexprompt.separators = "upslant"
+flexprompt.separators = "vertical"
 flexprompt.frame_color = "lightest"
 --flexprompt.left_prompt = "{cwd:t=smart}"
+flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{cwd:t=smart}"
 --flexprompt.right_prompt = "{time:c=red,brightwhite}"
 
 flexprompt.use_home_symbol = true
@@ -225,6 +226,12 @@ local function lookup_color(args, verbatim)
     if mode == "38;" or mode == "48;" then
         args = args:sub(4)
         return { fg = "38;"..args, bg = "48;"..args }
+    end
+
+    -- Use the color even though it's not understood.  But not in rainbow style,
+    -- because that can garble segment transitions.
+    if get_style() ~= "rainbow" then
+        return { fg = args, bg = args }
     end
 end
 
@@ -295,6 +302,10 @@ end
 local function get_flow()
     -- Indexing into the flows table validates that the flow name is recognized.
     return flexprompt.choices.flows[flexprompt.flow or "concise"] or "concise"
+end
+
+local function make_fluent_text(text)
+    return "\001" .. text .. "\002"
 end
 
 local function connect(lhs, rhs, frame, sgr_frame_color)
@@ -443,7 +454,7 @@ local function next_segment(text, color, rainbow_text_color)
         return out
     end
 
-    local pad = (segmenter.style == "lean") and "" or " "
+    local pad = (segmenter.style == "lean" or text == "") and "" or " "
 
     local sep
     local transition_color = color
@@ -453,7 +464,6 @@ local function next_segment(text, color, rainbow_text_color)
 
     if segmenter.open_cap then
         sep = segmenter.open_cap
-        segmenter.open_cap = nil
         if classic then
             transition_color = segmenter.frame_color[fc_back]
             back = segmenter.frame_color[fc_back].bg
@@ -471,11 +481,22 @@ local function next_segment(text, color, rainbow_text_color)
         out = out .. sgr(back .. ";" .. fore)
     end
 
+    if text == "" and sep == "" and (rainbow or classic) then
+        text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. get_connector())
+    end
+
+    -- Applying 'color' goes last so that the module can override other colors
+    -- if it really wants to.  E.g. by returning "41;30" as the color a module
+    -- can force the segment color to be black on red, even in classic or lean
+    -- styles.  But doing that in the rainbow style will garble segment
+    -- transition colors.
     local base_color
     if rainbow then
-        base_color = sgr(color.bg .. ";" .. rainbow_text_color.fg)
+        base_color = sgr(rainbow_text_color.fg .. ";" .. color.bg)
+    elseif classic then
+        base_color = sgr(segmenter.frame_color[fc_back].bg .. ";" .. color.fg)
     else
-        base_color = sgr(color.fg)
+        base_color = sgr("49;" .. color.fg )
     end
 
     out = out .. base_color
@@ -486,6 +507,8 @@ local function next_segment(text, color, rainbow_text_color)
     elseif classic then
         segmenter.back_color = segmenter.frame_color[fc_back]
     end
+
+    segmenter.open_cap = nil
 
     return out
 end
@@ -626,11 +649,11 @@ function pf:filter(prompt)
         right = right1
     else
         right = right2
-        if right1 then
+        if right1 or right_frame then
             if style == "lean" then
                 -- Padding around left/right segments for lean style.
-                if #left1 > 0 then left1 = left1 .. " " end
-                if #right1 > 0 then right1 = " " .. right1 end
+                if left1 and #left1 > 0 then left1 = left1 .. " " end
+                if right1 and #right1 > 0 then right1 = " " .. right1 end
             end
             prompt = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
         end
@@ -764,10 +787,8 @@ function flexprompt.parse_colors(text, default, altdefault)
     return color, altcolor
 end
 
--- Add control codes around fluent text.
-function flexprompt.make_fluent_text(text)
-    return "\001" .. text .. "\002"
-end
+-- Function to add control codes around fluent text.
+flexprompt.make_fluent_text = make_fluent_text
 
 -- Test whether dir is part of a git repo.
 function flexprompt.get_git_dir(dir)
@@ -814,14 +835,141 @@ function flexprompt.get_git_dir(dir)
 end
 
 --------------------------------------------------------------------------------
--- Built in modules.
+-- BATTERY MODULE:  {battery:show=show_level:break}
+--  - show_level shows the battery module unless the battery level is greater
+--    than show_level.
+--  - 'break' makes an empty prompt segment; "{battery}{battery:break}{user}"
+--    may look better than having battery segment colors adjacent to other
+--    similarly colored segments.
 
+local rainbow_battery_colors =
+{
+    {
+        fg = "38;2;239;65;54",
+        bg = "48;2;239;65;54"
+    },
+    {
+        fg = "38;2;252;176;64",
+        bg = "48;2;252;176;64"
+    },
+    {
+        fg = "38;2;248;237;50",
+        bg = "48;2;248;237;50"
+    },
+    {
+        fg = "38;2;142;198;64",
+        bg = "48;2;142;198;64"
+    },
+    {
+        fg = "38;2;1;148;68",
+        bg = "48;2;1;148;68"
+    }
+}
+
+local function get_battery_status()
+    local level, acpower, charging
+    local batt_symbol = flexprompt.battery_symbol or "%"
+
+    local status = os.getbatterystatus()
+    level = status.level
+    acpower = status.acpower
+    charging = status.charging
+
+    if not level or level < 0 or (acpower and not charging) then
+        return "", 0
+    end
+    if charging then
+        batt_symbol = flexprompt.charging_symbol or "↑"
+    end
+
+    return level..batt_symbol, level
+end
+
+local function can_use_fancy_colors()
+    if clink.getansihost then
+        local host = clink.getansihost()
+        if host == "conemu" or host == "winconsolev2" or host == "winterminal" then
+            return true;
+        end
+    end
+end
+
+local function get_battery_status_color(level)
+    if can_use_fancy_colors() then
+        local index = ((((level > 0) and level or 1) - 1) / 20) + 1
+        index = math.modf(index)
+        return rainbow_battery_colors[index], index == 1
+    elseif level > 50 then
+        return "green"
+    elseif level > 30 then
+        return "yellow"
+    end
+    return "red", true
+end
+
+local prev_battery_status, prev_battery_level
+local function update_battery_prompt()
+    while true do
+        local status,level = get_battery_status()
+        if prev_battery_level ~= status or prev_battery_level ~= level then
+            clink.refilterprompt()
+        end
+        coroutine.yield()
+    end
+end
+
+local cached_battery_coroutine
+local function render_battery(args)
+    local placeholder = flexprompt.parse_arg_keyword(args, "b", "break")
+    if placeholder and flexprompt.get_style() ~= "rainbow" then
+        return
+    end
+
+    local show = tonumber(flexprompt.parse_arg_token(args, "s", "show") or "100")
+    local batteryStatus,level = get_battery_status()
+    prev_battery_status = batteryStatus
+    prev_battery_level = level
+
+    if flexprompt.battery_idle_refresh and not cached_battery_coroutine then
+        local t = coroutine.create(update_battery_prompt)
+        cached_battery_coroutine = t
+        clink.addcoroutine(t, flexprompt.battery_refresh_interval or 15)
+    end
+
+    -- Hide when on AC power and fully charged, or when level is less than or
+    -- equal to the specified 'show=level' ({battery:show=75} means "show at 75
+    -- or lower").
+    if not batteryStatus or batteryStatus == "" or level > (show or 80) then
+        return
+    end
+
+    -- The 'break' arg creates a blank segment to force a color break between
+    -- segments, in case the adjacent colors are too similar.
+    if placeholder then
+        return "", "black"
+    end
+
+    local color, warning = get_battery_status_color(level)
+
+    if warning and flexprompt.get_style() == "classic" then
+        -- batteryStatus = flexprompt.make_fluent_text(sgr(color.bg .. ";30") .. batteryStatus)
+        -- The "22;" defeats the color parsing that would normally generate
+        -- corresponding fg and bg colors even though only an explicit bg color
+        -- was provided (versus a usual {fg=x,bg=y} color table).
+        color = "22;" .. color.bg .. ";30"
+    end
+
+    return batteryStatus, color, "black"
+end
+
+--------------------------------------------------------------------------------
 -- CWD MODULE:  {cwd:color=color_name:type=type_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - type_name is the format to use:
 --      - "full" is the full path.
 --      - "folder" is just the folder name.
 --      - "smart" is the git repo\subdir, or the full path.
+
 local function render_cwd(args)
     local color = flexprompt.parse_arg_token(args, "c", "color")
     if not color then
@@ -876,6 +1024,7 @@ local function render_cwd(args)
     return dirStackDepth .. cwd, color, "white"
 end
 
+--------------------------------------------------------------------------------
 -- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
 --  - 'always' always shows the exit code even when 0.
 --  - color_name is used when the exit code is 0, and is a name like "green", or
@@ -883,6 +1032,7 @@ end
 --  - alt_color_name is optional; it is the text color in rainbow style when the
 --    exit code is 0.
 --  - 'hex' shows the exit code in hex when > 255 or < -255.
+
 local function render_exit(args)
     local text
     local value = os.geterrorlevel()
@@ -928,10 +1078,12 @@ local function render_exit(args)
     return text, color, altcolor
 end
 
+--------------------------------------------------------------------------------
 -- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 --  - format_string is a format string for os.date().
+
 local function render_time(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -957,11 +1109,16 @@ local function render_time(args)
     return text, color, altcolor
 end
 
+--------------------------------------------------------------------------------
+-- Module table.
+-- Initialized with the built-in modules.
+-- Custom modules can be added with flexprompt.add_module().
+
 --[[local]] modules =
 {
+    battery = render_battery,
     cwd = render_cwd,
     exit = render_exit,
     time = render_time,
 }
 
--- modules (git, npm, mercurial, time, battery, exit code, duration, cwd, ?)
