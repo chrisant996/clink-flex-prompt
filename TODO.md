@@ -6,7 +6,6 @@
 - [ ] Configuration wizard.
 
 ### Modules
-- [ ] Duration.
 - [ ] Git.
 - [ ] Npm.
 

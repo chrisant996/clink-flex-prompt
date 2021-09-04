@@ -190,7 +190,7 @@ flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "vertical"
 flexprompt.frame_color = "lightest"
-flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{user}{cwd:t=smart}"
+flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{user:t=computer}{cwd:t=smart}"
 flexprompt.right_prompt = "{exit}{duration}{time}"
 
 flexprompt.use_home_symbol = true
@@ -1025,6 +1025,51 @@ local function render_cwd(args)
 end
 
 --------------------------------------------------------------------------------
+-- DURATION MODULE:  {duration:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local endedit_time
+local _duration
+
+local function render_duration(args)
+    if not _duration then
+        return
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    if flexprompt.get_style() == "rainbow" then
+        color = "38;5;202"
+    else
+        color = "38;5;214"
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    local text = _duration .. "s"
+
+    if flexprompt.get_flow() == "fluent" then
+        text = flexprompt.make_fluent_text("took ") .. text
+    end
+
+    return text, color, altcolor
+end
+
+clink.onbeginedit(function ()
+    if endedit_time then
+        local beginedit_time = os.time()
+        local elapsed = beginedit_time - endedit_time
+        if elapsed >= 0 then
+            _duration = math.floor(elapsed)
+        end
+    end
+end)
+
+clink.onendedit(function ()
+    endedit_time = os.time()
+end)
+
+--------------------------------------------------------------------------------
 -- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
 --  - 'always' always shows the exit code even when 0.
 --  - color_name is used when the exit code is 0, and is a name like "green", or
@@ -1131,8 +1176,10 @@ local function render_user(args)
     local type = flexprompt.parse_arg_token(args, "t", "type") or "both"
     local user = (type ~= "computer") and os.getenv("username") or ""
     local computer = (type ~= "user") and os.getenv("computername") or ""
-    if #user > 0 and #computer > 0 then
-        user = user .. "@"
+    if #computer > 0 then
+        local prefix = "@"
+        -- if #user == 0 then prefix = "\\\\" end
+        computer = prefix .. computer
     end
 
     local text = user..computer
@@ -1148,6 +1195,7 @@ end
 {
     battery = render_battery,
     cwd = render_cwd,
+    duration = render_duration,
     exit = render_exit,
     time = render_time,
     user = render_user,
