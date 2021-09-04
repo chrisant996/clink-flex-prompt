@@ -19,22 +19,35 @@ flexprompt.colors =
 {
     bold            = { fg="1"                  },
     default         = { fg="39",    bg="49"     },
-    black           = { fg="30",    bg="40"     },
-    red             = { fg="31",    bg="41"     },
-    green           = { fg="32",    bg="42"     },
-    yellow          = { fg="33",    bg="43"     },
-    blue            = { fg="34",    bg="44"     },
-    magenta         = { fg="35",    bg="45"     },
-    cyan            = { fg="36",    bg="46"     },
-    white           = { fg="37",    bg="47"     },
-    brightblack     = { fg="90",    bg="100"    },
-    brightred       = { fg="91",    bg="101"    },
-    brightgreen     = { fg="92",    bg="102"    },
-    brightyellow    = { fg="93",    bg="103"    },
-    brightblue      = { fg="94",    bg="104"    },
-    brightmagenta   = { fg="95",    bg="105"    },
-    brightcyan      = { fg="96",    bg="106"    },
-    brightwhite     = { fg="97",    bg="107"    },
+    -- Normal low intensity colors.  Some styles brighten the normal low
+    -- intensity colors; the "dark" versions are never brightened.
+    black           = { fg="30",    bg="40",    lean="brightblack",     classic="brightblack",      },
+    red             = { fg="31",    bg="41",    lean="brightred",       classic="brightred",        },
+    green           = { fg="32",    bg="42",    lean="brightgreen",     classic="brightgreen",      },
+    yellow          = { fg="33",    bg="43",    lean="brightyellow",    classic="brightyellow",     },
+    blue            = { fg="34",    bg="44",    lean="brightblue",      classic="brightblue",       },
+    magenta         = { fg="35",    bg="45",    lean="brightmagenta",   classic="brightmagenta",    },
+    cyan            = { fg="36",    bg="46",    lean="brightcyan",      classic="brightcyan",       },
+    white           = { fg="37",    bg="47",    lean="brightwhite",     classic="brightwhite",      },
+    -- High intensity colors.
+    brightblack     = { fg="90",    bg="100",   },
+    brightred       = { fg="91",    bg="101",   },
+    brightgreen     = { fg="92",    bg="102",   },
+    brightyellow    = { fg="93",    bg="103",   },
+    brightblue      = { fg="94",    bg="104",   },
+    brightmagenta   = { fg="95",    bg="105",   },
+    brightcyan      = { fg="96",    bg="106",   },
+    brightwhite     = { fg="97",    bg="107",   },
+    -- Low intensity colors.  Some styles brighten the normal low intensity
+    -- colors; the "dark" versions are never brightened.
+    darkblack       = { fg="30",    bg="40",    },
+    darkred         = { fg="31",    bg="41",    },
+    darkgreen       = { fg="32",    bg="42",    },
+    darkyellow      = { fg="33",    bg="43",    },
+    darkblue        = { fg="34",    bg="44",    },
+    darkmagenta     = { fg="35",    bg="45",    },
+    darkcyan        = { fg="36",    bg="46",    },
+    darkwhite       = { fg="37",    bg="47",    },
 }
 
 --------------------------------------------------------------------------------
@@ -260,6 +273,12 @@ local function lookup_color(args, verbatim)
 
     if args and not args:match("^[0-9]") then
         local color = flexprompt.colors[args]
+        if color then
+            local redirect = color[get_style()]
+            if redirect then
+                color = flexprompt.colors[redirect]
+            end
+        end
         return color
     end
 
@@ -1073,7 +1092,7 @@ local function render_duration(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     if not flexprompt.can_use_extended_colors() then
-        color = "yellow"
+        color = "darkyellow"
     elseif flexprompt.get_style() == "rainbow" then
         color = "38;5;202"
     else
@@ -1171,7 +1190,7 @@ local function render_time(args)
         color = "white"
         altcolor = "black"
     else
-        color = "cyan"
+        color = "darkcyan"
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
