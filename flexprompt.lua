@@ -1064,11 +1064,11 @@ end
 -- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright}
 --  - show_level shows the battery module unless the battery level is greater
 --    than show_level.
---  - 'breakleft' adds an empty prompt segment to the left of battery.
---  - 'breakright' adds an empty prompt segment to the right of battery.
+--  - 'breakleft' adds an empty segment to left of battery in rainbow style.
+--  - 'breakright' adds an empty segment to right of battery in rainbow style.
 --
 -- The 'breakleft' and 'breakright' options may look better than having battery
--- segment colors adjacent to other similarly colored segments.
+-- segment colors adjacent to other similarly colored segments in rainbow style.
 
 local rainbow_battery_colors =
 {
@@ -1157,14 +1157,19 @@ local function render_battery(args)
         return
     end
 
+    local style = get_style()
+
     -- The 'breakleft' and 'breakright' args add blank segments to force a color
-    -- break between segments, in case the adjacent colors are too similar.
-    local bl = flexprompt.parse_arg_keyword(args, "bl", "breakleft")
-    local br = flexprompt.parse_arg_keyword(args, "br", "breakright")
+    -- break between rainbow segments, in case adjacent colors are too similar.
+    local bl, br
+    if style == "rainbow" then
+        bl = flexprompt.parse_arg_keyword(args, "bl", "breakleft")
+        br = flexprompt.parse_arg_keyword(args, "br", "breakright")
+    end
 
     local color, warning = get_battery_status_color(level)
 
-    if warning and flexprompt.get_style() == "classic" then
+    if warning and style == "classic" then
         -- batteryStatus = flexprompt.make_fluent_text(sgr(color.bg .. ";30") .. batteryStatus)
         -- The "22;" defeats the color parsing that would normally generate
         -- corresponding fg and bg colors even though only an explicit bg color
