@@ -213,26 +213,22 @@ local function sgr(args)
     end
 end
 
-local function lookup_color(args, verbatim)
-    if not args or type(args) == "table" then
-        return args
+local _can_use_extended_colors = nil
+local function can_use_extended_colors()
+    if _can_use_extended_colors ~= nil then
+        return _can_use_extended_colors
     end
 
-    if args and not args:match("^[0-9]") then
-        return flexprompt.colors[args]
+    if clink.getansihost then
+        local host = clink.getansihost()
+        if host == "conemu" or host == "winconsolev2" or host == "winterminal" then
+            _can_use_extended_colors = true
+            return true;
+        end
     end
 
-    local mode = args:sub(1,3)
-    if mode == "38;" or mode == "48;" then
-        args = args:sub(4)
-        return { fg = "38;"..args, bg = "48;"..args }
-    end
-
-    -- Use the color even though it's not understood.  But not in rainbow style,
-    -- because that can garble segment transitions.
-    if get_style() ~= "rainbow" then
-        return { fg = args, bg = args }
-    end
+    _can_use_extended_colors = false
+    return false
 end
 
 local function get_style()
@@ -255,6 +251,29 @@ end
 
 local function get_connector()
     return flexprompt.choices.connections[flexprompt.connection or "disconnected"] or " "
+end
+
+local function lookup_color(args, verbatim)
+    if not args or type(args) == "table" then
+        return args
+    end
+
+    if args and not args:match("^[0-9]") then
+        local color = flexprompt.colors[args]
+        return color
+    end
+
+    local mode = args:sub(1,3)
+    if mode == "38;" or mode == "48;" then
+        args = args:sub(4)
+        return { fg = "38;"..args, bg = "48;"..args }
+    end
+
+    -- Use the color even though it's not understood.  But not in rainbow style,
+    -- because that can garble segment transitions.
+    if get_style() ~= "rainbow" then
+        return { fg = args, bg = args }
+    end
 end
 
 local function get_frame()
@@ -329,6 +348,10 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
         lhs = lhs .. sgr_frame_color .. string.rep(get_connector(), gap)
     end
     return lhs..rhs..frame
+end
+
+local function reset_cached_state()
+    _can_use_extended_colors = nil
 end
 
 --------------------------------------------------------------------------------
@@ -575,6 +598,8 @@ local pf = clink.promptfilter(5)
 local right
 
 function pf:filter(prompt)
+    reset_cached_state()
+
     local style = get_style()
     local lines = get_lines()
 
@@ -799,6 +824,13 @@ end
 -- Function to add control codes around fluent text.
 flexprompt.make_fluent_text = make_fluent_text
 
+-- Function to check whether extended colors are available (256 color and 24 bit
+-- color codes).
+flexprompt.can_use_extended_colors = can_use_extended_colors
+
+--------------------------------------------------------------------------------
+-- Public API; git functions.
+
 -- Test whether dir is part of a git repo.
 function flexprompt.get_git_dir(dir)
     local function has_git_dir(dir)
@@ -894,17 +926,8 @@ local function get_battery_status()
     return level..batt_symbol, level
 end
 
-local function can_use_fancy_colors()
-    if clink.getansihost then
-        local host = clink.getansihost()
-        if host == "conemu" or host == "winconsolev2" or host == "winterminal" then
-            return true;
-        end
-    end
-end
-
 local function get_battery_status_color(level)
-    if can_use_fancy_colors() then
+    if flexprompt.can_use_extended_colors() then
         local index = ((((level > 0) and level or 1) - 1) / 20) + 1
         index = math.modf(index)
         return rainbow_battery_colors[index], index == 1
@@ -987,9 +1010,9 @@ local function render_cwd(args)
     if style == "rainbow" then
         color = "blue"
     elseif style == "classic" then
-        color = "38;5;39"
+        color = flexprompt.can_use_extended_colors() and "38;5;39" or "cyan"
     else
-        color = "38;5;33"
+        color = flexprompt.can_use_extended_colors() and "38;5;33" or "blue"
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
@@ -1049,7 +1072,9 @@ local function render_duration(args)
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
-    if flexprompt.get_style() == "rainbow" then
+    if not flexprompt.can_use_extended_colors() then
+        color = "yellow"
+    elseif flexprompt.get_style() == "rainbow" then
         color = "38;5;202"
     else
         color = "38;5;214"
@@ -1174,10 +1199,12 @@ local function render_user(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     local style = flexprompt.get_style()
-    if style == "rainbow" then
+    if not flexprompt.can_use_extended_colors() then
+        color = "magenta"
+    elseif style == "rainbow" then
         color = "38;5;90"
     elseif style == "classic" then
-        color = "38;5;165"
+        color = "38;5;171"
     else
         color = "38;5;135"
     end
