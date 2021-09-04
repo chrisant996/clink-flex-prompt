@@ -213,15 +213,16 @@ flexprompt.lines = "two"
 flexprompt.style = "classic"
 flexprompt.flow = "fluent"
 --flexprompt.spacing = "sparse"
-flexprompt.left_frame = "round"
-flexprompt.right_frame = "round"
-flexprompt.connection = "dotted"
+--flexprompt.left_frame = "round"
+--flexprompt.right_frame = "round"
+flexprompt.connection = "solid"
 flexprompt.tails = "blurred"
-flexprompt.heads = "pointed"
-flexprompt.separators = "none" --{ "updiagonal", "downdiagonal" } --"vertical"
-flexprompt.frame_color = "darkest"
-flexprompt.left_prompt = "{battery:s=100:br}{cwd}{git}"
-flexprompt.right_prompt = "{exit}{duration}{time}"
+flexprompt.heads = "blurred"
+flexprompt.separators = "none"
+flexprompt.frame_color = "dark"
+--flexprompt.left_prompt = "{battery:s=100:br}{cwd}{git}"
+--flexprompt.right_prompt = "{exit}{duration}{time}"
+flexprompt.left_prompt = "{battery:s=100:br}{cwd}{git}{exit}{duration}{time}"
 
 flexprompt.use_home_symbol = true
 --flexprompt.use_git_symbol = true
@@ -681,7 +682,7 @@ function pf:filter(prompt)
         left_frame, right_frame = get_frame()
     end
     local frame_color = get_frame_color()
-    local sgr_frame_color = (left_frame or right_frame) and sgr("0;" .. frame_color[fc_frame].fg) or nil
+    local sgr_frame_color = sgr("0;" .. frame_color[fc_frame].fg) or nil
 
     -- Padding around left/right segments for lean style.
     local pad_frame = (style == "lean") and " " or ""
@@ -1462,12 +1463,15 @@ local function render_git(args)
 
     -- Local status.
     local style = flexprompt.get_style()
+    local flow = flexprompt.get_flow()
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
     local text = branch
     local colors = git_colors.clean
-    if style ~= "lean" then
+    if flow == "fluent" then
+        text = append_text(flexprompt.make_fluent_text("on"), text)
+    elseif style ~= "lean" then
         text = append_text(symbols.branch, text)
     end
     if gitConflict then
