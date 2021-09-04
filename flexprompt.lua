@@ -204,7 +204,7 @@ flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "none" --{ "updiagonal", "downdiagonal" } --"vertical"
 flexprompt.frame_color = "darkest"
-flexprompt.left_prompt = "{battery:s=100:br}{user:t=computer}{cwd:t=smart}"
+flexprompt.left_prompt = "{battery:s=100:br}{user:t=computer}{cwd}"
 flexprompt.right_prompt = "{exit}{duration}{time}"
 
 flexprompt.use_home_symbol = true
@@ -1047,6 +1047,9 @@ end
 --      - "full" is the full path.
 --      - "folder" is just the folder name.
 --      - "smart" is the git repo\subdir, or the full path.
+--      - "rootsmart" is the full path, with parent of git repo not colored.
+--
+-- The default type is "rootsmart" if not specified.
 
 local function render_cwd(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
@@ -1065,7 +1068,7 @@ local function render_cwd(args)
     local cwd = os.getcwd()
     local git_dir
 
-    local type = flexprompt.parse_arg_token(args, "t", "type") or "full"
+    local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
     if type == "folder" then
         cwd = get_folder_name(cwd)
     else
@@ -1081,7 +1084,7 @@ local function render_cwd(args)
                 end
             end
 
-            if type == "smart" then
+            if type == "smart" or type == "rootsmart" then
                 if git_dir == nil then -- Don't double-hunt for it!
                     git_dir = flexprompt.get_git_dir()
                 end
@@ -1091,7 +1094,12 @@ local function render_cwd(args)
                     -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
                     local git_root_dir = path.toparent(git_dir)
                     local appended_dir = string.sub(cwd, string.len(git_root_dir) + 1)
-                    cwd = get_folder_name(git_root_dir)..appended_dir
+                    local smart_dir = get_folder_name(git_root_dir) .. appended_dir
+                    if type == "rootsmart" then
+                        cwd = flexprompt.make_fluent_text(cwd:sub(1, #cwd - #smart_dir)) .. smart_dir
+                    else
+                        cwd = smart_dir
+                    end
                     if flexprompt.use_git_symbol and (flexprompt.git_symbol or "") ~= "" then
                         cwd = flexprompt.git_symbol .. " " .. cwd
                     end
