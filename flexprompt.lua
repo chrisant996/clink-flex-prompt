@@ -430,6 +430,11 @@ local function init_segmenter(side, frame_color)
         separators = flexprompt.separators or "vertical"
         if type(separators) ~= "table" then
             separators = flexprompt.choices.separators[separators]
+        else
+            local custom = flexprompt.choices.separators[separators[side + 1]]
+            if custom then
+                separators = { custom[side + 1], custom[side] }
+            end
         end
         segmenter.separator = separators[side + 1]
     elseif segmenter.style == "rainbow" then
@@ -439,7 +444,12 @@ local function init_segmenter(side, frame_color)
             if altseparators then
                 segmenter.altseparator = altseparators[side + 1]
             end
-            separators = flexprompt.choices.caps[separators]
+            separators = flexprompt.choices.caps[separators] or flexprompt.choices.caps["vertical"]
+        else
+            local custom = flexprompt.choices.caps[separators[side + 1]]
+            if custom then
+                separators = { custom[side + 1], custom[side] }
+            end
         end
         segmenter.separator = separators[2 - side]
     end
