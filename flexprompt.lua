@@ -79,7 +79,7 @@ flexprompt.choices.prompts =
 {
     lean        = { left = { "{battery}{cwd}{time}" }, both = { "{battery}{cwd}", "{exit}{time}" } },
     classic     = { left = { "{battery}{cwd}{exit}{time}" }, both = { "{battery}{cwd}", "{exit}{time}" } },
-    rainbow     = { left = { "{battery}{battery:break}{cwd}{exit}{time:color=black}" }, both = { "{battery}{battery:break}{cwd}", "{exit}{time}" } },
+    rainbow     = { left = { "{battery:breakright}{cwd}{exit}{time:color=black}" }, both = { "{battery:breakright}{cwd}", "{exit}{time}" } },
 }
 
 -- Only if style != lean.
@@ -204,7 +204,7 @@ flexprompt.tails = "blurred"
 flexprompt.heads = "pointed"
 flexprompt.separators = "none" --{ "updiagonal", "downdiagonal" } --"vertical"
 flexprompt.frame_color = "darkest"
-flexprompt.left_prompt = "{battery:s=100}{battery:break:s=100}{user:t=computer}{cwd:t=smart}"
+flexprompt.left_prompt = "{battery:s=100:br}{user:t=computer}{cwd:t=smart}"
 flexprompt.right_prompt = "{exit}{duration}{time}"
 
 flexprompt.use_home_symbol = true
@@ -920,12 +920,14 @@ function flexprompt.get_git_dir(dir)
 end
 
 --------------------------------------------------------------------------------
--- BATTERY MODULE:  {battery:show=show_level:break}
+-- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright}
 --  - show_level shows the battery module unless the battery level is greater
 --    than show_level.
---  - 'break' makes an empty prompt segment; "{battery}{battery:break}{user}"
---    may look better than having battery segment colors adjacent to other
---    similarly colored segments.
+--  - 'breakleft' adds an empty prompt segment to the left of battery.
+--  - 'breakright' adds an empty prompt segment to the right of battery.
+--
+-- The 'breakleft' and 'breakright' options may look better than having battery
+-- segment colors adjacent to other similarly colored segments.
 
 local rainbow_battery_colors =
 {
@@ -996,11 +998,6 @@ end
 
 local cached_battery_coroutine
 local function render_battery(args)
-    local placeholder = flexprompt.parse_arg_keyword(args, "b", "break")
-    if placeholder and flexprompt.get_style() ~= "rainbow" then
-        return
-    end
-
     local show = tonumber(flexprompt.parse_arg_token(args, "s", "show") or "100")
     local batteryStatus,level = get_battery_status()
     prev_battery_status = batteryStatus
@@ -1019,11 +1016,10 @@ local function render_battery(args)
         return
     end
 
-    -- The 'break' arg creates a blank segment to force a color break between
-    -- segments, in case the adjacent colors are too similar.
-    if placeholder then
-        return "", "black"
-    end
+    -- The 'breakleft' and 'breakright' args add blank segments to force a color
+    -- break between segments, in case the adjacent colors are too similar.
+    local bl = flexprompt.parse_arg_keyword(args, "bl", "breakleft")
+    local br = flexprompt.parse_arg_keyword(args, "br", "breakright")
 
     local color, warning = get_battery_status_color(level)
 
@@ -1035,7 +1031,12 @@ local function render_battery(args)
         color = "22;" .. color.bg .. ";30"
     end
 
-    return batteryStatus, color, "black"
+    local segments = {}
+    if bl then table.insert(segments, { "", "black" }) end
+    table.insert(segments, { batteryStatus, color, "black" })
+    if br then table.insert(segments, { "", "black" }) end
+
+    return segments
 end
 
 --------------------------------------------------------------------------------
