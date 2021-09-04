@@ -816,8 +816,11 @@ end
 local function render_cwd(args)
     local color = flexprompt.parse_arg_token(args, "c", "color")
     if not color then
-        if flexprompt.get_style() == "rainbow" then
+        local style = flexprompt.get_style()
+        if style == "rainbow" then
             color = "blue"
+        elseif style == "classic" then
+            color = "38;5;39"
         else
             color = "38;5;33"
         end
