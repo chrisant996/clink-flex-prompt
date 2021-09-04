@@ -607,9 +607,24 @@ local function render_modules(prompt, side, frame_color)
         end
 
         if name and #name > 0 then
-            local segment,color,rainbow_text_color = render_module(name, args)
-            if segment then
-                out = out .. next_segment(segment, lookup_color(color), rainbow_text_color)
+            local text,color,rainbow_text_color = render_module(name, args)
+            if text then
+                local segments
+                if type(text) ~= "table" then
+                    -- No table provided.
+                    segments = { { text, color, rainbow_text_color } }
+                elseif type(text[1]) ~= "table" then
+                    -- Table of non-tables provided.
+                    segments = { text }
+                else
+                    -- Table of tables provided.
+                    segments = text
+                end
+                for _,segment in pairs(segments) do
+                    if segment then
+                        out = out .. next_segment(segment[1], lookup_color(segment[2]), segment[3])
+                    end
+                end
             end
         end
     end
