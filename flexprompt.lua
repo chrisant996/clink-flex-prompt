@@ -223,7 +223,7 @@ flexprompt.settings.separators = "none"
 flexprompt.settings.frame_color = "dark"
 --flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}"
 --flexprompt.settings.right_prompt = "{exit}{duration}{time}"
-flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}{exit}{duration}{time}"
+flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}{duration}{time}"
 
 flexprompt.settings.use_home_symbol = true
 --flexprompt.settings.use_git_symbol = true
@@ -890,6 +890,53 @@ flexprompt.make_fluent_text = make_fluent_text
 flexprompt.can_use_extended_colors = can_use_extended_colors
 
 --------------------------------------------------------------------------------
+-- Internal helpers.
+
+local function load_ini(fileName)
+    -- This function is based on https://github.com/Dynodzzo/Lua_INI_Parser/blob/master/LIP.lua
+    local file = io.open(fileName, 'r')
+    if not file then return nil end
+
+    local data = {};
+    local section;
+    for line in file:lines() do
+        local tempSection = line:match('^%[([^%[%]]+)%]$');
+        if tempSection then
+            section = tonumber(tempSection) and tonumber(tempSection) or tempSection;
+            data[section] = data[section] or {}
+        end
+
+        local param, value = line:match('^%s-([%w|_]+)%s-=%s+(.+)$')
+        if param and value ~= nil then
+            if tonumber(value) then
+                value = tonumber(value);
+            elseif value == 'true' then
+                value = true;
+            elseif value == 'false' then
+                value = false;
+            end
+            if tonumber(param) then
+                param = tonumber(param);
+            end
+            data[section][param] = value
+        end
+    end
+    file:close();
+    return data;
+end
+
+local git_config = {}
+function git_config.load(git_dir)
+    git_config.config = git_dir and load_ini(path.join(git_dir, 'config')) or nil
+    return git_config.config
+end
+function git_config.get(section, param)
+    if not git_config.config then return end
+    if (not param) or (not section) then return end
+    return git_config.config[section] and git_config.config[section][param] or nil
+end
+
+--------------------------------------------------------------------------------
 -- Public API; git functions.
 
 -- Test whether dir is part of a git repo.
@@ -1058,6 +1105,31 @@ function flexprompt.get_git_conflict()
     file:close()
 
     return false
+end
+
+-- Gets remote for current branch.
+-- @return  remote name, or nil if not found.
+--
+-- Synchronous call.
+function flexprompt.get_git_remote(git_dir)
+    if not git_dir then return end
+
+    local branch = flexprompt.get_git_branch(git_dir)
+    if not branch then return end
+
+    -- Load git config info.
+    if not git_config.load(git_dir) then return end
+
+    -- For remote and ref resolution algorithm see https://git-scm.com/docs/git-push.
+    local remote_to_push = git_config.get('branch "' .. branch .. '"', 'remote') or ''
+    local remote_ref = git_config.get('remote "' .. remote_to_push .. '"', 'push') or git_config.get('push', 'default')
+
+    local remote = remote_to_push
+    if remote_ref then remote = remote .. '/' .. remote_ref end
+
+    if remote ~= '' then
+        return remote
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -1364,6 +1436,7 @@ end
 -- GIT MODULE:  {git:nostaged:noaheadbehind:color_options}
 --  - 'nostaged' omits the staged details.
 --  - 'noaheadbehind' omits the ahead/behind details.
+--  - 'showremote' shows the branch and its remote.
 --  - color_options override status colors as follows:
 --      - clean=color_name,alt_color_name       When status is clean.
 --      - conflict=color_name,alt_color_name    When a conflict exists.
@@ -1473,8 +1546,15 @@ local function render_git(args)
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
-    local text = branch
     local colors = git_colors.clean
+    local showRemote = flexprompt.parse_arg_keyword(args, "sr", "showremote")
+    local text = branch
+    if showRemote then
+        local remote = flexprompt.get_git_remote(git_dir)
+        if remote then
+            text = text .. flexprompt.make_fluent_text("->") .. remote
+        end
+    end
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
     elseif style ~= "lean" then
