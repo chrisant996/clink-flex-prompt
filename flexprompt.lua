@@ -17,6 +17,7 @@ end
 
 flexprompt = {}
 flexprompt.settings = {}
+flexprompt.symbols = {}
 local modules
 
 --------------------------------------------------------------------------------
@@ -195,7 +196,7 @@ flexprompt.choices.transient =
 }
 
 -- Only if lines > 1 and left frame none, or if lines == 1 and style == lean, or if transient.
-flexprompt.choices.symbols =
+flexprompt.choices.prompt_symbols =
 {
     angle       = ">",
     dollar      = "$",
@@ -216,6 +217,9 @@ local symbols =
     aheadcount      = "↓",
     behindcount     = "↑",
     staged          = "↗",
+    battery         = "%",
+    charging        = "++",
+    prompt          = ">",
 }
 
 flexprompt.settings.lines = "two"
@@ -235,10 +239,6 @@ flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}
 
 flexprompt.settings.battery_idle_refresh = true
 flexprompt.settings.use_home_tilde = true
---flexprompt.settings.git_symbol = "git"
---flexprompt.settings.maven_symbol = "mvn:"
---flexprompt.settings.npm_symbol = "npm"
---flexprompt.settings.python_symbol = "py"
 
 --------------------------------------------------------------------------------
 -- Configuration helpers.
@@ -359,12 +359,18 @@ local function get_frame_color()
     return frame_color
 end
 
-local function get_symbol_color()
+local function get_symbol(name)
+    return flexprompt.symbols[name] or symbols[name] or "?!"
+end
+
+local function get_prompt_symbol_color()
     local color
-    if flexprompt.settings.symbol_color then
-        color = flexprompt.settings.symbol_color
+    if flexprompt.settings.prompt_symbol_color then
+        color = flexprompt.settings.prompt_symbol_color
     elseif os.geterrorlevel then
-        color = (os.geterrorlevel() == 0) and "brightgreen" or "brightred"
+        color = (os.geterrorlevel() == 0) and
+                (flexprompt.settings.exit_zero_color or "brightgreen") or
+                (flexprompt.settings.exit_nonzero_color or "brightred")
     else
         color = "brightwhite"
     end
@@ -372,8 +378,8 @@ local function get_symbol_color()
     return sgr(color.fg)
 end
 
-local function get_symbol()
-    return flexprompt.choices.symbols[flexprompt.settings.symbol or "angle"] or ">"
+local function get_prompt_symbol()
+    return flexprompt.choices.prompt_symbols[flexprompt.settings.prompt_symbols or "angle"] or flexprompt.choices.prompt_symbols["angle"]
 end
 
 local function get_flow()
@@ -834,7 +840,7 @@ function pf:filter(prompt)
         end
 
         if lines == 1 and style == "lean" then
-            left1 = left1 .. get_symbol_color() .. " " .. get_symbol() .. " "
+            left1 = left1 .. get_prompt_symbol_color() .. " " .. get_prompt_symbol() .. " "
         end
 
         if right_prompt then
@@ -860,7 +866,7 @@ function pf:filter(prompt)
             left2 = left2 .. sgr_frame_color .. left_frame[2]
         end
         if not left_frame or style == "lean" then
-            left2 = left2 .. get_symbol_color() .. get_symbol()
+            left2 = left2 .. get_prompt_symbol_color() .. get_prompt_symbol()
         end
 
         left2 = left2 .. sgr() .. " "
@@ -904,7 +910,7 @@ function pf:rightfilter(prompt)
 end
 
 function pf:transientfilter(prompt)
-    return get_symbol_color() .. get_symbol() .. sgr() .. " "
+    return get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
 end
 
 function pf:transientrightfilter(prompt)
@@ -1198,7 +1204,7 @@ function flexprompt.get_git_status()
     end
     file:close()
 
-    if symbols.renamecount == "" then
+    if get_symbol("renamecount") == "" then
         s_mod = s_mod + s_ren
         s_ren = 0
     end
@@ -1324,7 +1330,7 @@ local rainbow_battery_colors =
 
 local function get_battery_status()
     local level, acpower, charging
-    local batt_symbol = flexprompt.settings.battery_symbol or "%"
+    local batt_symbol = get_symbol("battery")
 
     local status = os.getbatterystatus()
     level = status.level
@@ -1335,7 +1341,7 @@ local function get_battery_status()
         return "", 0
     end
     if charging then
-        batt_symbol = flexprompt.settings.charging_symbol or "↑"
+        batt_symbol = get_symbol("charging")
     end
 
     return level..batt_symbol, level
@@ -1619,22 +1625,22 @@ end
 local function add_details(text, details)
     if git.status_details then
         if details.add > 0 then
-            text = append_text(text, symbols.addcount .. details.add)
+            text = append_text(text, get_symbol("addcount") .. details.add)
         end
         if details.modify > 0 then
-            text = append_text(text, symbols.modifycount .. details.modify)
+            text = append_text(text, get_symbol("modifycount") .. details.modify)
         end
         if details.delete > 0 then
-            text = append_text(text, symbols.deletecount .. details.delete)
+            text = append_text(text, get_symbol("deletecount") .. details.delete)
         end
         if (details.rename or 0) > 0 then
-            text = append_text(text, symbols.renamecount .. details.rename)
+            text = append_text(text, get_symbol("renamecount") .. details.rename)
         end
     else
-        text = append_text(text, symbols.summarycount .. (details.add + details.modify + details.delete + (details.rename or 0)))
+        text = append_text(text, get_symbol("summarycount") .. (details.add + details.modify + details.delete + (details.rename or 0)))
     end
     if (details.untracked or 0) > 0 then
-        text = append_text(text, symbols.untrackedcount .. details.untracked)
+        text = append_text(text, get_symbol("untrackedcount") .. details.untracked)
     end
     return text
 end
@@ -1714,12 +1720,12 @@ local function render_git(args)
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
     elseif style ~= "lean" then
-        text = append_text(symbols.branch, text)
+        text = append_text(get_symbol("branch"), text)
     end
     if gitConflict then
         colors = git_colors.conflict
-        if symbols.conflict and #symbols.conflict then
-            text = append_text(text, symbols.conflict)
+        if get_symbol("conflict") and #get_symbol("conflict") then
+            text = append_text(text, get_symbol("conflict"))
         end
     elseif gitStatus and gitStatus.working then
         colors = git_colors.dirty
@@ -1737,8 +1743,8 @@ local function render_git(args)
     local noStaged = flexprompt.parse_arg_keyword(args, "ns", "nostaged")
     if not noStaged and gitStatus and gitStatus.staged then
         text = ""
-        if symbols.staged and #symbols.staged then
-            text = append_text(text, symbols.staged)
+        if get_symbol("staged") and #get_symbol("staged") then
+            text = append_text(text, get_symbol("staged"))
         end
         colors = git_colors.staged
         text = add_details(text, gitStatus.staged)
@@ -1753,15 +1759,15 @@ local function render_git(args)
         local behind = info.behind or "0"
         if ahead ~= "0" or behind ~= "0" then
             text = ""
-            if symbols.aheadbehind and #symbols.aheadbehind > 0 then
-                text = append_text(text, symbols.aheadbehind)
+            if get_symbol("aheadbehind") and #get_symbol("aheadbehind") > 0 then
+                text = append_text(text, get_symbol("aheadbehind"))
             end
             colors = git_colors.remote
             if ahead ~= "0" then
-                text = append_text(text, symbols.aheadcount .. ahead)
+                text = append_text(text, get_symbol("aheadcount") .. ahead)
             end
             if behind ~= "0" then
-                text = append_text(text, symbols.behindcount .. behind)
+                text = append_text(text, get_symbol("behindcount") .. behind)
             end
             color, altcolor = parse_color_token(args, colors)
             table.insert(segments, { text, color, altcolor })
@@ -1822,7 +1828,7 @@ local function render_hg(args)
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
     elseif style ~= "lean" then
-        text = append_text(symbols.branch, text)
+        text = append_text(get_symbol("branch"), text)
     end
     if (flexprompt.hg_symbol or "") ~= "" then
         text = append_text(flexprompt.hg_symbol, text)
@@ -1832,7 +1838,7 @@ local function render_hg(args)
     local output = pipe:read('*all')
     local rc = { pipe:close() }
     if (output or "") ~= "" then
-        text = append_text(text, symbols.modifycount)
+        text = append_text(text, get_symbol("modifycount"))
         colors = hg_colors.dirty
     end
 
@@ -2044,7 +2050,7 @@ local function render_svn(args)
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
     elseif style ~= "lean" then
-        text = append_text(symbols.branch, text)
+        text = append_text(get_symbol("branch"), text)
     end
     if (flexprompt.svn_symbol or "") ~= "" then
         text = append_text(flexprompt.svn_symbol, text)
@@ -2052,7 +2058,7 @@ local function render_svn(args)
 
     if get_svn_status() then
         colors = svn_colors.dirty
-        text = append_text(text, symbols.modifycount)
+        text = append_text(text, get_symbol("modifycount"))
     end
 
     local color, altcolor = parse_color_token(args, colors)
