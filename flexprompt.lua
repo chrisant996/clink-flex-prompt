@@ -1501,7 +1501,7 @@ local function duration_onendedit()
 end
 
 local function render_duration(args)
-    if not _duration then return end
+    if (_duration or 0) <= 0 then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
