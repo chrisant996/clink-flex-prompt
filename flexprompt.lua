@@ -233,9 +233,11 @@ flexprompt.settings.frame_color = "dark"
 --flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}{duration}{time}"
 
-flexprompt.settings.use_home_symbol = true
---flexprompt.settings.use_git_symbol = true
+flexprompt.settings.use_home_tilde = true
 --flexprompt.settings.git_symbol = "git"
+--flexprompt.settings.maven_symbol = "mvn:"
+--flexprompt.settings.npm_symbol = "npm"
+--flexprompt.settings.python_symbol = "py"
 
 --------------------------------------------------------------------------------
 -- Configuration helpers.
@@ -1434,12 +1436,12 @@ local function render_cwd(args)
         cwd = get_folder_name(cwd)
     else
         repeat
-            if flexprompt.settings.use_home_symbol then
+            if flexprompt.settings.use_home_tilde then
                 local home = os.getenv("HOME")
                 if home and string.find(string.lower(cwd), string.lower(home)) == 1 then
                     git_dir = flexprompt.get_git_dir(cwd) or false
                     if not git_dir then
-                        cwd = (flexprompt.settings.home_symbol or "~") .. string.sub(cwd, #home + 1)
+                        cwd = "~" .. string.sub(cwd, #home + 1)
                         break
                     end
                 end
@@ -1461,7 +1463,7 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    if flexprompt.settings.use_git_symbol and (flexprompt.settings.git_symbol or "") ~= "" then
+                    if (flexprompt.settings.git_symbol or "") ~= "" then
                         cwd = flexprompt.settings.git_symbol .. " " .. cwd
                     end
                 end
