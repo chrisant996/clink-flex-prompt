@@ -430,6 +430,11 @@ local function get_parent(dir)
     end
 end
 
+local function has_dir(dir, subdir)
+    local test = path.join(dir, subdir)
+    return os.isdir(test) and test
+end
+
 --------------------------------------------------------------------------------
 -- Segments.
 
@@ -1097,11 +1102,6 @@ end
 --
 -- Synchronous call.
 function flexprompt.get_git_dir(dir)
-    local function has_git_dir(dir)
-        local dotgit = path.join(dir, '.git')
-        return os.isdir(dotgit) and dotgit
-    end
-
     local function has_git_file(dir)
         local dotgit = path.join(dir, '.git')
         local gitfile
@@ -1130,13 +1130,15 @@ function flexprompt.get_git_dir(dir)
     -- Set default path to current directory.
     if not dir or dir == '.' then dir = os.getcwd() end
 
-    -- Return if it's a git dir.
-    local has = has_git_dir(dir) or has_git_file(dir)
-    if has then return has end
+    repeat
+        -- Return if it's a git dir.
+        local has = has_dir(dir, ".git") or has_git_file(dir)
+        if has then return has end
 
-    -- Walk up to parent path.
-    local parent = get_parent(dir)
-    return parent and flexprompt.get_git_dir(parent) or nil
+        -- Walk up to parent path.
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
 end
 
 -- Get the name of the current branch.
@@ -1773,12 +1775,14 @@ end
 local function get_pom_xml_dir(dir)
     if not dir or dir == "." then dir = os.getcwd() end
 
-    local pom_file = path.join(dir, "pom.xml")
-    -- More efficient than opening the file.
-    if os.isfile(pom_file) then return true end
+    repeat
+        local pom_file = path.join(dir, "pom.xml")
+        -- More efficient than opening the file.
+        if os.isfile(pom_file) then return true end
 
-    local parent = get_parent(dir)
-    return parent and get_pom_xml_dir(parent) or nil
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
 end
 
 local function render_npm(args)
@@ -1826,9 +1830,13 @@ end
 local function get_package_json_file(dir)
     if not dir or dir == "." then dir = os.getcwd() end
 
-    local parent = get_parent(dir)
-    return io.open(path.join(dir, "package.json")) or
-        (parent and get_package_json_file(parent) or nil)
+    repeat
+        local file = io.open(path.join(dir, "package.json"))
+        if file then return file end
+
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
 end
 
 local function render_npm(args)
@@ -1872,12 +1880,16 @@ local function get_virtual_env(env_var)
 end
 
 local function has_py_files(dir)
-    for _ in pairs(os.globfiles("*.py")) do
-        return true
-    end
+    if not dir or dir == "." then dir = os.getcwd() end
 
-    local parent = get_parent(dir)
-    return parent and has_py_files(parent)
+    repeat
+        for _ in pairs(os.globfiles(path.join(dir, "*.py"))) do
+            return true
+        end
+
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
 end
 
 local function render_python(args)
