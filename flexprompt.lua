@@ -1475,8 +1475,8 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    if (flexprompt.settings.git_symbol or "") ~= "" then
-                        cwd = flexprompt.settings.git_symbol .. " " .. cwd
+                    if (flexprompt.settings.cwd_git_symbol or "") ~= "" then
+                        cwd = flexprompt.settings.cwd_git_symbol .. " " .. cwd
                     end
                 end
             end
@@ -1725,6 +1725,9 @@ local function render_git(args)
         text = add_details(text, gitStatus.working)
     elseif gitUnknown then
         colors = git_colors.unknown
+    end
+    if (flexprompt.git_symbol or "") ~= "" then
+        text = append_text(flexprompt.git_symbol, text)
     end
     local color, altcolor = parse_color_token(args, colors)
     table.insert(segments, { text, color, altcolor })
