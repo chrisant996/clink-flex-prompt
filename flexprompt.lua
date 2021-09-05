@@ -417,6 +417,13 @@ local function get_folder_name(dir)
     return dir
 end
 
+local function get_parent(dir)
+    local parent = path.toparent(dir)
+    if parent and parent ~= "" and parent ~= dir then
+        return parent
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Segments.
 
@@ -1125,8 +1132,8 @@ function flexprompt.get_git_dir(dir)
     if has then return has end
 
     -- Walk up to parent path.
-    local parent = path.toparent(dir)
-    return (parent ~= dir) and flexprompt.get_git_dir(parent) or nil
+    local parent = get_parent(dir)
+    return parent and flexprompt.get_git_dir(parent) or nil
 end
 
 -- Get the name of the current branch.
@@ -1455,7 +1462,7 @@ local function render_cwd(args)
                     -- Get the root git folder name and reappend any part of the
                     -- directory that comes after.
                     -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
-                    local git_root_dir = path.toparent(git_dir)
+                    local git_root_dir = path.toparent(git_dir) -- Don't use get_parent() here!
                     local appended_dir = string.sub(cwd, string.len(git_root_dir) + 1)
                     local smart_dir = get_folder_name(git_root_dir) .. appended_dir
                     if type == "rootsmart" then
