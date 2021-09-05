@@ -1,10 +1,10 @@
 ### Bugs
-- Battery isn't refreshing on idle.
 
 ### General
+- [ ] Let environment variables override Lua config.
+- [ ] Documentation.
 - [ ] ASCII mode; no icons.
 - [ ] When to show symbols.
-- [ ] Documentation.
 
 ### Configuration wizard
 - [ ] Clink input API.

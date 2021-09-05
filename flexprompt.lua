@@ -233,6 +233,7 @@ flexprompt.settings.frame_color = "dark"
 --flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}{duration}{time}"
 
+flexprompt.settings.battery_idle_refresh = true
 flexprompt.settings.use_home_tilde = true
 --flexprompt.settings.git_symbol = "git"
 --flexprompt.settings.maven_symbol = "mvn:"
