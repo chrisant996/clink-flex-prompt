@@ -165,6 +165,7 @@ flexprompt.choices.right_frames =
 local fc_frame = 1
 local fc_back = 2
 local fc_fore = 3
+local fc_sep = 4
 flexprompt.choices.frame_colors =
 {               --  Frame       Back        Fore
     lightest    = { "38;5;244", "38;5;240", "38;5;248"  },
@@ -228,7 +229,6 @@ flexprompt.settings.connection = "solid"
 flexprompt.settings.heads = "pointed"
 --flexprompt.settings.separators = "none"
 flexprompt.settings.frame_color = "dark"
---flexprompt.settings.frame_color = { "black", "38;5;236", "38;5;244" }
 --flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}"
 --flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}{duration}{time}"
@@ -338,16 +338,22 @@ local function get_frame()
 end
 
 local function get_frame_color()
-    local frame_color = flexprompt.choices.frame_colors[flexprompt.settings.frame_color or "light"]
-    if not frame_color then
-        frame_color = flexprompt.choices.frame_colors["light"]
+    local frame_color = flexprompt.settings.frame_color or "light"
+    if type(frame_color) ~= table then
+        frame_color = flexprompt.choices.frame_colors[flexprompt.settings.frame_color] or flexprompt.settings.frame_color
     end
 
     if type(frame_color) ~= "table" then
         frame_color = { frame_color, frame_color, frame_color }
     end
 
-    frame_color = { lookup_color(frame_color[1]), lookup_color(frame_color[2]), lookup_color(frame_color[3]) }
+    frame_color =
+    {
+        lookup_color(frame_color[fc_frame]),
+        lookup_color(frame_color[fc_back]),
+        lookup_color(frame_color[fc_fore]),
+        lookup_color(frame_color[fc_sep] or frame_color[fc_frame]),
+    }
 
     return frame_color
 end
