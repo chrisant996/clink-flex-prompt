@@ -94,12 +94,12 @@ flexprompt.choices.ascii_caps =
 flexprompt.choices.caps =
 {
                 --  Open    Close
-    vertical    = { "",     ""      },
+    flat        = { "",     "",     separators="pointed" },
     pointed     = { "",    ""     },
     upslant     = { "",    ""     },
     downslant   = { "",    ""     },
     round       = { "",    ""     },
-    blurred     = { "░▒▓",  "▓▒░"   },
+    blurred     = { "░▒▓",  "▓▒░",  separators="vertical" },
 }
 
 -- Only if style == classic.
@@ -217,10 +217,11 @@ flexprompt.settings.flow = "fluent"
 --flexprompt.settings.left_frame = "round"
 --flexprompt.settings.right_frame = "round"
 flexprompt.settings.connection = "solid"
-flexprompt.settings.tails = "blurred"
-flexprompt.settings.heads = "blurred"
-flexprompt.settings.separators = "none"
+--flexprompt.settings.tails = "blurred"
+flexprompt.settings.heads = "pointed"
+--flexprompt.settings.separators = "none"
 flexprompt.settings.frame_color = "dark"
+--flexprompt.settings.frame_color = { "black", "38;5;236", "38;5;244" }
 --flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}"
 --flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}{duration}{time}"
@@ -412,11 +413,11 @@ local function init_segmenter(side, frame_color)
     local open_caps, close_caps, separators
 
     if side == 0 then
-        open_caps = flexprompt.settings.tails or "vertical"
-        close_caps = flexprompt.settings.heads or "vertical"
+        open_caps = flexprompt.settings.tails or "flat"
+        close_caps = flexprompt.settings.heads or "flat"
     else
-        open_caps = flexprompt.settings.heads or "vertical"
-        close_caps = flexprompt.settings.tails or "vertical"
+        open_caps = flexprompt.settings.heads or "flat"
+        close_caps = flexprompt.settings.tails or "flat"
     end
     if type(open_caps) ~= "table" then
         open_caps = flexprompt.choices.caps[open_caps]
@@ -444,32 +445,39 @@ local function init_segmenter(side, frame_color)
         segmenter.separator = " "
         segmenter.open_cap = ""
         segmenter.close_cap = ""
-    elseif segmenter.style == "classic" then
-        separators = flexprompt.settings.separators or "vertical"
-        if type(separators) ~= "table" then
-            separators = flexprompt.choices.separators[separators]
-        else
-            local custom = flexprompt.choices.separators[separators[side + 1]]
-            if custom then
-                separators = { custom[side + 1], custom[side] }
+    else
+        separators = flexprompt.settings.separators or flexprompt.settings.heads or "flat"
+        if flexprompt.choices.caps[separators] then
+            local redirect = flexprompt.choices.caps[separators].separators
+            if redirect then
+                separators = redirect
             end
         end
-        segmenter.separator = separators[side + 1]
-    elseif segmenter.style == "rainbow" then
-        separators = flexprompt.settings.separators or "vertical"
-        if type(separators) ~= "table" then
-            local altseparators = flexprompt.choices.separators[separators]
-            if altseparators then
-                segmenter.altseparator = altseparators[side + 1]
+        if segmenter.style == "classic" then
+            if type(separators) ~= "table" then
+                separators = flexprompt.choices.separators[separators]
+            else
+                local custom = flexprompt.choices.separators[separators[side + 1]]
+                if custom then
+                    separators = { custom[side + 1], custom[side] }
+                end
             end
-            separators = flexprompt.choices.caps[separators] or flexprompt.choices.caps["vertical"]
-        else
-            local custom = flexprompt.choices.caps[separators[side + 1]]
-            if custom then
-                separators = { custom[side + 1], custom[side] }
+            segmenter.separator = separators[side + 1]
+        elseif segmenter.style == "rainbow" then
+            if type(separators) ~= "table" then
+                local altseparators = flexprompt.choices.separators[separators]
+                if altseparators then
+                    segmenter.altseparator = altseparators[side + 1]
+                end
+                separators = flexprompt.choices.caps[separators] or flexprompt.choices.caps["flat"]
+            else
+                local custom = flexprompt.choices.caps[separators[side + 1]]
+                if custom then
+                    separators = { custom[side + 1], custom[side] }
+                end
             end
+            segmenter.separator = separators[2 - side]
         end
-        segmenter.separator = separators[2 - side]
     end
 end
 

@@ -1,5 +1,4 @@
 ### Bugs
-- Classic style is missing initial padding when tails is vertical.
 
 ### General
 - [ ] ASCII mode; no icons.
