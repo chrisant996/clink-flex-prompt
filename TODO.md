@@ -1,4 +1,5 @@
 ### Bugs
+- Battery isn't refreshing on idle.
 
 ### General
 - [ ] ASCII mode; no icons.
@@ -10,8 +11,6 @@
 - [ ] Configuration wizard.
 
 ### Modules
-- [ ] Hg.
-- [ ] Svn.
 
 ---
 Chris Antos - sparrowhawk996@gmail.com

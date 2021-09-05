@@ -1771,6 +1771,75 @@ local function render_git(args)
 end
 
 --------------------------------------------------------------------------------
+-- HG MODULE:  {hg:color_options}
+--  - color_options override status colors as follows:
+--      - clean=color_name,alt_color_name       When status is clean.
+--      - dirty=color_name,alt_color_name       When status is dirty (modified files).
+
+local hg_colors =
+{
+    clean       = { "c", "clean", "green", "black" },
+    dirty       = { "d", "dirty", "red", "white" },
+}
+
+local function get_hg_dir(dir)
+    -- Set default path to current directory.
+    if not dir or dir == '.' then dir = os.getcwd() end
+
+    repeat
+        -- Return if it's a hg (Mercurial) dir.
+        local has = has_dir(dir, ".hg")
+        if has then return has end
+
+        -- Walk up to parent path.
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
+end
+
+local function render_hg(args)
+    local hg_dir = get_hg_dir()
+    if not hg_dir then return end
+
+    -- We're inside of hg repo, read branch and status.
+    local pipe = io.popen("hg branch 2>&1")
+    local output = pipe:read('*all')
+    local rc = { pipe:close() }
+
+    -- Strip the trailing newline from the branch name.
+    local n = #output
+    while n > 0 and output:find("^%s", n) do n = n - 1 end
+    local branch = output:sub(1, n)
+    if not branch then return end
+    if string.sub(branch,1,7) == "abort: " then return end
+    if string.find(branch, "is not recognized") then return end
+
+    local flow = flexprompt.get_flow()
+    local text = branch
+    local colors = hg_colors.clean
+
+    if flow == "fluent" then
+        text = append_text(flexprompt.make_fluent_text("on"), text)
+    elseif style ~= "lean" then
+        text = append_text(symbols.branch, text)
+    end
+    if (flexprompt.hg_symbol or "") ~= "" then
+        text = append_text(flexprompt.hg_symbol, text)
+    end
+
+    local pipe = io.popen("hg status -amrd 2>&1")
+    local output = pipe:read('*all')
+    local rc = { pipe:close() }
+    if (output or "") ~= "" then
+        text = append_text(text, symbols.modifycount)
+        colors = hg_colors.dirty
+    end
+
+    local color, altcolor = parse_color_token(args, colors)
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- MAVEN MODULE:  {maven:color=color_name,alt_color_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1913,6 +1982,83 @@ local function render_python(args)
 end
 
 --------------------------------------------------------------------------------
+-- SVN MODULE:  {hg:color_options}
+--  - color_options override status colors as follows:
+--      - clean=color_name,alt_color_name       When status is clean.
+--      - dirty=color_name,alt_color_name       When status is dirty (modified files).
+
+local svn_colors =
+{
+    clean       = { "c", "clean", "green", "black" },
+    dirty       = { "d", "dirty", "red", "white" },
+}
+
+local function get_svn_dir(dir)
+    -- Set default path to current directory.
+    if not dir or dir == '.' then dir = os.getcwd() end
+
+    repeat
+        -- Return if it's a svn (Subversion) dir.
+        local has = has_dir(dir, ".svn")
+        if has then return has end
+
+        -- Walk up to parent path.
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
+end
+
+local function get_svn_branch()
+    local file = io.popen("svn info 2>nul")
+    for line in file:lines() do
+        local m = line:match("^Relative URL:")
+        if m then
+            file:close()
+            return line:sub(line:find("/")+1,line:len())
+        end
+    end
+    file:close()
+end
+
+local function get_svn_status()
+    local file = io.popen("svn status -q")
+    for line in file:lines() do
+        file:close()
+        return true
+    end
+    file:close()
+end
+
+local function render_svn(args)
+    local svn_dir = get_svn_dir()
+    if not svn_dir then return end
+
+    local branch = get_svn_branch()
+    if not branch then return end
+
+    local flow = flexprompt.get_flow()
+    local text = branch
+    local colors = svn_colors.clean
+
+    if flow == "fluent" then
+        text = append_text(flexprompt.make_fluent_text("on"), text)
+    elseif style ~= "lean" then
+        text = append_text(symbols.branch, text)
+    end
+    if (flexprompt.svn_symbol or "") ~= "" then
+        text = append_text(flexprompt.svn_symbol, text)
+    end
+
+    if get_svn_status() then
+        colors = svn_colors.dirty
+        text = append_text(text, symbols.modifycount)
+    end
+
+    local color, altcolor = parse_color_token(args, colors)
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1990,9 +2136,11 @@ end
     duration = render_duration,
     exit = render_exit,
     git = render_git,
+    hg = render_hg,
     maven = render_maven,
     npm = render_npm,
     python = render_python,
+    svn = render_svn,
     time = render_time,
     user = render_user,
 }
