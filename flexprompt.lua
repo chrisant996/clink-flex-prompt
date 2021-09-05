@@ -1,8 +1,14 @@
 --------------------------------------------------------------------------------
 -- Clink requirements.
+--
+-- Notes:
+--  - Transient prompt support requires Clink v1.2.29 or higher.
+--  - Right prompt support requires Clink v1.2.24 or higher.
+--  - Exit code support requires Clink v1.2.14 or higher.
+--  - Async prompt filtering requires Clink v1.2.10 or higher.
 
-if ((clink and clink.version_encoded) or 0) < 10020029 then
-    print("clink-flex-prompt requires Clink v1.2.29 or higher.")
+if ((clink and clink.version_encoded) or 0) < 10020010 then
+    print("clink-flex-prompt requires Clink v1.2.10 or higher.")
     return
 end
 
@@ -348,8 +354,10 @@ local function get_symbol_color()
     local color
     if flexprompt.settings.symbol_color then
         color = flexprompt.settings.symbol_color
-    else
+    elseif os.geterrorlevel then
         color = (os.geterrorlevel() == 0) and "brightgreen" or "brightred"
+    else
+        color = "brightwhite"
     end
     color = lookup_color(color)
     return sgr(color.fg)
@@ -1259,6 +1267,8 @@ end
 
 local cached_battery_coroutine
 local function render_battery(args)
+    if not os.getbatterystatus then return end
+
     local show = tonumber(flexprompt.parse_arg_token(args, "s", "show") or "100")
     local batteryStatus,level = get_battery_status()
     prev_battery_status = batteryStatus
@@ -1400,9 +1410,7 @@ local function duration_onendedit()
 end
 
 local function render_duration(args)
-    if not _duration then
-        return
-    end
+    if not _duration then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -1435,13 +1443,13 @@ end
 --  - 'hex' shows the exit code in hex when > 255 or < -255.
 
 local function render_exit(args)
+    if not os.geterrorlevel then return end
+
     local text
     local value = os.geterrorlevel()
 
     local always = flexprompt.parse_arg_keyword(args, "a", "always")
-    if not always and value == 0 then
-        return
-    end
+    if not always and value == 0 then return end
 
     local hex = flexprompt.parse_arg_keyword(args, "h", "hex")
 
