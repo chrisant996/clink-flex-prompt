@@ -575,7 +575,7 @@ local function next_segment(text, color, rainbow_text_color)
     end
 
     out = out .. base_color
-    if pad ~= "" and not (classic and (sep == "" or sep == " ")) then
+    if pad ~= "" and not (classic and (sep == "" or sep == " ") and not segmenter.open_cap) then
         out = out .. pad
     end
     out = out .. apply_fluent_colors(text, base_color) .. pad
@@ -622,6 +622,8 @@ local function render_modules(prompt, side, frame_color)
         else
             name = cap
         end
+
+        segmenter._current_module = name -- Note the segment, for debugging purposes.
 
         if name and #name > 0 then
             local text,color,rainbow_text_color = render_module(name, args)
