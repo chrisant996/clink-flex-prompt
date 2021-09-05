@@ -668,6 +668,19 @@ end
 -- Build prompt.
 
 local pf = clink.promptfilter(5)
+local continue_filtering = nil
+
+if CMDER_SESSION then
+    -- Halt further prompt filtering when used with Cmder.  This ensures our
+    -- prompt replaces the Cmder default prompt.
+    continue_filtering = false
+
+    -- Disable the Cmder prompt's version control status, since it's expensive
+    -- and we supersede it with our own prompt text.  It should be unreachable
+    -- because of setting continue_filtering = false, but is still included for
+    -- extra thoroughness.
+    prompt_includeVersionControl = false
+end
 
 local right
 
@@ -780,7 +793,7 @@ function pf:filter(prompt)
 end
 
 function pf:rightfilter(prompt)
-    return right or ""
+    return right or "", continue_filtering
 end
 
 function pf:transientfilter(prompt)
@@ -788,7 +801,7 @@ function pf:transientfilter(prompt)
 end
 
 function pf:transientrightfilter(prompt)
-    return ""
+    return "", continue_filtering
 end
 
 -- Capture the $+ dir stack depth if present at the beginning of PROMPT.
