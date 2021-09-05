@@ -11,9 +11,6 @@
 
 ### Modules
 - [ ] Hg.
-- [ ] Maven.
-- [ ] Npm.
-- [ ] Python.
 - [ ] Svn.
 
 ---

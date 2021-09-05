@@ -1760,6 +1760,138 @@ local function render_git(args)
 end
 
 --------------------------------------------------------------------------------
+-- MAVEN MODULE:  {maven:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local function get_pom_xml_dir(dir)
+    if not dir or dir == "." then dir = os.getcwd() end
+
+    local pom_file = path.join(dir, "pom.xml")
+    -- More efficient than opening the file.
+    if os.isfile(pom_file) then return true end
+
+    local parent = get_parent(dir)
+    return parent and get_pom_xml_dir(parent) or nil
+end
+
+local function render_npm(args)
+    if get_pom_xml_dir() then
+        local handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
+        local package_group = handle:read("*a")
+        handle:close()
+        if package_group == nil or package_group == "" then
+            local parent_handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
+            package_group = parent_handle:read("*a")
+            parent_handle:close()
+            if not package_group then package_group = "" end
+        end
+
+        handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'artifactId\']/text()" pom.xml 2>NUL')
+        local package_artifact = handle:read("*a")
+        handle:close()
+        if not package_artifact then package_artifact = "" end
+
+        handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
+        local package_version = handle:read("*a")
+        handle:close()
+        if package_version == nil or package_version == "" then
+            local parent_handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
+            package_version = parent_handle:read("*a")
+            parent_handle:close()
+            if not package_version then package_version = "" end
+        end
+
+        local text = package_group .. ":" .. package_artifact .. ":" .. package_version
+        if (flexprompt.maven_symbol or "mvn:") ~= "" then
+            text = flexprompt.maven_symbol .. " " .. text
+        end
+
+        local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
+        return text, color, altcolor
+    end
+end
+
+--------------------------------------------------------------------------------
+-- NPM MODULE:  {npm:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local function get_package_json_file(dir)
+    if not dir or dir == "." then dir = os.getcwd() end
+
+    local parent = get_parent(dir)
+    return io.open(path.join(dir, "package.json")) or
+        (parent and get_package_json_file(parent) or nil)
+end
+
+local function render_npm(args)
+    local file = get_package_json_file()
+    if not file then return end
+
+    local package_info = file:read('*a')
+    file:close()
+
+    local package_name = string.match(package_info, '"name"%s*:%s*"(%g-)"') or ""
+    local package_version = string.match(package_info, '"version"%s*:%s*"(.-)"') or ""
+
+    local text = package_name .. "@" .. package_version
+    if (flexprompt.npm_symbol or "") ~= "" then
+        text = plc_npm.npmSymbol .. " " .. text
+    end
+
+    local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
+-- PYTHON MODULE:  {python:always:color=color_name,alt_color_name}
+--  - 'always' shows the python module even if there are no python files.
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local function get_virtual_env(env_var)
+    local venv_path = false
+
+    -- Return the folder name of the current virtual env, or false.
+    local function get_virtual_env_var(var)
+        env_path = clink.get_env(var)
+        return env_path and string.match(env_path, "[^\\/:]+$") or false
+    end
+
+    local venv = (env_var and get_virtual_env_var(env_var)) or
+        get_virtual_env_var("VIRTUAL_ENV") or
+        get_virtual_env_var("CONDA_DEFAULT_ENV") or false
+    return venv
+end
+
+local function has_py_files(dir)
+    for _ in pairs(os.globfiles("*.py")) do
+        return true
+    end
+
+    local parent = get_parent(dir)
+    return parent and has_py_files(parent)
+end
+
+local function render_python(args)
+    -- flexprompt.python_virtual_env_variable can be nil.
+    local venv = get_virtual_env(flexprompt.python_virtual_env_variable)
+    if not venv then return end
+
+    local always = flexprompt.parse_arg_keyword(args, "a", "always")
+    if not always and not has_py_files() then return end
+
+    local text = "[" .. venv .. "]"
+    if (flexprompt.python_symbol or "") ~= "" then
+        text = flexprompt.python_symbol .. " " .. text
+    end
+
+    local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1837,6 +1969,9 @@ end
     duration = render_duration,
     exit = render_exit,
     git = render_git,
+    maven = render_maven,
+    npm = render_npm,
+    python = render_python,
     time = render_time,
     user = render_user,
 }
