@@ -831,7 +831,7 @@ local function spacing_onbeginedit()
         local up = 0
         while line > 0 do
             text = console.getlinetext(line)
-            if #text ~= 0 then
+            if not text or #text ~= 0 then
                 break
             end
             up = up + 1
