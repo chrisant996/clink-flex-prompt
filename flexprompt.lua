@@ -533,7 +533,7 @@ local function next_segment(text, color, rainbow_text_color)
     else
         sep = segmenter.separator
         if classic then
-            transition_color = segmenter.frame_color[fc_fore]
+            transition_color = segmenter.frame_color[fc_frame]
         end
     end
 
