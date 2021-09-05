@@ -539,11 +539,8 @@ local function next_segment(text, color, rainbow_text_color)
     if not color then
         color = flexprompt.colors.brightred
     end
-    if not rainbow_text_color then
-        rainbow_text_color = flexprompt.colors.brightred
-    else
-        rainbow_text_color = lookup_color(rainbow_text_color)
-    end
+    rainbow_text_color = lookup_color(rainbow_text_color or "white")
+    if not rainbow_text_color then rainbow_text_color = flexprompt.colors.brightred end
 
     local sep
     local transition_color = color
