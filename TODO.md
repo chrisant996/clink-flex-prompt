@@ -10,7 +10,11 @@
 - [ ] Configuration wizard.
 
 ### Modules
+- [ ] Hg.
+- [ ] Maven.
 - [ ] Npm.
+- [ ] Python.
+- [ ] Svn.
 
 ---
 Chris Antos - sparrowhawk996@gmail.com
