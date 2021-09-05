@@ -611,6 +611,85 @@ local function next_segment(text, color, rainbow_text_color)
 end
 
 --------------------------------------------------------------------------------
+-- Coroutines.
+
+local coroutines = {}
+
+local function coroutines_onbeginedit()
+    coroutines = {}
+    _promptcoroutine = nil
+end
+
+local function promptcoroutine_manager()
+    for _,entry in pairs(coroutines) do
+        entry.func(true--[[async]])
+    end
+end
+
+local function promptcoroutine(func)
+    if not segmenter._current_module then return end
+
+    local entry = coroutines[segmenter._current_module]
+    if entry == nil then
+        entry = { done=false, result=nil }
+        coroutines[segmenter._current_module] = entry
+
+        -- Wrap func to track completion and result.
+        entry.func = function (async)
+            local o = func(async)
+            entry.done = true
+            entry.result = o
+        end
+
+        local async = settings.get("prompt.async")
+        if async then
+            -- Create the prompt coroutine manager if needed.
+            if not _promptcoroutine then
+                _promptcoroutine = clink.promptcoroutine(promptcoroutine_manager)
+            end
+        else
+            -- Create coroutine for running func synchronously.  We must
+            -- maintain func's expectation that it is run as a coroutine, even
+            -- when it's not being run asynchronously.
+            local c = coroutine.create(function (async)
+                entry.func(async)
+            end)
+
+            -- Run the coroutine synchronously.
+            local max_iter = 25
+            for iteration = 1, max_iter + 1, 1 do
+                -- Pass false to let it know it is not async.
+                local result, _ = coroutine.resume(c, false--[[async]])
+                if result then
+                    if coroutine.status(c) == "dead" then
+                        break
+                    end
+                else
+                    if _ and type(_) == "string" then
+                        _error_handler(_)
+                    end
+                    break
+                end
+                -- Cap iterations when running synchronously, in case it's
+                -- poorly behaved.
+                if iteration >= max_iter then
+                    -- Ideally this could print an error message about
+                    -- abandoning a misbehaving coroutine, but that would mess
+                    -- up the prompt and input line display.
+                    break
+                end
+            end
+
+            -- Update the entry indicating completion, even if the loop ended
+            -- before func ever returned.
+            entry.done = true
+        end
+    end
+
+    return entry.result
+end
+
+--------------------------------------------------------------------------------
 -- Module parsing and rendering.
 
 local function render_module(name, args)
@@ -642,7 +721,7 @@ local function render_modules(prompt, side, frame_color)
             name = cap
         end
 
-        segmenter._current_module = name -- Note the segment, for debugging purposes.
+        segmenter._current_module = name
 
         if name and #name > 0 then
             local text,color,rainbow_text_color = render_module(name, args)
@@ -665,6 +744,8 @@ local function render_modules(prompt, side, frame_color)
                 end
             end
         end
+
+        segmenter._current_module = nil
     end
 
     out = out .. next_segment(nil, flexprompt.colors.default)
@@ -944,6 +1025,10 @@ flexprompt.make_fluent_text = make_fluent_text
 -- Function to check whether extended colors are available (256 color and 24 bit
 -- color codes).
 flexprompt.can_use_extended_colors = can_use_extended_colors
+
+-- Function to register a module's prompt coroutine.
+-- IMPORTANT:  Use this instead of clink.promptcoroutine()!
+flexprompt.promptcoroutine = promptcoroutine
 
 --------------------------------------------------------------------------------
 -- Internal helpers.
@@ -1584,7 +1669,7 @@ local function render_git(args)
     end
 
     -- Use coroutine to collect status info asynchronously.
-    local info = clink.promptcoroutine(collect_git_info)
+    local info = flexprompt.promptcoroutine(collect_git_info)
 
     -- Use cached info until coroutine is finished.
     if not info then
@@ -1754,6 +1839,7 @@ end
 -- Shared event handlers.
 
 local function onbeginedit()
+    coroutines_onbeginedit()
     duration_onbeginedit()
     spacing_onbeginedit()
 end
