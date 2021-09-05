@@ -169,8 +169,9 @@ flexprompt.choices.frame_colors =
 
 flexprompt.choices.spacing =
 {
-    normal      = 0,
-    sparse      = 1,
+    compact     = "compact",
+    normal      = "normal",
+    sparse      = "sparse",
 }
 
 flexprompt.choices.flows =
@@ -213,7 +214,7 @@ local symbols =
 flexprompt.settings.lines = "two"
 flexprompt.settings.style = "classic"
 flexprompt.settings.flow = "fluent"
---flexprompt.settings.spacing = "sparse"
+flexprompt.settings.spacing = "sparse"
 --flexprompt.settings.left_frame = "round"
 --flexprompt.settings.right_frame = "round"
 flexprompt.settings.connection = "solid"
@@ -278,7 +279,9 @@ local function get_lines()
 end
 
 local function get_spacing()
-    return flexprompt.choices.spacing[flexprompt.settings.spacing or "normal"] or 0
+    -- Indexing into the spacing table validates that the spacing name is
+    -- recognized.
+    return flexprompt.choices.spacing[flexprompt.settings.spacing or "normal"] or "normal"
 end
 
 local function get_connector()
@@ -769,7 +772,7 @@ function pf:filter(prompt)
         right = right .. " "
     end
 
-    if get_spacing() > 0 then
+    if get_spacing() == "sparse" then
         prompt = sgr() .. "\r\n" .. prompt
     end
 
@@ -802,6 +805,28 @@ function plus_capture:filter(prompt)
     end
     if plusBegin ~= nil then
         dirStackDepth = prompt:sub(plusBegin, plusEnd).." "
+    end
+end
+
+-- Consume blank lines before the prompt.  Powerlevel10k doesn't consume blank
+-- lines, but CMD causes blank lines more often than zsh does, so to achieve a
+-- similar effect it's necessary to consume blank lines.
+local function spacing_onbeginedit()
+    if get_spacing() ~= "normal" then
+        local text
+        local line = console.getnumlines() - 1
+        local up = 0
+        while line > 0 do
+            text = console.getlinetext(line)
+            if #text ~= 0 then
+                break
+            end
+            up = up + 1
+            line = line - 1
+        end
+        if up > 0 then
+            clink.print("\x1b[" .. up .. "A\x1b[J", NONL)
+        end
     end
 end
 
@@ -1347,6 +1372,20 @@ end
 local endedit_time
 local _duration
 
+local function duration_onbeginedit()
+    if endedit_time then
+        local beginedit_time = os.time()
+        local elapsed = beginedit_time - endedit_time
+        if elapsed >= 0 then
+            _duration = math.floor(elapsed)
+        end
+    end
+end
+
+local function duration_onendedit()
+    endedit_time = os.time()
+end
+
 local function render_duration(args)
     if not _duration then
         return
@@ -1372,20 +1411,6 @@ local function render_duration(args)
 
     return text, color, altcolor
 end
-
-clink.onbeginedit(function ()
-    if endedit_time then
-        local beginedit_time = os.time()
-        local elapsed = beginedit_time - endedit_time
-        if elapsed >= 0 then
-            _duration = math.floor(elapsed)
-        end
-    end
-end)
-
-clink.onendedit(function ()
-    endedit_time = os.time()
-end)
 
 --------------------------------------------------------------------------------
 -- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
@@ -1704,3 +1729,17 @@ end
     user = render_user,
 }
 
+--------------------------------------------------------------------------------
+-- Shared event handlers.
+
+local function onbeginedit()
+    duration_onbeginedit()
+    spacing_onbeginedit()
+end
+
+local function onendedit()
+    duration_onendedit()
+end
+
+clink.onbeginedit(onbeginedit)
+clink.onendedit(onendedit)
