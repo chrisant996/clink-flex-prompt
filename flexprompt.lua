@@ -114,8 +114,8 @@ flexprompt.choices.ascii_separators =
 {               --  Left    Right
     none        = { "",     ""      },
     vertical    = { "|",    "|"     },
-    slash       = { "/",    "/"     },
-    backslash   = { "\\",   "\\"    },
+    upslant     = { "/",    "/"     },
+    downslant   = { "\\",   "\\"    },
 }
 
 -- Only if style == classic.
@@ -138,7 +138,7 @@ flexprompt.choices.lines =
     two         = 2,
 }
 
--- Only if lines > 1 and sides == both.
+-- Only if lines > 1 and right_prompt is not nil.
 flexprompt.choices.connections =
 {
     disconnected= " ",
@@ -146,7 +146,7 @@ flexprompt.choices.connections =
     solid       = "─",
 }
 
--- Only if lines > 1 and sides == both.
+-- Only if lines > 1.
 flexprompt.choices.left_frames =
 {
     none        = {},
@@ -154,7 +154,7 @@ flexprompt.choices.left_frames =
     round       = { "╭─",   "╰─"    },
 }
 
--- Only if lines > 1 and sides == both.
+-- Only if lines > 1 and right_prompt is not nil.
 flexprompt.choices.right_frames =
 {
     none        = {},
@@ -201,6 +201,24 @@ flexprompt.choices.prompt_symbols =
     angle       = ">",
     dollar      = "$",
     percent     = "%",
+}
+
+local ascii_symbols =
+{
+    conflict        = "!",
+    addcount        = "+",
+    modifycount     = "*",
+    deletecount     = "-",
+    renamecount     = "",   -- Empty string counts renames as modified.
+    summarycount    = "#",
+    untrackedcount  = "?",
+    aheadbehind     = "",   -- Optional symbol preceding ahead/behind counts.
+    aheadcount      = ">>",
+    behindcount     = "<<",
+    staged          = "@",
+    battery         = "%",
+    charging        = "++",
+    prompt          = ">",
 }
 
 local symbols =
@@ -283,6 +301,20 @@ local function get_style_ground()
     return (get_style() == "rainbow") and "bg" or "fg"
 end
 
+local _charset
+local function get_charset()
+    if not _charset then
+        -- Indexing into the charsets table validates that the charset name is
+        -- recognized.
+        if get_style() == "rainbow" then
+            _charset = "unicode"
+        else
+            _charset = flexprompt.choices.charsets[flexprompt.settings.charset or "unicode"] or "unicode"
+        end
+    end
+    return _charset
+end
+
 local function get_lines()
     return flexprompt.choices.lines[flexprompt.settings.lines or "one"] or 1
 end
@@ -360,7 +392,13 @@ local function get_frame_color()
 end
 
 local function get_symbol(name)
-    return flexprompt.symbols[name] or symbols[name] or "?!"
+    if not _charset then get_charset() end
+
+    if _charset == "ascii" then
+        return flexprompt.symbols[name] or ascii_symbols[name] or "?!"
+    else
+        return flexprompt.symbols[name] or symbols[name] or "?!"
+    end
 end
 
 local function get_prompt_symbol_color()
@@ -448,6 +486,7 @@ end
 local segmenter = nil
 
 local function init_segmenter(side, frame_color)
+    local charset = get_charset()
     local open_caps, close_caps, separators
 
     if side == 0 then
@@ -458,10 +497,18 @@ local function init_segmenter(side, frame_color)
         close_caps = flexprompt.settings.tails or "flat"
     end
     if type(open_caps) ~= "table" then
-        open_caps = flexprompt.choices.caps[open_caps]
+        if charset == "ascii" then
+            open_caps = flexprompt.choices.caps["flat"]
+        else
+            open_caps = flexprompt.choices.caps[open_caps]
+        end
     end
     if type(close_caps) ~= "table" then
-        close_caps = flexprompt.choices.caps[close_caps]
+        if charset == "ascii" then
+            close_caps = flexprompt.choices.caps["flat"]
+        else
+            close_caps = flexprompt.choices.caps[close_caps]
+        end
     end
 
     segmenter = {}
@@ -484,6 +531,7 @@ local function init_segmenter(side, frame_color)
         segmenter.open_cap = ""
         segmenter.close_cap = ""
     else
+        -- TBD: ascii charset
         separators = flexprompt.settings.separators or flexprompt.settings.heads or "flat"
         if flexprompt.choices.caps[separators] then
             local redirect = flexprompt.choices.caps[separators].separators
@@ -1611,6 +1659,9 @@ local git = {}
 local cached_info = {}
 
 local function append_text(lhs, rhs)
+    if not lhs then return rhs end
+    if not rhs then return lhs end
+
     if #lhs > 0 and #rhs > 0 then
         return lhs .. " " .. rhs
     else
@@ -2156,6 +2207,7 @@ end
 -- Shared event handlers.
 
 local function onbeginedit()
+    _charset = nil
     coroutines_onbeginedit()
     duration_onbeginedit()
     spacing_onbeginedit()
