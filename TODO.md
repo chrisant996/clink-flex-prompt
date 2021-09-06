@@ -1,10 +1,8 @@
 ### Bugs
 
 ### General
-- [ ] ASCII separators lookup.
 - [ ] Let environment variables override Lua config.
 - [ ] Documentation.
-- [ ] ASCII mode; no icons.
 - [ ] When to show symbols.
 
 ### Configuration wizard
@@ -12,6 +10,9 @@
 - [ ] Configuration wizard.
 
 ### Modules
+
+### Maybe Later
+- [ ] Functions as symbols?  E.g. to get specific battery level icon.
 
 ---
 Chris Antos - sparrowhawk996@gmail.com

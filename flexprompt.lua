@@ -198,46 +198,28 @@ flexprompt.choices.transient =
 -- Only if lines > 1 and left frame none, or if lines == 1 and style == lean, or if transient.
 flexprompt.choices.prompt_symbols =
 {
-    angle       = ">",
-    dollar      = "$",
-    percent     = "%",
-}
-
-local ascii_symbols =
-{
-    conflict        = "!",
-    addcount        = "+",
-    modifycount     = "*",
-    deletecount     = "-",
-    renamecount     = "",   -- Empty string counts renames as modified.
-    summarycount    = "#",
-    untrackedcount  = "?",
-    aheadbehind     = "",   -- Optional symbol preceding ahead/behind counts.
-    aheadcount      = ">>",
-    behindcount     = "<<",
-    staged          = "@",
-    battery         = "%",
-    charging        = "++",
-    prompt          = ">",
+    angle       = { ">" }, -- unicode="❯" looks very good in some fonts, and is missing in some fonts.
+    dollar      = { "$" },
+    percent     = { "%" },
 }
 
 local symbols =
 {
-    branch          = "",
-    conflict        = "!",
-    addcount        = "+",
-    modifycount     = "*",
-    deletecount     = "-",
-    renamecount     = "",   -- Empty string counts renames as modified.
-    summarycount    = "±",
-    untrackedcount  = "?",
-    aheadbehind     = "",   -- Optional symbol preceding ahead/behind counts.
-    aheadcount      = "↓",
-    behindcount     = "↑",
-    staged          = "↗",
-    battery         = "%",
-    charging        = "++",
-    prompt          = ">",
+    branch          = {         unicode="" },
+    conflict        = { "!" },
+    addcount        = { "+" },
+    modifycount     = { "*" },
+    deletecount     = { "-" },
+    renamecount     = { "" },   -- Empty string counts renames as modified.
+    summarycount    = { "*",    unicode="±" },
+    untrackedcount  = { "?" },
+    aheadbehind     = { "" },    -- Optional symbol preceding ahead/behind counts.
+    aheadcount      = { ">>",   unicode="↓" },
+    behindcount     = { "<<",   unicode="↑" },
+    staged          = { "#",    unicode="↗" },
+    battery         = { "%" },
+    charging        = { "++",   unicode="⚡" },
+    prompt          = "angle",
 }
 
 flexprompt.settings.battery_idle_refresh = true
@@ -394,13 +376,12 @@ local function get_frame_color()
 end
 
 local function get_symbol(name)
-    if not _charset then get_charset() end
-
-    if _charset == "ascii" then
-        return flexprompt.symbols[name] or ascii_symbols[name] or "?!"
-    else
-        return flexprompt.symbols[name] or symbols[name] or "?!"
+    local symbol = flexprompt.symbols[name] or "?!"
+    if type(symbol) == "table" then
+        if not _charset then get_charset() end
+        symbol = symbol[_charset] or symbol[1] or "?!"
     end
+    return symbol
 end
 
 local function get_prompt_symbol_color()
@@ -419,7 +400,12 @@ local function get_prompt_symbol_color()
 end
 
 local function get_prompt_symbol()
-    return flexprompt.choices.prompt_symbols[flexprompt.settings.prompt_symbols or "angle"] or flexprompt.choices.prompt_symbols["angle"]
+    local symbol = flexprompt.choices.prompt_symbols[flexprompt.symbols.prompt or "angle"] or flexprompt.choices.prompt_symbols["angle"]
+    if type(symbol) == "table" then
+        if not _charset then get_charset() end
+        symbol = symbol[_charset] or symbol[1] or "?!"
+    end
+    return symbol
 end
 
 local function get_flow()
