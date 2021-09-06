@@ -1,6 +1,7 @@
 ### Bugs
 
 ### General
+- [ ] ASCII separators lookup.
 - [ ] Let environment variables override Lua config.
 - [ ] Documentation.
 - [ ] ASCII mode; no icons.
