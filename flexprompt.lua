@@ -373,7 +373,7 @@ end
 local function get_frame_color()
     local frame_color = flexprompt.settings.frame_color or "light"
     if type(frame_color) ~= table then
-        frame_color = flexprompt.choices.frame_colors[flexprompt.settings.frame_color] or flexprompt.settings.frame_color
+        frame_color = flexprompt.choices.frame_colors[frame_color] or frame_color
     end
 
     if type(frame_color) ~= "table" then
