@@ -480,6 +480,17 @@ local function has_dir(dir, subdir)
     return os.isdir(test) and test
 end
 
+local function append_text(lhs, rhs)
+    if not lhs then return rhs end
+    if not rhs then return lhs end
+
+    if #lhs > 0 and #rhs > 0 then
+        return lhs .. " " .. rhs
+    else
+        return lhs .. rhs
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Segments.
 
@@ -1098,6 +1109,15 @@ flexprompt.make_fluent_text = make_fluent_text
 -- color codes).
 flexprompt.can_use_extended_colors = can_use_extended_colors
 
+-- Function to get customizable symbol for current module.
+function flexprompt.get_module_symbol()
+    local s = ""
+    if segmenter and segmenter._current_module then
+        s = flexprompt.symbols[segmenter._current_module .. "_module"] or ""
+    end
+    return s
+end
+
 -- Function to register a module's prompt coroutine.
 -- IMPORTANT:  Use this instead of clink.promptcoroutine()!
 flexprompt.promptcoroutine = promptcoroutine
@@ -1530,13 +1550,13 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    if (flexprompt.settings.cwd_git_symbol or "") ~= "" then
-                        cwd = flexprompt.settings.cwd_git_symbol .. " " .. cwd
-                    end
+                    cwd = append_text(flexprompt.symbols.cwd_git_symbol, cwd)
                 end
             end
         until true
     end
+
+    cwd = append_text(flexprompt.get_module_symbol(), cwd)
 
     return dirStackDepth .. cwd, color, "white"
 end
@@ -1578,7 +1598,8 @@ local function render_duration(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local text = _duration .. "s"
+    local text = duration .. "s"
+    text = append_text(flexprompt.get_module_symbol(), text)
 
     if flexprompt.get_flow() == "fluent" then
         text = flexprompt.make_fluent_text("took ") .. text
@@ -1619,6 +1640,7 @@ local function render_exit(args)
     else
         text = value
     end
+    text = append_text(flexprompt.get_module_symbol(), text)
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -1657,17 +1679,6 @@ end
 
 local git = {}
 local cached_info = {}
-
-local function append_text(lhs, rhs)
-    if not lhs then return rhs end
-    if not rhs then return lhs end
-
-    if #lhs > 0 and #rhs > 0 then
-        return lhs .. " " .. rhs
-    else
-        return lhs .. rhs
-    end
-end
 
 -- Add status details to the segment text.  Depending on git.status_details this
 -- may show verbose counts for operations, or a concise overall count.
@@ -1784,9 +1795,8 @@ local function render_git(args)
     elseif gitUnknown then
         colors = git_colors.unknown
     end
-    if (flexprompt.git_symbol or "") ~= "" then
-        text = append_text(flexprompt.git_symbol, text)
-    end
+    text = append_text(flexprompt.get_module_symbol(), text)
+
     local color, altcolor = parse_color_token(args, colors)
     table.insert(segments, { text, color, altcolor })
 
@@ -1881,9 +1891,7 @@ local function render_hg(args)
     elseif style ~= "lean" then
         text = append_text(get_symbol("branch"), text)
     end
-    if (flexprompt.hg_symbol or "") ~= "" then
-        text = append_text(flexprompt.hg_symbol, text)
-    end
+    text = append_text(flexprompt.get_module_symbol(), text)
 
     local pipe = io.popen("hg status -amrd 2>&1")
     local output = pipe:read('*all')
@@ -1943,9 +1951,7 @@ local function render_npm(args)
         end
 
         local text = package_group .. ":" .. package_artifact .. ":" .. package_version
-        if (flexprompt.maven_symbol or "mvn:") ~= "" then
-            text = flexprompt.maven_symbol .. " " .. text
-        end
+        text = append_text(flexprompt.get_module_symbol(), text)
 
         local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
         return text, color, altcolor
@@ -1980,9 +1986,7 @@ local function render_npm(args)
     local package_version = string.match(package_info, '"version"%s*:%s*"(.-)"') or ""
 
     local text = package_name .. "@" .. package_version
-    if (flexprompt.npm_symbol or "") ~= "" then
-        text = plc_npm.npmSymbol .. " " .. text
-    end
+    text = append_text(flexprompt.get_module_symbol(), text)
 
     local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
     return text, color, altcolor
@@ -2031,9 +2035,7 @@ local function render_python(args)
     if not always and not has_py_files() then return end
 
     local text = "[" .. venv .. "]"
-    if (flexprompt.python_symbol or "") ~= "" then
-        text = flexprompt.python_symbol .. " " .. text
-    end
+    text = append_text(flexprompt.get_module_symbol(), text)
 
     local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
     return text, color, altcolor
@@ -2103,9 +2105,7 @@ local function render_svn(args)
     elseif style ~= "lean" then
         text = append_text(get_symbol("branch"), text)
     end
-    if (flexprompt.svn_symbol or "") ~= "" then
-        text = append_text(flexprompt.svn_symbol, text)
-    end
+    text = append_text(flexprompt.get_module_symbol(), text)
 
     if get_svn_status() then
         colors = svn_colors.dirty
