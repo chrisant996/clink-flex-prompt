@@ -101,7 +101,7 @@ flexprompt.choices.ascii_caps =
 flexprompt.choices.caps =
 {
                 --  Open    Close
-    flat        = { "",     "",     separators="pointed" },
+    flat        = { "",     "",     separators="none" },
     pointed     = { "",    ""     },
     upslant     = { "",    ""     },
     downslant   = { "",    ""     },
