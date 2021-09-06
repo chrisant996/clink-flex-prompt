@@ -15,9 +15,9 @@ end
 --------------------------------------------------------------------------------
 -- Internals.
 
-flexprompt = {}
-flexprompt.settings = {}
-flexprompt.symbols = {}
+flexprompt = flexprompt or {}
+flexprompt.settings = flexprompt.settings or {}
+flexprompt.symbols = flexprompt.symbols or {}
 local modules
 
 --------------------------------------------------------------------------------
