@@ -240,23 +240,25 @@ local symbols =
     prompt          = ">",
 }
 
-flexprompt.settings.lines = "two"
-flexprompt.settings.style = "classic"
-flexprompt.settings.flow = "fluent"
-flexprompt.settings.spacing = "sparse"
---flexprompt.settings.left_frame = "round"
---flexprompt.settings.right_frame = "round"
-flexprompt.settings.connection = "solid"
---flexprompt.settings.tails = "blurred"
-flexprompt.settings.heads = "pointed"
---flexprompt.settings.separators = "none"
-flexprompt.settings.frame_color = "dark"
---flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git}"
---flexprompt.settings.right_prompt = "{exit}{duration}{time}"
-flexprompt.settings.left_prompt = "{battery:s=100:br}{cwd}{git:showremote}{exit}{duration}{time}"
-
 flexprompt.settings.battery_idle_refresh = true
 flexprompt.settings.use_home_tilde = true
+--flexprompt.settings.prompt_symbol
+--flexprompt.settings.prompt_symbol_color
+--flexprompt.settings.exit_zero_color
+--flexprompt.settings.exit_nonzero_color
+--flexprompt.settings.exit_nonzero_color
+--flexprompt.symbols.cwd_git_symbol
+--flexprompt.symbols.{name}_module
+
+--------------------------------------------------------------------------------
+-- Wizard state.
+
+local _in_wizard
+local _screen_width
+local _wizard_prefix = ""
+local _cwd
+local _duration
+local _exit
 
 --------------------------------------------------------------------------------
 -- Configuration helpers.
@@ -429,11 +431,15 @@ local function make_fluent_text(text)
     return "\001" .. text .. "\002"
 end
 
+local function get_screen_width()
+    return _screen_width or console.getwidth()
+end
+
 local function connect(lhs, rhs, frame, sgr_frame_color)
     local lhs_len = console.cellcount(lhs)
     local rhs_len = console.cellcount(rhs)
     local frame_len = console.cellcount(frame)
-    local width = console.getwidth() - 1
+    local width = get_screen_width() - 1
     local gap = width - (lhs_len + rhs_len + frame_len)
     if gap < 0 then
         gap = gap + rhs_len
@@ -454,6 +460,14 @@ end
 
 local function reset_cached_state()
     _can_use_extended_colors = nil
+    _charset = nil
+
+    _in_wizard = nil
+    _screen_width = nil
+    _wizard_prefix = ""
+    _cwd = nil
+    _duration = nil
+    _exit = nil
 end
 
 --------------------------------------------------------------------------------
@@ -836,28 +850,25 @@ local function render_modules(prompt, side, frame_color)
     return out
 end
 
---------------------------------------------------------------------------------
--- Build prompt.
-
-local pf = clink.promptfilter(5)
-local continue_filtering = nil
-
-if CMDER_SESSION then
-    -- Halt further prompt filtering when used with Cmder.  This ensures our
-    -- prompt replaces the Cmder default prompt.
-    continue_filtering = false
-
-    -- Disable the Cmder prompt's version control status, since it's expensive
-    -- and we supersede it with our own prompt text.  It should be unreachable
-    -- because of setting continue_filtering = false, but is still included for
-    -- extra thoroughness.
-    prompt_includeVersionControl = false
-end
-
-local right
-
-function pf:filter(prompt)
+local function render_prompts(settings)
     reset_cached_state()
+
+    local old_settings = flexprompt.settings
+    if settings then
+        flexprompt.settings = settings
+        if settings.wizard then
+            local width = console.getwidth()
+            _in_wizard = true
+            _screen_width = settings.wizard.width or (width - 4)
+            _wizard_prefix = ""
+            if _screen_width < width then
+                _wizard_prefix = string.rep(" ", (width - _screen_width) / 2)
+            end
+            _cwd = settings.wizard.cwd
+            _duration = settings.wizard.duration
+            _exit = settings.wizard.exit
+        end
+    end
 
     local style = get_style()
     local lines = get_lines()
@@ -937,11 +948,13 @@ function pf:filter(prompt)
 
     -- Combine segments ------------------------------------------------------
 
-    prompt = left1
+    local prompt = left1
+    local rprompt
+
     if lines == 1 then
-        right = right1
+        rprompt = right1
     else
-        right = right2
+        rprompt = right2
         if right1 or right_frame then
             if style == "lean" then
                 -- Padding around left/right segments for lean style.
@@ -950,17 +963,55 @@ function pf:filter(prompt)
             end
             prompt = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
         end
-        prompt = prompt .. sgr() .. "\r\n" .. left2
+        prompt = _wizard_prefix .. prompt .. sgr() .. "\r\n" .. _wizard_prefix .. left2
     end
 
-    if #right > 0 then
-        right = right .. " "
+    if #rprompt > 0 then
+        rprompt = rprompt .. "\x1b[m "
     end
 
     if get_spacing() == "sparse" then
         prompt = sgr() .. "\r\n" .. prompt
     end
 
+    if settings then flexprompt.settings = old_settings end
+
+    return prompt, rprompt
+end
+
+function flexprompt.render_wizard(settings)
+    local left, right = render_prompts(settings)
+    local col
+    if not right or right == "" then
+        right = nil
+    else
+        col = #_wizard_prefix + (_screen_width - console.cellcount(right)) - 1
+    end
+    return left, right, col
+end
+
+--------------------------------------------------------------------------------
+-- Build prompt.
+
+local pf = clink.promptfilter(5)
+local continue_filtering = nil
+
+if CMDER_SESSION then
+    -- Halt further prompt filtering when used with Cmder.  This ensures our
+    -- prompt replaces the Cmder default prompt.
+    continue_filtering = false
+
+    -- Disable the Cmder prompt's version control status, since it's expensive
+    -- and we supersede it with our own prompt text.  It should be unreachable
+    -- because of setting continue_filtering = false, but is still included for
+    -- extra thoroughness.
+    prompt_includeVersionControl = false
+end
+
+local right
+
+function pf:filter(prompt)
+    prompt, right = render_prompts()
     return prompt
 end
 
@@ -1515,7 +1566,7 @@ local function render_cwd(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local cwd = os.getcwd()
+    local cwd = _cwd or os.getcwd()
     local git_dir
 
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
@@ -1567,14 +1618,14 @@ end
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
 local endedit_time
-local _duration
+local last_duration
 
 local function duration_onbeginedit()
     if endedit_time then
         local beginedit_time = os.time()
         local elapsed = beginedit_time - endedit_time
         if elapsed >= 0 then
-            _duration = math.floor(elapsed)
+            last_duration = math.floor(elapsed)
         end
     end
 end
@@ -1584,7 +1635,8 @@ local function duration_onendedit()
 end
 
 local function render_duration(args)
-    if (_duration or 0) <= 0 then return end
+    local duration = _duration or last_duration
+    if (duration or 0) <= 0 then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -1621,7 +1673,7 @@ local function render_exit(args)
     if not os.geterrorlevel then return end
 
     local text
-    local value = os.geterrorlevel()
+    local value = _exit or os.geterrorlevel()
 
     local always = flexprompt.parse_arg_keyword(args, "a", "always")
     if not always and value == 0 then return end
@@ -2207,7 +2259,6 @@ end
 -- Shared event handlers.
 
 local function onbeginedit()
-    _charset = nil
     coroutines_onbeginedit()
     duration_onbeginedit()
     spacing_onbeginedit()

@@ -3,3 +3,4 @@ tags
 *.swp
 *.exe
 *.patch
+flexprompt_autoconfig.lua
