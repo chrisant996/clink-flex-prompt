@@ -2,6 +2,8 @@ local normal = "\x1b[m"
 local bold = "\x1b[1m"
 local brightgreen = "\x1b[92m"
 
+local static_cursor = "\x1b[7m " .. normal
+
 local function readinput()
     if console.readinput then
         local key = console.readinput()
@@ -85,7 +87,7 @@ end
 local function display_preview(settings)
     local left, right, col = flexprompt.render_wizard(settings)
 
-    clink.print(left .. normal, NONL)
+    clink.print(left .. normal .. static_cursor, NONL)
     if right then
         clink.print("\x1b[" .. col .. "G" .. right .. normal)
     else
@@ -113,6 +115,11 @@ local function display_quit(choices)
     return choices .. "q"
 end
 
+local function friendly_case(text)
+    if text == "ascii" then return "ASCII" end
+    return text:sub(1, 1):upper() .. text:sub(2)
+end
+
 local function choose_setting(settings, title, choices_name, setting_name, subset)
     local index
     local choices = ""
@@ -127,7 +134,7 @@ local function choose_setting(settings, title, choices_name, setting_name, subse
 
         choices = choices .. tostring(index)
 
-        clink.print("(" .. index .. ")  " .. name:sub(1, 1):upper() .. name:sub(2) .. ".\n")
+        clink.print("(" .. index .. ")  " .. friendly_case(name) .. ".\n")
 
         local preview = copy_table(settings)
         preview[setting_name] = name
@@ -174,8 +181,8 @@ local function config_wizard()
                 exit = 0,
             },
             lines = "two",
-            left_prompt = "{cwd}",
-            right_prompt = "{duration}{time}",
+            left_prompt = "{cwd}{git}",
+            right_prompt = "{duration}",
         }
 
         clear_screen()
@@ -192,21 +199,96 @@ local function config_wizard()
         choices = display_quit(choices)
         s = readchoice(choices)
         if not s or s == "q" then break end
+        if s == "y" then preview.charset = "unicode" end
         if s == "n" then preview.charset = "ascii" end
 
         if preview.charset ~= "ascii" then
             preview.heads = "pointed"
+            preview.left_frame = "round"
+            preview.right_frame = "round"
         end
+
+        -- Configuration.
 
         s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow" })
         if not s or s == "q" then break end
         if s == "r" then goto continue end
+
+        if preview.charset == "unicode" then
+            s = choose_setting(preview, "Character Set", "charsets", "charset", { "unicode", "ascii" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+            if preview.charset == "ascii" then
+                preview.heads = nil
+            end
+        end
 
         if preview.style == "classic" then
             s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
+
+        -- TODO: Time is more complicated because it changes right_prompt content.
+
+        if preview.style == "classic" then
+            if preview.charset == "ascii" then
+                s = choose_setting(preview, "Prompt Separators", "ascii_separators", "separators", { "vertical", "upslant", "none" })
+            else
+                s = choose_setting(preview, "Prompt Separators", "separators", "separators", { "pointed", "vertical", "upslant", "round", "none" })
+            end
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
+
+        if preview.style ~= "lean" and preview.charset ~= "ascii" then
+            s = choose_setting(preview, "Prompt Heads", "caps", "heads", { "pointed", "blurred", "upslant", "round", "flat" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+            s = choose_setting(preview, "Prompt Tails", "caps", "tails", { "pointed", "blurred", "upslant", "round", "flat" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
+
+        s = choose_setting(preview, "Prompt Height", "lines", "lines", { "one", "two" })
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
+
+        if preview.lines == "two" then
+            s = choose_setting(preview, "Prompt Connection", "connections", "connection", { "disconnected", "dotted", "solid" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+            -- TODO: condense frames into one choice, and only present none and round options in the wizard.
+
+            s = choose_setting(preview, "Prompt Left Frame", "left_frames", "left_frame", { "none", "round", "square" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+            s = choose_setting(preview, "Prompt Right Frame", "right_frames", "right_frame", { "none", "round", "square" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+            if preview.style ~= "classic" and (preview.settings.left_frame ~= "none" or
+                                               preview.settings.right_frame ~= "none" or
+                                               preview.settings.connection ~= "disconnected") then
+                s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
+        end
+
+        -- TODO: Spacing is more complicated because multiple copies of the prompt must be drawn.
+
+        s = choose_setting(preview, "Prompt Flow", "flows", "flow", { "concise", "fluent" })
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
+
+        -- TODO: Transient prompt configuration.
+
+        -- Done.
 
         if os.isfile(settings_filename) then
             clear_screen()

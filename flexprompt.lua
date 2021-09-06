@@ -65,8 +65,8 @@ flexprompt.choices = {}
 
 flexprompt.choices.charsets =
 {
-    "ascii",
-    "unicode"
+    ascii       = "ascii",
+    unicode     = "unicode",
 }
 
 flexprompt.choices.styles =
@@ -94,14 +94,14 @@ flexprompt.choices.prompts =
 flexprompt.choices.ascii_caps =
 {
                 --  Open    Close
-    vertical    = { "",     ""      },
+    flat        = { "",     "",     separators="vertical" },
 }
 
 -- Only if style != lean.
 flexprompt.choices.caps =
 {
                 --  Open    Close
-    flat        = { "",     "",     separators="none" },
+    flat        = { "",     "",     separators="vertical" },
     pointed     = { "",    ""     },
     upslant     = { "",    ""     },
     downslant   = { "",    ""     },
@@ -241,6 +241,7 @@ local _wizard_prefix = ""
 local _cwd
 local _duration
 local _exit
+local _git
 
 --------------------------------------------------------------------------------
 -- Configuration helpers.
@@ -290,11 +291,7 @@ local function get_charset()
     if not _charset then
         -- Indexing into the charsets table validates that the charset name is
         -- recognized.
-        if get_style() == "rainbow" then
-            _charset = "unicode"
-        else
-            _charset = flexprompt.choices.charsets[flexprompt.settings.charset or "unicode"] or "unicode"
-        end
+        _charset = flexprompt.choices.charsets[flexprompt.settings.charset or "unicode"] or "unicode"
     end
     return _charset
 end
@@ -343,6 +340,9 @@ local function lookup_color(args, verbatim)
 end
 
 local function get_frame()
+    if not _charset then get_charset() end
+    if _charset == "ascii" then return end
+
     local l = flexprompt.choices.left_frames[flexprompt.settings.left_frame or "none"]
     local r = flexprompt.choices.right_frames[flexprompt.settings.right_frame or "none"]
     if l and #l == 0 then
@@ -454,6 +454,7 @@ local function reset_cached_state()
     _cwd = nil
     _duration = nil
     _exit = nil
+    _git = nil
 end
 
 --------------------------------------------------------------------------------
@@ -531,30 +532,24 @@ local function init_segmenter(side, frame_color)
     segmenter.close_cap = close_caps[2]
 
     if segmenter.style == "lean" then
-        --[[
-        separators = flexprompt.settings.separators or "vertical"
-        if type(separators) ~= "table" then
-            separators = flexprompt.choices.separators[separators]
-        end
-        segmenter.separator = " " .. separators[side + 1] .. " "
-        --]]
         segmenter.separator = " "
         segmenter.open_cap = ""
         segmenter.close_cap = ""
     else
-        -- TBD: ascii charset
+        local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
+        local available_separators = (charset == "ascii") and flexprompt.choices.ascii_separators or flexprompt.choices.separators
         separators = flexprompt.settings.separators or flexprompt.settings.heads or "flat"
-        if flexprompt.choices.caps[separators] then
-            local redirect = flexprompt.choices.caps[separators].separators
+        if available_caps[separators] then
+            local redirect = available_caps[separators].separators
             if redirect then
                 separators = redirect
             end
         end
         if segmenter.style == "classic" then
             if type(separators) ~= "table" then
-                separators = flexprompt.choices.separators[separators]
+                separators = available_separators[separators] or available_separators["vertical"]
             else
-                local custom = flexprompt.choices.separators[separators[side + 1]]
+                local custom = available_separators[separators[side + 1]]
                 if custom then
                     separators = { custom[side + 1], custom[side] }
                 end
@@ -562,13 +557,13 @@ local function init_segmenter(side, frame_color)
             segmenter.separator = separators[side + 1]
         elseif segmenter.style == "rainbow" then
             if type(separators) ~= "table" then
-                local altseparators = flexprompt.choices.separators[separators]
+                local altseparators = available_separators[separators]
                 if altseparators then
                     segmenter.altseparator = altseparators[side + 1]
                 end
-                separators = flexprompt.choices.caps[separators] or flexprompt.choices.caps["flat"]
+                separators = available_caps[separators] or available_caps["flat"]
             else
-                local custom = flexprompt.choices.caps[separators[side + 1]]
+                local custom = available_caps[separators[side + 1]]
                 if custom then
                     separators = { custom[side + 1], custom[side] }
                 end
@@ -844,6 +839,7 @@ local function render_prompts(settings)
         flexprompt.settings = settings
         if settings.wizard then
             local width = console.getwidth()
+            reset_cached_state()
             _in_wizard = true
             _screen_width = settings.wizard.width or (width - 4)
             _wizard_prefix = ""
@@ -853,6 +849,7 @@ local function render_prompts(settings)
             _cwd = settings.wizard.cwd
             _duration = settings.wizard.duration
             _exit = settings.wizard.exit
+            _git = settings.wizard.git
         end
     end
 
@@ -895,8 +892,11 @@ local function render_prompts(settings)
             left1 = sgr_frame_color .. left_frame[1] .. left1
         end
 
-        if lines == 1 and style == "lean" then
-            left1 = left1 .. get_prompt_symbol_color() .. " " .. get_prompt_symbol() .. " "
+        if lines == 1 then
+            if style == "lean" then
+                left1 = left1 .. get_prompt_symbol_color() .. sgr() .. " " .. get_prompt_symbol()
+            end
+            left1 = left1 .. sgr() .. " "
         end
 
         if right_prompt then
@@ -938,6 +938,7 @@ local function render_prompts(settings)
     local rprompt
 
     if lines == 1 then
+        prompt = _wizard_prefix .. prompt
         rprompt = right1
     else
         rprompt = right2
@@ -953,7 +954,7 @@ local function render_prompts(settings)
     end
 
     if #rprompt > 0 then
-        rprompt = rprompt .. "\x1b[m "
+        rprompt = rprompt .. sgr() .. " "
     end
 
     if get_spacing() == "sparse" then
@@ -971,7 +972,7 @@ function flexprompt.render_wizard(settings)
     if not right or right == "" then
         right = nil
     else
-        col = #_wizard_prefix + (_screen_width - console.cellcount(right)) - 1
+        col = #_wizard_prefix + (_screen_width - console.cellcount(right)) + 1
     end
     return left, right, col
 end
@@ -1772,6 +1773,11 @@ local git_colors =
 }
 
 local function render_git(args)
+    if _in_wizard then
+        local color, altcolor = parse_color_token(args, git_colors.clean)
+        return "master", color, altcolor
+    end
+
     local git_dir = flexprompt.get_git_dir()
     if not git_dir then
         return
