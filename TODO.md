@@ -1,6 +1,7 @@
 ### Bugs
 
 ### General
+- [ ] 8 bit color and 24 bit color don't seem to work in ConEmu, even though all the settings seem to be correct per the ConEmu documentation.
 - [ ] Documentation.
 
 ### Modules
