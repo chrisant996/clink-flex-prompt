@@ -541,7 +541,10 @@ local function config_wizard()
         if s == "y" then preview.charset = "unicode" end
         if s == "n" then preview.charset = "ascii" end
 
-        if preview.charset ~= "ascii" then
+        if preview.charset == "ascii" then
+            preview.left_frame = "none"
+            preview.right_frame = "none"
+        else
             preview.heads = "pointed"
             preview.left_frame = "round"
             preview.right_frame = "round"
@@ -574,10 +577,12 @@ local function config_wizard()
             s = choose_setting(preview, "Character Set", "charsets", "charset", { "unicode", "ascii" })
             if not s or s == "q" then break end
             if s == "r" then goto continue end
+        end
 
-            if preview.charset == "ascii" then
-                preview.heads = nil
-            end
+        if preview.charset == "ascii" then
+            preview.heads = nil
+            preview.left_frame = "none"
+            preview.right_frame = "none"
         end
 
         if preview.style == "lean" then
@@ -636,9 +641,11 @@ local function config_wizard()
             if not s or s == "q" then break end
             if s == "r" then goto continue end
 
-            s = choose_frames(preview, "Prompt Frame")
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
+            if preview.left_frame ~= "none" or preview.right_frame ~= "none" then
+                s = choose_frames(preview, "Prompt Frame")
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
 
             if preview.style ~= "classic" and (preview.left_frame ~= "none" or
                                                preview.right_frame ~= "none" or
