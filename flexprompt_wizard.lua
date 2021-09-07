@@ -614,9 +614,11 @@ local function config_wizard()
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
-        s = choose_transient(preview, "Transient Prompt")
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
+        if clink.version_encoded >= 10020029 then
+            s = choose_transient(preview, "Transient Prompt")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
 
         -- Done.
 
