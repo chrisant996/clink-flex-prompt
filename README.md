@@ -14,7 +14,7 @@ Some of the prompt modules are based on [cmder-powerline-prompt](https://github.
 
 Flex prompt can be easily customized via its configuration wizard.
 
-- [ ] _TBD: How to use the configuration wizard._
+To start the wizard, run `flexprompt configure` and follow the instructions on the screen.
 
 # Advanced Configuration
 
@@ -51,6 +51,8 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
+
+- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt.lua` to find the available options for each module._
 
 ## Style
 - `"lean"` shows prompt modules using only colored text.
