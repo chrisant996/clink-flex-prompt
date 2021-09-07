@@ -6,18 +6,30 @@ There are several built-in prompt modules, and it's easy to add new custom promp
 
 The style of the prompt can be customized in many ways as well.
 
-# Customizations
+Flex prompt for Clink was inspired by the zsh [powerlevel10k](https://github.com/romkatv/powerlevel10k) theme by Roman Perepelitsa.
 
-Flex prompt can be customized via its configuration wizard (_TBD_), or by assigning settings in a `flexprompt_config.lua` file.
+# Configuration Wizard
+
+Flex prompt can be easily customized via its configuration wizard.
+
+- [ ] _TBD: How to use the configuration wizard._
+
+# Advanced Configuration
+
+The wizard doesn't cover everything, and more advanced configuration is possible by assigning settings manually in a `flexprompt_config.lua` file.
+
+The script will look something like this:
 
 **flexprompt_config.lua**
 ```lua
-flexprompt.settings.style = "rainbow"
+flexprompt.settings.style = "classic"
 flexprompt.settings.heads = "pointed"
 flexprompt.settings.lines = "two"
+flexprompt.settings.left_prompt = "{cwd}{git}"
+flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-### Modules
+## Modules
 The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` string variables list prompt modules to be displayed.
 
 - `"{battery}"` shows the battery level and whether the battery is charging.
@@ -38,7 +50,7 @@ flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-### Style
+## Style
 - `"lean"` shows prompt modules using only colored text.
 - `"classic"` shows prompt modules using colored text on a gray background.
 - `"rainbow"` shows prompt modules using text on colored backgrounds.
@@ -47,7 +59,7 @@ flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 flexprompt.settings.style = "classic"
 ```
 
-### Charset
+## Charset
 - `"ascii"` uses only ASCII characters, and is compatible with all fonts; text copy/pasted from the terminal display will look right everywhere.
 - `"unicode"` uses Unicode characters to add styling to the prompt, and requires fonts compatible with powerline symbols; text copy/pasted from the terminal display will look wrong when pasted somewhere that doesn't use a compatible font.
 
@@ -57,7 +69,7 @@ The "rainbow" style requires Unicode.
 flexprompt.settings.charset = "unicode"
 ```
 
-### Frame Color
+## Frame Color
 - `"lightest"`
 - `"light"`
 - `"dark"`
@@ -80,13 +92,13 @@ flexprompt.settings.frame_color =
 }
 ```
 
-### Separators
+## Separators
 For the "classic" style:
 - `"none"` is just a space between prompt modules.
 - `"vertical"` is a vertical bar.
 - `"pointed"` is a sideward-pointing triangle (requires Unicode).
-- `"upslant"` is slanted from bottom left to top right.
-- `"downslant"` is slanted from top left to bottom right.
+- `"slant"` is slanted from bottom left to top right.
+- `"backslant"` is slanted from top left to bottom right.
 - `"round"` is a semi circle (requires Unicode).
 - `"dot"` is a dot (requires Unicode).
 - `"updiagonal"` is a small slash from bottom left to top right (requires Unicode).
@@ -104,12 +116,12 @@ flexprompt.settings.separator = "pointed"
 flexprompt.settings.separator = "»"
 ```
 
-### Tails and Heads
+## Tails and Heads
 Tails are at the outside ends of the prompts.  Heads are at the inside ends.
 - `"flat"` is a flat vertical edge.
 - `"pointed"` is a sideward-pointing triangle (requires Unicode).
-- `"upslant"` is slanted from bottom left to top right (requires Unicode).
-- `"downslant"` is slanted from top left to bottom right (requires Unicode).
+- `"slant"` is slanted from bottom left to top right (requires Unicode).
+- `"backslant"` is slanted from top left to bottom right (requires Unicode).
 - `"round"` is a semi circle (requires Unicode).
 - `"blurred"` uses shaded block characters to fade the edge (requires Unicode).
 - Custom end types can be provided as `{ open_string, close_string }`.  However, that is advanced usage and you need to know how background and foreground colors work; that isn't covered in this documentation.
@@ -119,7 +131,7 @@ flexprompt.settings.tails = "flat"
 flexprompt.settings.heads = "blurred"
 ```
 
-### Lines
+## Lines
 - `"one"` uses a single line.  Any right-side prompt modules are shown if there is room, and if the input text hasn't reached them.
 - `"two"` uses two lines.  The first line shows the prompt modules, and the second line is for input text.
 
@@ -127,7 +139,7 @@ flexprompt.settings.heads = "blurred"
 flexprompt.settings.lines = "two"
 ```
 
-### Connection
+## Connection
 Only when using "both" sides:
 - `"disconnected"` shows blank space between the left and right side prompts.
 - `"dotted"` shows dots between the left and right side prompts.
@@ -142,7 +154,7 @@ flexprompt.settings.connection = "solid"
 flexprompt.settings.connection = "═"
 ```
 
-### Frame
+## Frame
 When using "two" lines, left and right prompt frames can each be:
 - `"none"` shows no frame.
 - `"square"` shows a frame with square corners.
@@ -159,7 +171,7 @@ flexprompt.settings.left_frame = { "╔═", "╚═" }
 flexprompt.settings.right_frame = { "═╗", "◄───╜" }
 ```
 
-### Spacing
+## Spacing
 - "compact" removes blank lines before the prompt.
 - "normal" neither removes nor adds blank lines before the prompt.
 - "sparse" removes blank lines before the prompt, and then inserts one blank line.
@@ -168,7 +180,7 @@ flexprompt.settings.right_frame = { "═╗", "◄───╜" }
 flexprompt.settings.spacing = "sparse"
 ```
 
-### Flow
+## Flow
 - `"concise"` shows minimal text for each prompt module.
 - `"fluent"` shows additional text for some prompt modules, to make the prompt "read" nicely.
 

@@ -87,7 +87,7 @@ flexprompt.choices.prompts =
 {
     lean        = { left = { "{battery}{cwd}{git}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
     classic     = { left = { "{battery}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
-    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{duration}{time:color=black}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{duration}{time}" } },
+    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{duration}{time:color=brightblack,white}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{duration}{time}" } },
 }
 
 -- Only if style != lean.
@@ -103,8 +103,8 @@ flexprompt.choices.caps =
                 --  Open    Close
     flat        = { "",     "",     separators="vertical" },
     pointed     = { "",    ""     },
-    upslant     = { "",    ""     },
-    downslant   = { "",    ""     },
+    slant       = { "",    ""     },
+    backslant   = { "",    ""     },
     round       = { "",    ""     },
     blurred     = { "░▒▓",  "▓▒░",  separators="vertical" },
 }
@@ -114,8 +114,8 @@ flexprompt.choices.ascii_separators =
 {               --  Left    Right
     none        = { "",     ""      },
     vertical    = { "|",    "|"     },
-    upslant     = { "/",    "/"     },
-    downslant   = { "\\",   "\\"    },
+    slant       = { "/",    "/"     },
+    backslant   = { "\\",   "\\"    },
 }
 
 -- Only if style == classic.
@@ -124,8 +124,8 @@ flexprompt.choices.separators =
     none        = { "",     ""      },
     vertical    = { "│",    "│"     },
     pointed     = { "",    ""     },
-    upslant     = { "",    ""     },
-    downslant   = { "",    ""     },
+    slant       = { "",    ""     },
+    backslant   = { "",    ""     },
     round       = { "",    ""     },
     dot         = { "·",    "·"     },
     updiagonal  = { "╱",    "╱"     },
@@ -222,8 +222,8 @@ local symbols =
     prompt          = "angle",
 }
 
-flexprompt.settings.battery_idle_refresh = true
-flexprompt.settings.use_home_tilde = true
+--flexprompt.settings.battery_idle_refresh
+--flexprompt.settings.use_home_tilde
 --flexprompt.settings.prompt_symbol
 --flexprompt.settings.prompt_symbol_color
 --flexprompt.settings.exit_zero_color
@@ -250,13 +250,15 @@ end
 --------------------------------------------------------------------------------
 -- Configuration helpers.
 
+local pad_right_edge = " "
+
 local function csi(args, code)
-    return "\x1b["..args..code
+    return "\x1b["..tostring(args)..code
 end
 
 local function sgr(args)
     if args then
-        return "\x1b["..args.."m"
+        return "\x1b["..tostring(args).."m"
     else
         return "\x1b[m"
     end
@@ -417,8 +419,12 @@ local function get_flow()
     return flexprompt.choices.flows[flexprompt.settings.flow or "concise"] or "concise"
 end
 
-local function make_fluent_text(text)
-    return "\001" .. text .. "\002"
+local function make_fluent_text(text, force)
+    if not force and get_style() == "rainbow" then
+        return text
+    else
+        return "\001" .. text .. "\002"
+    end
 end
 
 local function get_screen_width()
@@ -429,7 +435,7 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     local lhs_len = console.cellcount(lhs)
     local rhs_len = console.cellcount(rhs)
     local frame_len = console.cellcount(frame)
-    local width = get_screen_width() - 1
+    local width = get_screen_width() - #pad_right_edge
     local gap = width - (lhs_len + rhs_len + frame_len)
     if gap < 0 then
         gap = gap + rhs_len
@@ -781,7 +787,7 @@ local function render_module(name, args)
     end
 end
 
-local function render_modules(prompt, side, frame_color)
+local function render_modules(prompt, side, frame_color, anchors)
     local out = ""
     local init = 1
 
@@ -808,6 +814,11 @@ local function render_modules(prompt, side, frame_color)
         if name and #name > 0 then
             local text,color,rainbow_text_color = render_module(name, args)
             if text then
+                if anchors then
+                    -- Add 1 because the separator isn't added yet.
+                    anchors[1] = console.cellcount(out) + 1
+                end
+
                 local segments
                 if type(text) ~= "table" then
                     -- No table provided.
@@ -832,10 +843,14 @@ local function render_modules(prompt, side, frame_color)
 
     out = out .. next_segment(nil, flexprompt.colors.default)
 
+    if anchors then
+        anchors[2] = console.cellcount(out)
+    end
+
     return out
 end
 
-local function render_prompts(settings)
+local function render_prompts(settings, need_anchors)
     reset_cached_state()
 
     local old_settings = flexprompt.settings
@@ -845,7 +860,7 @@ local function render_prompts(settings)
             local width = console.getwidth()
             reset_cached_state()
             _in_wizard = true
-            _screen_width = settings.wizard.width or (width - 4)
+            _screen_width = settings.wizard.width or (width - 8)
             _wizard_prefix = ""
             if _screen_width < width then
                 _wizard_prefix = string.rep(" ", (width - _screen_width) / 2)
@@ -854,6 +869,10 @@ local function render_prompts(settings)
             _duration = settings.wizard.duration
             _exit = settings.wizard.exit
             _git = settings.wizard.git
+
+            -- Let the wizard know the width and prefix.
+            settings.wizard.width = _screen_width
+            settings.wizard.prefix = _wizard_prefix
         end
     end
 
@@ -874,6 +893,7 @@ local function render_prompts(settings)
     local left2 = nil
     local right2 = nil
 
+    local anchors = need_anchors and {} or nil
     local left_frame, right_frame
     if lines > 1 then
         left_frame, right_frame = get_frame()
@@ -887,7 +907,7 @@ local function render_prompts(settings)
     -- Line 1 ----------------------------------------------------------------
 
     if true then
-        left1 = render_modules(left_prompt or "", 0, frame_color)
+        left1 = render_modules(left_prompt or "", 0, frame_color, anchors)
 
         if left_frame then
             if left1 ~= "" then
@@ -957,29 +977,48 @@ local function render_prompts(settings)
         prompt = _wizard_prefix .. prompt .. sgr() .. "\r\n" .. _wizard_prefix .. left2
     end
 
-    if #rprompt > 0 then
-        rprompt = rprompt .. sgr() .. " "
+    if rprompt and #rprompt > 0 then
+        rprompt = rprompt .. sgr() .. pad_right_edge
     end
 
-    if get_spacing() == "sparse" then
+    if get_spacing() == "sparse" and not _in_wizard then
         prompt = sgr() .. "\r\n" .. prompt
     end
 
     if settings then flexprompt.settings = old_settings end
 
-    return prompt, rprompt
+    if need_anchors then
+        local left_frame_len = left_frame and console.cellcount(left_frame[1]) or 0
+        if anchors[1] then
+            anchors[1] = #_wizard_prefix + left_frame_len + anchors[1]
+        end
+        if anchors[2] then
+            anchors[2] = #_wizard_prefix + left_frame_len + anchors[2]
+        end
+        if rightframe1 then
+            anchors[3] = #_wizard_prefix + _screen_width + - #pad_right_edge - console.cellcount(rightframe1)
+        end
+    end
+
+    return prompt, rprompt, anchors
 end
 
-function flexprompt.render_wizard(settings)
-    local left, right = render_prompts(settings)
+local function render_transient_prompt()
+    return get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+end
+
+function flexprompt.render_wizard(settings, need_anchors)
+    local left, right, anchors = render_prompts(settings, need_anchors)
     local col
     if not right or right == "" then
         right = nil
     else
         col = #_wizard_prefix + (_screen_width - console.cellcount(right)) + 1
     end
-    return left, right, col
+    return left, right, col, anchors
 end
+
+flexprompt.render_transient_wizard = render_transient_prompt
 
 --------------------------------------------------------------------------------
 -- Build prompt.
@@ -1011,7 +1050,7 @@ function pf:rightfilter(prompt)
 end
 
 function pf:transientfilter(prompt)
-    return get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+    return render_transient_prompt()
 end
 
 function pf:transientrightfilter(prompt)
@@ -1094,18 +1133,19 @@ function flexprompt.get_styled_sgr(name)
 end
 
 -- Parse arg "abc:def=mno:xyz" for token "def" returns value "xyz".
-function flexprompt.parse_arg_token(args, name, altname)
+function flexprompt.parse_arg_token(args, name, altname, include_colon)
     if not args then
         return
     end
 
-    args = ":" .. args .. ":"
+    args = ":" .. args .. (include_colon and "" or ":")
 
     local value
     if name then
-        value = string.match(args, ":" .. name .. "=([^:]*):")
+        local pat = include_colon and "=(.*)" or "=([^:]*):"
+        value = string.match(args, ":" .. name .. pat)
         if not value and altname then
-            value = string.match(args, ":" .. altname .. "=([^:]*):")
+            value = string.match(args, ":" .. altname .. pat)
         end
     end
 
@@ -1490,7 +1530,7 @@ local function render_battery(args)
     prev_battery_status = batteryStatus
     prev_battery_level = level
 
-    if flexprompt.settings.battery_idle_refresh and not cached_battery_coroutine then
+    if flexprompt.settings.battery_idle_refresh ~= false and not cached_battery_coroutine then
         local t = coroutine.create(update_battery_prompt)
         cached_battery_coroutine = t
         clink.addcoroutine(t, flexprompt.settings.battery_refresh_interval or 15)
@@ -1588,7 +1628,7 @@ local function render_cwd(args)
                     local appended_dir = string.sub(cwd, string.len(git_root_dir) + 1)
                     local smart_dir = get_folder_name(git_root_dir) .. appended_dir
                     if type == "rootsmart" then
-                        cwd = flexprompt.make_fluent_text(cwd:sub(1, #cwd - #smart_dir)) .. smart_dir
+                        cwd = flexprompt.make_fluent_text(cwd:sub(1, #cwd - #smart_dir), true) .. smart_dir
                     else
                         cwd = smart_dir
                     end
@@ -2168,7 +2208,10 @@ end
 -- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
---  - format_string is a format string for os.date().
+--  - format_string uses the rest of the text as a format string for os.date().
+--
+-- If present, the 'format=' option must be last (otherwise it could never
+-- include colons).
 
 local function render_time(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
@@ -2181,7 +2224,7 @@ local function render_time(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local format = flexprompt.parse_arg_token(args, "f", "format")
+    local format = flexprompt.parse_arg_token(args, "f", "format", true)
     if not format then
         format = "%a %H:%M"
     end
@@ -2254,10 +2297,25 @@ end
 --------------------------------------------------------------------------------
 -- Shared event handlers.
 
+local offered_wizard
+
 local function onbeginedit()
     coroutines_onbeginedit()
     duration_onbeginedit()
     spacing_onbeginedit()
+
+    if not offered_wizard then
+        local empty = true
+        for _ in pairs(flexprompt.settings) do
+            empty = false
+            break
+        end
+        if empty then
+            clink.print("\n" .. sgr(1) .. "Flexprompt has not yet been configured." .. sgr())
+            clink.print('Run "flexprompt configure" to configure the prompt.\n')
+        end
+        offered_wizard = true
+    end
 end
 
 local function onendedit()

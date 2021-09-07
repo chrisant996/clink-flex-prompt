@@ -1,8 +1,9 @@
 local normal = "\x1b[m"
 local bold = "\x1b[1m"
 local brightgreen = "\x1b[92m"
-
 local static_cursor = "\x1b[7m " .. normal
+
+local _transient
 
 local function readinput()
     if console.readinput then
@@ -58,11 +59,24 @@ local function write_settings(settings)
 
     for n,v in pairs(settings) do
         if n ~= "wizard" then
-            file:write("flexprompt.settings." .. n .. " = " .. string.format("%q", v) .. "\n")
+            local t = type(v)
+            if t == "string" then
+                v = string.format("%q", v)
+            elseif t == "boolean" then
+                v = v and "true" or "false"
+            else
+                v = tostring(v)
+            end
+            file:write("flexprompt.settings." .. n .. " = " .. v .. "\n")
         end
     end
 
     file:close()
+
+    if _transient then
+        local command = os.getalias("clink"):gsub("%$%*", " set prompt.transient " .. _transient)
+        os.execute(command)
+    end
 end
 
 local function copy_table(settings)
@@ -71,6 +85,10 @@ local function copy_table(settings)
         copy[n] = v
     end
     return copy
+end
+
+local function display_callout(row, col, text)
+    clink.print("\x1b[s\x1b[" .. row .. ";" .. col .. "H" .. text .. "\x1b[u", NONL)
 end
 
 local function display_centered(s)
@@ -84,10 +102,33 @@ local function display_centered(s)
     clink.print(s)
 end
 
-local function display_preview(settings)
-    local left, right, col = flexprompt.render_wizard(settings)
+local function strip_modules(s)
+    s = s:gsub("{battery[^}]*}", "")
+    return s
+end
 
-    clink.print(left .. normal .. static_cursor, NONL)
+local function display_preview(settings, command, show_cursor, callout)
+    local preview = copy_table(settings)
+    if preview.left_prompt then
+        preview.left_prompt = strip_modules(preview.left_prompt)
+    end
+    if preview.right_prompt then
+        preview.right_prompt = strip_modules(preview.right_prompt)
+    end
+
+    local left, right, col, anchors = flexprompt.render_wizard(settings, callout and true or nil)
+
+    if callout and anchors then
+        local x
+        if type(callout[2]) == "table" then
+            x = anchors[callout[2][1]] + callout[2][2]
+        else
+            x = anchors[callout[2]]
+        end
+        display_callout(callout[1], x, callout[3])
+    end
+
+    clink.print(left .. normal .. (command or "") .. ((show_cursor ~= false) and static_cursor or ""), NONL)
     if right then
         clink.print("\x1b[" .. col .. "G" .. right .. normal)
     else
@@ -120,12 +161,13 @@ local function friendly_case(text)
     return text:sub(1, 1):upper() .. text:sub(2)
 end
 
-local function choose_setting(settings, title, choices_name, setting_name, subset)
+local function choose_setting(settings, title, choices_name, setting_name, subset, callout)
     local index
     local choices = ""
 
     clear_screen()
     display_centered(title)
+    clink.print()
 
     for index,name in ipairs(subset) do
         if index > 5 then
@@ -139,7 +181,8 @@ local function choose_setting(settings, title, choices_name, setting_name, subse
         local preview = copy_table(settings)
         preview[setting_name] = name
 
-        display_preview(preview)
+        display_preview(preview, nil, nil, callout)
+        callout = nil
 
         clink.print()
     end
@@ -147,24 +190,287 @@ local function choose_setting(settings, title, choices_name, setting_name, subse
     choices = display_restart(choices)
     choices = display_quit(choices)
 
-    repeat
-        local s = readchoice(choices)
-        if not s then return end
+    local s = readchoice(choices)
+    if not s then return end
 
-        if #s == 1 and string.find(choices, s) then
-            if s == "r" then
-            elseif s == "q" then
-            else
-                settings[setting_name] = subset[tonumber(s)]
-            end
-            return s
+    if s == "r" then
+    elseif s == "q" then
+    else
+        settings[setting_name] = subset[tonumber(s)]
+    end
+    return s
+end
+
+local function choose_sides(settings, title)
+    local choices = ""
+    local prompts = flexprompt.choices.prompts[settings.style]
+    local preview
+
+    clear_screen()
+    display_centered(title)
+    clink.print()
+
+    choices = "12"
+
+    clink.print("(1)  Left.\n")
+    preview = copy_table(settings)
+    preview.left_prompt = prompts.left[1]
+    preview.right_prompt = prompts.left[2]
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(2)  Both.\n")
+    preview = copy_table(settings)
+    preview.left_prompt = prompts.both[1]
+    preview.right_prompt = prompts.both[2]
+    display_preview(preview)
+    clink.print()
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local s = readchoice(choices)
+    if not s then return end
+
+    if s == "r" then
+    elseif s == "q" then
+    else
+        if s == "1" then
+            settings.left_prompt = prompts.left[1]
+            settings.right_prompt = prompts.left[2]
+        else
+            settings.left_prompt = prompts.both[1]
+            settings.right_prompt = prompts.both[2]
         end
-    until false
+    end
+    return s
+end
+
+local function choose_time(settings, title)
+    local choices = ""
+    local preview
+
+    clear_screen()
+    display_centered(title)
+    clink.print()
+
+    choices = "12345"
+
+    local function gsub_time(settings, choice)
+        if choice == "2" then
+            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%H:%%M:%%S}")
+            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%H:%%M:%%S}")
+        elseif choice == "3" then
+            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%a %%H:%%M}")
+            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%a %%H:%%M}")
+        elseif choice == "4" then
+            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%I:%%M:%%S %%p}")
+            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%I:%%M:%%S %%p}")
+        elseif choice == "5" then
+            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%a %%I:%%M %%p}")
+            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%a %%I:%%M %%p}")
+        else
+            settings.left_prompt = settings.left_prompt:gsub("{time}", "")
+            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "") or nil
+        end
+    end
+
+    clink.print("(1)  No.\n")
+    preview = copy_table(settings)
+    gsub_time(preview, "1")
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(2)  24-hour format.\n")
+    preview = copy_table(settings)
+    gsub_time(preview, "2")
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(3)  24-hour format with day.\n")
+    preview = copy_table(settings)
+    gsub_time(preview, "3")
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(4)  12-hour format.\n")
+    preview = copy_table(settings)
+    gsub_time(preview, "4")
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(5)  12-hour format with day.\n")
+    preview = copy_table(settings)
+    gsub_time(preview, "5")
+    display_preview(preview)
+    clink.print()
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local s = readchoice(choices)
+    if not s then return end
+
+    if s == "r" then
+    elseif s == "q" then
+    else
+        gsub_time(settings, s)
+    end
+    return s
+end
+
+local function choose_frames(settings, title)
+    local choices = ""
+    local preview
+
+    clear_screen()
+    display_centered(title)
+    clink.print()
+
+    choices = "1234"
+
+    clink.print("(1)  No frame.\n")
+    preview = copy_table(settings)
+    preview.left_frame = "none"
+    preview.right_frame = "none"
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(2)  Left.\n")
+    preview = copy_table(settings)
+    preview.left_frame = "round"
+    preview.right_frame = "none"
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(3)  Right.\n")
+    preview = copy_table(settings)
+    preview.left_frame = "none"
+    preview.right_frame = "round"
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(4)  Full.\n")
+    preview = copy_table(settings)
+    preview.left_frame = "round"
+    preview.right_frame = "round"
+    display_preview(preview)
+    clink.print()
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local s = readchoice(choices)
+    if not s then return end
+
+    if s == "r" then
+    elseif s == "q" then
+    else
+        settings.left_frame = (s == "1" or s == "3") and "none" or "round"
+        settings.right_frame = (s == "1" or s == "2") and "none" or "round"
+    end
+    return s
+end
+
+local function choose_spacing(settings, title)
+    local choices = ""
+    local preview
+
+    clear_screen()
+    display_centered(title)
+    clink.print()
+
+    choices = "123"
+
+    clink.print("(1)  Normal.\n")
+    clink.print("  Normally the prompt doesn't remove or add blank lines.")
+    clink.print("  Whatever blank lines already exist are kept.")
+    clink.print()
+
+    clink.print("(2)  Compact.\n")
+    clink.print("  Removes any blank lines from the end of the previous")
+    clink.print("  command's output.")
+    clink.print()
+    display_preview(settings, nil, false)
+    display_preview(settings)
+    clink.print()
+
+    clink.print("(3)  Sparse.\n")
+    clink.print("  Removes any blank lines from the end of the previous")
+    clink.print("  command's output, and then inserts one blank line.")
+    clink.print()
+    display_preview(settings, nil, false)
+    clink.print()
+    display_preview(settings)
+    clink.print()
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local s = readchoice(choices)
+    if not s then return end
+
+    if s == "r" then
+    elseif s == "q" then
+    else
+        if s == "2" then
+            settings.spacing = "compact"
+        elseif s == "3" then
+            settings.spacing = "sparse"
+        else
+            settings.spacing = "normal"
+        end
+    end
+    return s
+end
+
+local function choose_transient(settings, title)
+    local choices = ""
+    local preview
+
+    clear_screen()
+    display_centered(title)
+    clink.print()
+
+    choices = "yn"
+
+    clink.print("(y)  Yes.\n")
+    clink.print("  " .. flexprompt.render_transient_wizard() .. "git pull")
+    clink.print("  " .. flexprompt.render_transient_wizard() .. "git branch x")
+    if settings.spacing == "sparse" then clink.print() end
+    display_preview(settings, "git checkout x")
+    clink.print()
+
+    clink.print("(n)  No.\n")
+    display_preview(settings, "git pull", false)
+    if settings.spacing == "sparse" then clink.print() end
+    display_preview(settings, "git branch x", false)
+    if settings.spacing == "sparse" then clink.print() end
+    display_preview(settings, "git checkout x")
+    clink.print()
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local s = readchoice(choices)
+    if not s then return end
+
+    if s == "r" then
+    elseif s == "q" then
+    else
+        if s == "y" then
+            _transient = "same_dir"
+        else
+            _transient = "off"
+        end
+    end
+    return s
 end
 
 local function config_wizard()
     local s
     local settings_filename = get_settings_filename()
+    local callout
     local wrote
 
     print(string.rep("\n", console.getheight()))
@@ -176,7 +482,7 @@ local function config_wizard()
         {
             wizard =
             {
-                cwd = "c:\\cwd",
+                cwd = "c:\\directory",
                 duration = 2,
                 exit = 0,
             },
@@ -184,6 +490,8 @@ local function config_wizard()
             left_prompt = "{cwd}{git}",
             right_prompt = "{duration}",
         }
+
+        _transient = nil
 
         clear_screen()
         display_centered("Welcome to the configuration wizard for flexprompt.")
@@ -224,30 +532,48 @@ local function config_wizard()
             end
         end
 
+        if preview.style == "lean" then
+            s = choose_sides(preview, "Prompt Sides")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
+
         if preview.style == "classic" then
             s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
 
-        -- TODO: Time is more complicated because it changes right_prompt content.
+        s = choose_time(preview, "Show current time?")
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
 
-        if preview.style == "classic" then
+        if preview.style ~= "lean" then
             if preview.charset == "ascii" then
-                s = choose_setting(preview, "Prompt Separators", "ascii_separators", "separators", { "vertical", "upslant", "none" })
+                callout = { 4, {1,1}, "\x1b[1;33m/\x1b[A\x1b[Dseparator\x1b[m" }
+                s = choose_setting(preview, "Prompt Separators", "ascii_separators", "separators", { "vertical", "slant", "none" }, callout)
             else
-                s = choose_setting(preview, "Prompt Separators", "separators", "separators", { "pointed", "vertical", "upslant", "round", "none" })
+                callout = { 4, 1, "\x1b[1;33m↓\x1b[A\x1b[2Dseparator\x1b[m" }
+                s = choose_setting(preview, "Prompt Separators", "separators", "separators", { "pointed", "vertical", "slant", "round", "none" }, callout)
             end
             if not s or s == "q" then break end
             if s == "r" then goto continue end
-        end
 
-        if preview.style ~= "lean" and preview.charset ~= "ascii" then
-            s = choose_setting(preview, "Prompt Heads", "caps", "heads", { "pointed", "blurred", "upslant", "round", "flat" })
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
+            if preview.charset ~= "ascii" then
+                callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
+                s = choose_setting(preview, "Prompt Heads", "caps", "heads", { "pointed", "blurred", "slant", "round", "flat" }, callout)
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
 
-            s = choose_setting(preview, "Prompt Tails", "caps", "tails", { "pointed", "blurred", "upslant", "round", "flat" })
+                callout = { 4, 3, "\x1b[1;33m↓\x1b[A\x1b[2Dtail\x1b[m" }
+                s = choose_setting(preview, "Prompt Tails", "caps", "tails", { "pointed", "blurred", "slant", "round", "flat" }, callout)
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
+
+            -- Choose sides after choosing tails, so there's a good anchor for
+            -- the tails callout.
+            s = choose_sides(preview, "Prompt Sides")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
@@ -261,32 +587,30 @@ local function config_wizard()
             if not s or s == "q" then break end
             if s == "r" then goto continue end
 
-            -- TODO: condense frames into one choice, and only present none and round options in the wizard.
-
-            s = choose_setting(preview, "Prompt Left Frame", "left_frames", "left_frame", { "none", "round", "square" })
+            s = choose_frames(preview, "Prompt Frame")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
 
-            s = choose_setting(preview, "Prompt Right Frame", "right_frames", "right_frame", { "none", "round", "square" })
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
-
-            if preview.style ~= "classic" and (preview.settings.left_frame ~= "none" or
-                                               preview.settings.right_frame ~= "none" or
-                                               preview.settings.connection ~= "disconnected") then
+            if preview.style ~= "classic" and (preview.left_frame ~= "none" or
+                                               preview.right_frame ~= "none" or
+                                               preview.connection ~= "disconnected") then
                 s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
             end
         end
 
-        -- TODO: Spacing is more complicated because multiple copies of the prompt must be drawn.
+        s = choose_spacing(preview, "Prompt Spacing")
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
 
         s = choose_setting(preview, "Prompt Flow", "flows", "flow", { "concise", "fluent" })
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
-        -- TODO: Transient prompt configuration.
+        s = choose_transient(preview, "Transient Prompt")
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
 
         -- Done.
 
@@ -318,7 +642,7 @@ local function config_wizard()
         if clink.reload then
             clink.reload()
         else
-            clink.print("The new flexprompt configuration will take effect when Clink is reloaded.")
+            clink.print("\x1b[1mThe new flexprompt configuration will take effect when Clink is reloaded.\x1b[m")
         end
     end
 end

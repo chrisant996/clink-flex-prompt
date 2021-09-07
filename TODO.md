@@ -1,13 +1,7 @@
 ### Bugs
 
 ### General
-- [ ] Let environment variables override Lua config.
 - [ ] Documentation.
-- [ ] When to show symbols.
-
-### Configuration wizard
-- [ ] Clink input API.
-- [ ] Configuration wizard.
 
 ### Modules
 
