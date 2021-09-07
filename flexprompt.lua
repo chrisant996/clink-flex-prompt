@@ -1632,7 +1632,7 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    cwd = append_text(flexprompt.symbols.cwd_git_symbol, cwd)
+                    cwd = append_text(get_symbol("cwd_git_symbol"), cwd)
                 end
             end
         until true
