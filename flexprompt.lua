@@ -1602,7 +1602,9 @@ local function render_cwd(args)
     local git_dir
 
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
-    if type == "folder" then
+    if _cwd then
+        -- Disable cwd/git integration in the configuration wizard.
+    elseif type == "folder" then
         cwd = get_folder_name(cwd)
     else
         repeat
