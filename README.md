@@ -2,11 +2,13 @@
 
 Flex prompt is a flexible customizable prompt for [Clink](https://github.com/chrisant996/clink).
 
-There are several built-in prompt modules, and it's easy to add new custom prompt modules.
-
+There are several built-in prompt modules, and it's easy to add new custom prompt modules.<br/>
 The style of the prompt can be customized in many ways as well.
 
-Flex prompt for Clink was inspired by the zsh [powerlevel10k](https://github.com/romkatv/powerlevel10k) theme by Roman Perepelitsa.
+Flex prompt for Clink was inspired by the zsh [powerlevel10k](https://github.com/romkatv/powerlevel10k) theme by Roman Perepelitsa.<br/>
+Some of the prompt modules are based on [cmder-powerline-prompt](https://github.com/chrisant996/cmder-powerline-prompt).
+
+- [ ] _TBD: screen shot._
 
 # Configuration Wizard
 
