@@ -498,8 +498,10 @@ local function config_wizard()
         _transient = nil
         _striptime = true
 
+        -- Find out about the font being used.
+
         clear_screen()
-        display_centered("Welcome to the configuration wizard for flexprompt.")
+        display_centered(bold.."Welcome to the configuration wizard for flexprompt."..normal)
         display_centered("This will ask a few questions and configure your prompt.")
         clink.print()
         display_centered("Does this look like a "..brightgreen.."diamond"..normal.." (rotated square)?")
@@ -509,6 +511,9 @@ local function config_wizard()
         choices = ""
         choices = display_yes(choices)
         choices = display_no(choices)
+        clink.print("    Visit "..bold.."https://nerdfonts.com"..normal.." to find fonts that support the")
+        clink.print("    powerline symbols flexprompt uses for its fancy text-mode graphics.")
+        clink.print("\n    Meslo NF and Fira Code NF are two fonts I highly recommend.\n\n")
         choices = display_quit(choices)
         s = readchoice(choices)
         if not s or s == "q" then break end
