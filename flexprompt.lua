@@ -382,7 +382,7 @@ local function get_frame_color()
 end
 
 local function get_symbol(name)
-    local symbol = flexprompt.settings.symbols[name] or symbols[name] or "?!"
+    local symbol = flexprompt.settings.symbols[name] or symbols[name] or ""
     if type(symbol) == "table" then
         if not _charset then get_charset() end
         symbol = symbol[_charset] or symbol[1] or "?!"
@@ -406,7 +406,8 @@ local function get_prompt_symbol_color()
 end
 
 local function get_prompt_symbol()
-    local symbol = flexprompt.choices.prompt_symbols[flexprompt.settings.symbols.prompt or "angle"] or flexprompt.settings.symbols.prompt or symbols.prompt
+    local p = flexprompt.settings.symbols.prompt
+    local symbol = flexprompt.choices.prompt_symbols[p or symbols.prompt] or p
     if type(symbol) == "table" then
         if not _charset then get_charset() end
         symbol = symbol[_charset] or symbol[1] or "?!"
