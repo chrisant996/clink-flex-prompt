@@ -1681,7 +1681,16 @@ local function render_duration(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local text = duration .. "s"
+    local text
+    text = (duration % 60) .. "s"
+    duration = math.floor(duration / 60)
+    if duration > 0 then
+        text = append_text((duration % 60) .. "m", text)
+        duration = math.floor(duration / 60)
+        if duration > 0 then
+            text = append_text(duration .. "h", text)
+        end
+    end
     text = append_text(flexprompt.get_module_symbol(), text)
 
     if flexprompt.get_flow() == "fluent" then

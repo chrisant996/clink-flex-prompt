@@ -34,7 +34,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 
 - `"{battery}"` shows the battery level and whether the battery is charging.
 - `"{cwd}"` shows the current working directory.
-- `"{duration}"` shows the duration in seconds of the previous command.
+- `"{duration}"` shows the duration of the previous command.
 - `"{exit}"` shows the exit code of the previous command.
 - `"{git}"` shows git status.
 - `"{hg}"` shows Mercurial status.
