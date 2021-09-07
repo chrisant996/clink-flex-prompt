@@ -17,7 +17,7 @@ end
 
 flexprompt = flexprompt or {}
 flexprompt.settings = flexprompt.settings or {}
-flexprompt.symbols = flexprompt.symbols or {}
+flexprompt.settings.symbols = flexprompt.settings.symbols or {}
 local modules
 
 --------------------------------------------------------------------------------
@@ -229,8 +229,8 @@ local symbols =
 --flexprompt.settings.exit_zero_color
 --flexprompt.settings.exit_nonzero_color
 --flexprompt.settings.exit_nonzero_color
---flexprompt.symbols.cwd_git_symbol
---flexprompt.symbols.{name}_module
+--flexprompt.settings.symbols.cwd_git_symbol
+--flexprompt.settings.symbols.{name}_module
 
 --------------------------------------------------------------------------------
 -- Wizard state.
@@ -382,7 +382,7 @@ local function get_frame_color()
 end
 
 local function get_symbol(name)
-    local symbol = flexprompt.symbols[name] or "?!"
+    local symbol = flexprompt.settings.symbols[name] or symbols[name] or "?!"
     if type(symbol) == "table" then
         if not _charset then get_charset() end
         symbol = symbol[_charset] or symbol[1] or "?!"
@@ -406,7 +406,7 @@ local function get_prompt_symbol_color()
 end
 
 local function get_prompt_symbol()
-    local symbol = flexprompt.choices.prompt_symbols[flexprompt.symbols.prompt or "angle"] or flexprompt.choices.prompt_symbols["angle"]
+    local symbol = flexprompt.choices.prompt_symbols[flexprompt.settings.symbols.prompt or "angle"] or flexprompt.settings.symbols.prompt or symbols.prompt
     if type(symbol) == "table" then
         if not _charset then get_charset() end
         symbol = symbol[_charset] or symbol[1] or "?!"
@@ -1195,7 +1195,7 @@ flexprompt.can_use_extended_colors = can_use_extended_colors
 function flexprompt.get_module_symbol()
     local s = ""
     if segmenter and segmenter._current_module then
-        s = flexprompt.symbols[segmenter._current_module .. "_module"] or ""
+        s = flexprompt.settings.symbols[segmenter._current_module .. "_module"] or ""
     end
     return s
 end
@@ -2309,6 +2309,10 @@ end
 local offered_wizard
 
 local function onbeginedit()
+    -- Fix our tables if a script deleted them accidentally.
+    if not flexprompt.settings then flexprompt.settings = {} end
+    if not flexprompt.settings.symbols then flexprompt.settings.symbols = {} end
+
     coroutines_onbeginedit()
     duration_onbeginedit()
     spacing_onbeginedit()

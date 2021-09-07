@@ -46,6 +46,33 @@ local function get_settings_filename()
     return name
 end
 
+local function write_var(file, name, value, indent)
+    local t = type(value)
+    if not indent then indent = "" end
+
+    if t == "table" then
+        file:write(indent .. name .. " =\n")
+        file:write(indent .. "{\n")
+        for n,v in pairs(value) do
+            write_var(file, n, v, indent .. "    ")
+        end
+        file:write(indent .. "}" .. ((#indent > 0) and "," or "") .. "\n")
+        return
+    end
+
+    if t == "string" then
+        value = string.format("%q", value)
+    elseif t == "boolean" then
+        value = value and "true" or "false"
+    elseif t == "number" then
+        value = tostring(value)
+    else
+        log.info("flexprompt couldn't write '" .. name .. "'; unknown type '" .. t .. "'.")
+    end
+
+    file:write(indent .. name .. " = " .. value .. "\n")
+end
+
 local function write_settings(settings)
     local name = get_settings_filename()
     local file = io.open(name, "w")
@@ -60,15 +87,7 @@ local function write_settings(settings)
 
     for n,v in pairs(settings) do
         if n ~= "wizard" then
-            local t = type(v)
-            if t == "string" then
-                v = string.format("%q", v)
-            elseif t == "boolean" then
-                v = v and "true" or "false"
-            else
-                v = tostring(v)
-            end
-            file:write("flexprompt.settings." .. n .. " = " .. v .. "\n")
+            write_var(file, "flexprompt.settings."..n, v)
         end
     end
 
@@ -493,6 +512,7 @@ local function config_wizard()
             lines = "two",
             left_prompt = "{cwd}{git}",
             right_prompt = "{duration}{time}",
+            symbols = {}
         }
 
         _transient = nil
@@ -524,6 +544,21 @@ local function config_wizard()
             preview.heads = "pointed"
             preview.left_frame = "round"
             preview.right_frame = "round"
+        end
+
+        clink.print("\x1b[4H\x1b[J", NONL)
+        display_centered("Does this look like a "..brightgreen.."angle bracket"..normal.." (greater than sign)?")
+        clink.print()
+        display_centered("-->  "..brightgreen.."❯"..normal.."  <--")
+        clink.print()
+        choices = ""
+        choices = display_yes(choices)
+        choices = display_no(choices)
+        choices = display_quit(choices)
+        s = readchoice(choices)
+        if not s or s == "q" then break end
+        if s == "y" then
+            preview.symbols.prompt = "❯"
         end
 
         -- Configuration.
