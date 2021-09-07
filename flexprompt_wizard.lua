@@ -406,21 +406,21 @@ local function choose_spacing(settings, title)
     choices = "123"
 
     clink.print("(1)  Normal.\n")
-    clink.print("  Normally the prompt doesn't remove or add blank lines.")
-    clink.print("  Whatever blank lines already exist are kept.")
+    clink.print("     Normally the prompt doesn't remove or add blank lines.")
+    clink.print("     Whatever blank lines already exist are kept.")
     clink.print()
 
     clink.print("(2)  Compact.\n")
-    clink.print("  Removes any blank lines from the end of the previous")
-    clink.print("  command's output.")
+    clink.print("     Removes any blank lines from the end of the previous")
+    clink.print("     command's output.")
     clink.print()
     display_preview(settings, nil, false)
     display_preview(settings)
     clink.print()
 
     clink.print("(3)  Sparse.\n")
-    clink.print("  Removes any blank lines from the end of the previous")
-    clink.print("  command's output, and then inserts one blank line.")
+    clink.print("     Removes any blank lines from the end of the previous")
+    clink.print("     command's output, and then inserts one blank line.")
     clink.print()
     display_preview(settings, nil, false)
     clink.print()
@@ -458,8 +458,8 @@ local function choose_transient(settings, title)
     choices = "yn"
 
     clink.print("(y)  Yes.\n")
-    clink.print("  " .. flexprompt.render_transient_wizard() .. "git pull")
-    clink.print("  " .. flexprompt.render_transient_wizard() .. "git branch x")
+    clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard() .. "git pull")
+    clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard() .. "git branch x")
     if settings.spacing == "sparse" then clink.print() end
     display_preview(settings, "git checkout x")
     clink.print()
@@ -505,6 +505,7 @@ local function config_wizard()
         {
             wizard =
             {
+                width = console.getwidth() - 10, -- Align with "(1)  <-Here".
                 cwd = "c:\\directory",
                 duration = 2,
                 exit = 0,
@@ -531,9 +532,9 @@ local function config_wizard()
         choices = ""
         choices = display_yes(choices)
         choices = display_no(choices)
-        clink.print("    Visit "..bold.."https://nerdfonts.com"..normal.." to find fonts that support the")
-        clink.print("    powerline symbols flexprompt uses for its fancy text-mode graphics.")
-        clink.print("\n    Meslo NF and Fira Code NF are two fonts I highly recommend.\n\n")
+        clink.print("     Visit "..bold.."https://nerdfonts.com"..normal.." to find fonts that support the")
+        clink.print("     powerline symbols flexprompt uses for its fancy text-mode graphics.")
+        clink.print("\n     Meslo NF and Fira Code NF are two fonts I highly recommend.\n\n")
         choices = display_quit(choices)
         s = readchoice(choices)
         if not s or s == "q" then break end
