@@ -85,9 +85,9 @@ flexprompt.choices.sides =
 -- Default prompt strings based on styles and sides.
 flexprompt.choices.prompts =
 {
-    lean        = { left = { "{battery}{cwd}{git}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{time}" } },
-    classic     = { left = { "{battery}{cwd}{git}{exit}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{time}" } },
-    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{time:color=black}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{time}" } },
+    lean        = { left = { "{battery}{cwd}{git}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
+    classic     = { left = { "{battery}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
+    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{duration}{time:color=black}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{duration}{time}" } },
 }
 
 -- Only if style != lean.
@@ -243,6 +243,10 @@ local _duration
 local _exit
 local _git
 
+local function get_errorlevel()
+    return _exit or os.geterrorlevel()
+end
+
 --------------------------------------------------------------------------------
 -- Configuration helpers.
 
@@ -389,7 +393,7 @@ local function get_prompt_symbol_color()
     if flexprompt.settings.prompt_symbol_color then
         color = flexprompt.settings.prompt_symbol_color
     elseif os.geterrorlevel then
-        color = (os.geterrorlevel() == 0) and
+        color = (get_errorlevel() == 0) and
                 (flexprompt.settings.exit_zero_color or "brightgreen") or
                 (flexprompt.settings.exit_nonzero_color or "brightred")
     else
@@ -893,10 +897,10 @@ local function render_prompts(settings)
         end
 
         if lines == 1 then
-            if style == "lean" then
-                left1 = left1 .. get_prompt_symbol_color() .. sgr() .. " " .. get_prompt_symbol()
-            end
             left1 = left1 .. sgr() .. " "
+            if style == "lean" then
+                left1 = left1 .. get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+            end
         end
 
         if right_prompt then
@@ -1660,7 +1664,7 @@ local function render_exit(args)
     if not os.geterrorlevel then return end
 
     local text
-    local value = _exit or os.geterrorlevel()
+    local value = get_errorlevel()
 
     local always = flexprompt.parse_arg_keyword(args, "a", "always")
     if not always and value == 0 then return end
