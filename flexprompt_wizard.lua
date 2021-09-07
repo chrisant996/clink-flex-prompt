@@ -555,9 +555,11 @@ local function config_wizard()
         choices = ""
         choices = display_yes(choices)
         choices = display_no(choices)
+        choices = display_restart(choices)
         choices = display_quit(choices)
         s = readchoice(choices)
         if not s or s == "q" then break end
+        if s == "r" then goto continue end
         if s == "y" then
             preview.symbols.prompt = "❯"
         end
