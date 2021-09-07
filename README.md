@@ -10,6 +10,14 @@ Some of the prompt modules are based on [cmder-powerline-prompt](https://github.
 
 - [ ] _TBD: screen shot._
 
+# Installation
+
+1. Go to the [Releases](https://github.com/chrisant996/clink-flex-prompt/releases) page.
+2. Download the latest `clink-flex-prompt-*.zip` file.
+3. Extract the files from it into your Clink scripts directory (use `clink info` to find it if you're not sure where it is).
+
+- [ ] _TBD: publish via scoop?_
+
 # Configuration Wizard
 
 Flex prompt can be easily customized via its configuration wizard.
