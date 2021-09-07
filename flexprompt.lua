@@ -2319,9 +2319,18 @@ local function onbeginedit()
 
     if not offered_wizard then
         local empty = true
-        for _ in pairs(flexprompt.settings) do
-            empty = false
-            break
+        for n,v in pairs(flexprompt.settings) do
+            if n == "symbols" then
+                for nn in pairs(v) do
+                    empty = false
+                    break
+                end
+            else
+                empty = false
+            end
+            if not empty then
+                break
+            end
         end
         if empty then
             clink.print("\n" .. sgr(1) .. "Flexprompt has not yet been configured." .. sgr())
