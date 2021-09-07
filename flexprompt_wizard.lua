@@ -4,6 +4,7 @@ local brightgreen = "\x1b[92m"
 local static_cursor = "\x1b[7m " .. normal
 
 local _transient
+local _striptime
 
 local function readinput()
     if console.readinput then
@@ -104,6 +105,9 @@ end
 
 local function strip_modules(s)
     s = s:gsub("{battery[^}]*}", "")
+    if _striptime then
+        s = s:gsub("{time[^}]*}", "")
+    end
     return s
 end
 
@@ -116,7 +120,7 @@ local function display_preview(settings, command, show_cursor, callout)
         preview.right_prompt = strip_modules(preview.right_prompt)
     end
 
-    local left, right, col, anchors = flexprompt.render_wizard(settings, callout and true or nil)
+    local left, right, col, anchors = flexprompt.render_wizard(preview, callout and true or nil)
 
     if callout and anchors then
         local x
@@ -488,10 +492,11 @@ local function config_wizard()
             },
             lines = "two",
             left_prompt = "{cwd}{git}",
-            right_prompt = "{duration}",
+            right_prompt = "{duration}{time}",
         }
 
         _transient = nil
+        _striptime = true
 
         clear_screen()
         display_centered("Welcome to the configuration wizard for flexprompt.")
@@ -544,6 +549,7 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
+        _striptime = nil
         s = choose_time(preview, "Show current time?")
         if not s or s == "q" then break end
         if s == "r" then goto continue end
