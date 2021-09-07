@@ -1,6 +1,6 @@
 # Overview
 
-Flex prompt is a flexible customizable prompt for [Clink](https://github.com/chrisant996/clink).
+Flex prompt is a flexible customizable prompt for [Clink](https://github.com/chrisant996/clink), and requires Clink v1.2.10 or higher.
 
 There are several built-in prompt modules, and it's easy to add new custom prompt modules.<br/>
 The style of the prompt can be customized in many ways as well.
@@ -27,7 +27,7 @@ The script will look something like this:
 flexprompt.settings.style = "classic"
 flexprompt.settings.heads = "pointed"
 flexprompt.settings.lines = "two"
-flexprompt.settings.left_prompt = "{cwd}{git}"
+flexprompt.settings.left_prompt = "{battery}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
@@ -52,7 +52,7 @@ flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt.lua` to find the available options for each module._
+- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt.lua` to find the available options for each module (including colors)._
 
 ## Style
 - `"lean"` shows prompt modules using only colored text.
