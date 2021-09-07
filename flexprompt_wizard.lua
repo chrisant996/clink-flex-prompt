@@ -550,6 +550,9 @@ local function config_wizard()
             preview.right_frame = "round"
         end
 
+        --[[
+        -- THIS IS INCONCLUSIVE BECAUSE WINDOWS TERMINAL SEEMS TO ALWAYS SHOW
+        -- THE THICK ANGLE BRACKET, USING THE SAME FONT AS THE DEFAULT TERMINAL.
         clink.print("\x1b[4H\x1b[J", NONL)
         display_centered("Does this look like a "..brightgreen.."angle bracket"..normal.." (greater than sign)?")
         clink.print()
@@ -566,6 +569,7 @@ local function config_wizard()
         if s == "y" then
             preview.symbols.prompt = "❯"
         end
+        --]]
 
         -- Configuration.
 
