@@ -1133,10 +1133,10 @@ function flexprompt.add_color(name, fore, back)
     flexprompt.colors[name] = { fg=fore, bg=back }
 end
 
--- Function to get style.
+-- Function to get the prompt style.
 flexprompt.get_style = get_style
 
--- Function to get flow.
+-- Function to get the prompt flow.
 flexprompt.get_flow = get_flow
 
 -- Get an SGR string to apply the named color as either a foreground or
@@ -1202,18 +1202,24 @@ function flexprompt.parse_colors(text, default, altdefault)
     return color, altcolor
 end
 
--- Function to add control codes around fluent text.
+-- Function that takes (text) and surrounds it with control codes to apply
+-- fluent coloring to the text.
 flexprompt.make_fluent_text = make_fluent_text
+
+-- Function that takes (lhs, rhs) and appends them together with a space in
+-- between.  If either string is empty or nil, the other string is returned
+-- (without appending them).
+flexprompt.append_text = append_text
 
 -- Function to check whether extended colors are available (256 color and 24 bit
 -- color codes).
 flexprompt.can_use_extended_colors = can_use_extended_colors
 
--- Function to get named icon (same as get_symbol, but only gets the symbol if
--- flexprompt.settings.use_icons is true).
+-- Function that takes (name) and retrieves the named icon (same as get_symbol,
+-- but only gets the symbol if flexprompt.settings.use_icons is true).
 flexprompt.get_icon = get_icon
 
--- Function to get named symbol.
+-- Function that takes (name) and retrieves the named symbol.
 flexprompt.get_symbol = get_symbol
 
 -- Function to get customizable symbol for current module (only gets the symbol
