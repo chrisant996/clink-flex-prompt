@@ -498,6 +498,15 @@ local function make_8bit_color_test()
     return s .. "\x1b[m"
 end
 
+local function wizard_can_use_extended_colors(settings)
+    local can
+    local old_settings = flexprompt.settings
+    flexprompt.settings = settings
+    can = flexprompt.can_use_extended_colors(true)
+    flexprompt.settings = old_settings
+    return can
+end
+
 local function config_wizard()
     local s
     local settings_filename = get_settings_filename()
@@ -584,7 +593,7 @@ local function config_wizard()
         end
         --]]
 
-        if flexprompt.can_use_extended_colors(true) then
+        if wizard_can_use_extended_colors(preview) then
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Are the letters "..brightgreen.."A"..normal.." to "..brightgreen.."L"..normal.." readable, in a smooth gradient?")
             clink.print()
@@ -598,12 +607,10 @@ local function config_wizard()
             s = readchoice(choices)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
-            if s == "y" then
-                preview.use_8bit_color = true
-            end
+            preview.use_8bit_color = (s == "y") and true or false
         end
 
-        if not flexprompt.can_use_extended_colors(true) then
+        if not wizard_can_use_extended_colors(preview) then
             four_bit_color = true
             preview.frame_color = { "brightblack", "brightblack", "darkwhite", "darkblack" }
         end

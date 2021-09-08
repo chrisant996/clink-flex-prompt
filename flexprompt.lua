@@ -269,13 +269,14 @@ end
 local _can_use_extended_colors = nil
 local function can_use_extended_colors(force)
     if _can_use_extended_colors == nil or force then
-        _can_use_extended_colors = false
-        if flexprompt.settings.use_8bit_color then
-            _can_use_extended_colors = true
-        elseif clink.getansihost then
-            local host = clink.getansihost()
-            if host == "winconsolev2" or host == "winterminal" then
-                _can_use_extended_colors = true
+        _can_use_extended_colors = flexprompt.settings.use_8bit_color
+        if _can_use_extended_colors == nil then
+            _can_use_extended_colors = false
+            if clink.getansihost then
+                local host = clink.getansihost()
+                if host == "winconsolev2" or host == "winterminal" then
+                    _can_use_extended_colors = true
+                end
             end
         end
     end
