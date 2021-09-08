@@ -200,6 +200,35 @@ flexprompt.settings.spacing = "sparse"
 flexprompt.settings.flow = "fluent"
 ```
 
+## Miscellaneous Settings
+
+```lua
+-- Use all available icons:
+flexprompt.settings.use_icons = true
+-- Use icons only for the time and exit modules:
+flexprompt.settings.use_icons = { "time_module", "exit_module" }
+
+-- Enables battery level refresh in prompt:
+flexprompt.settings.battery_idle_refresh = 30 -- every 30 seconds
+
+-- Replaces %HOME% with ~ in the cwd module.
+flexprompt.settings.use_home_tilde = true
+-- Use additional symbol in cwd module in a git repo, when cwd type is 'smart' or 'rootsmart':
+flexprompt.settings.symbols.cwd_git_symbol
+
+-- Use custom prompt symbol (instead of >):
+flexprompt.settings.prompt_symbol = "$"
+-- Use custom prompt color (supersedes exit_zero_color and exit_nonzero_color):
+flexprompt.settings.prompt_symbol_color = "magenta"
+-- Use custom prompt color when last exit code is zero:
+flexprompt.settings.exit_zero_color = "brightgreen"
+-- Use custom prompt color when last exit code is non-zero:
+flexprompt.settings.exit_nonzero_color = "brightred"
+
+-- Override a symbol that isn't in the font being used:
+flexprompt.settings.symbol.charging = "++"
+```
+
 # Writing Custom Prompt Modules
 
 _TBD_

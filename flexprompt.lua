@@ -213,14 +213,23 @@ local symbols =
     renamecount     = { "" },   -- Empty string counts renames as modified.
     summarycount    = { "*",    unicode="±" },
     untrackedcount  = { "?" },
-    aheadbehind     = { "" },    -- Optional symbol preceding ahead/behind counts.
+    aheadbehind     = { "" },   -- Optional symbol preceding ahead/behind counts.
     aheadcount      = { ">>",   unicode="↓" },
     behindcount     = { "<<",   unicode="↑" },
     staged          = { "#",    unicode="↗" },
+
     battery         = { "%" },
-    charging        = { "++",   unicode="⚡" },
-    exit_zero       = nil,
-    exit_nonzero    = nil,
+    charging        = { "++",   unicode="" },
+
+    exit_zero       = {         unicode="\x1b[92m\002" },
+    exit_nonzero    = {         unicode="\x1b[91m\002" },
+
+    cwd_module      = {         unicode="" },
+    duration_module = {         unicode="" },
+    git_module      = {         unicode="" },
+    python_module   = {         unicode="" },
+    time_module     = {         unicode="" },
+    user_module     = {         unicode="" },
 
     prompt          = { ">" },
 }
@@ -1120,11 +1129,13 @@ end
 -- Public API.
 
 -- Add a module.
--- E.g. flexprompt.add_module("xyz", xyz_render) calls the xyz_render function
--- when "{xyz}" or "{xyz:args}" is encountered in a prompt string.  The function
--- receives "args" as its only argument.
-function flexprompt.add_module(name, func)
+-- E.g. flexprompt.add_module("xyz", xyz_render, "X") calls the xyz_render
+-- function when "{xyz}" or "{xyz:args}" is encountered in a prompt string.
+-- The prompt text "{xyz:args}" would call xyz_render("args").
+-- The symbol is optional, and is the default symbol for the module.
+function flexprompt.add_module(name, func, symbol)
     modules[string.lower(name)] = func
+    symbols[name .. "_module"] = symbol
 end
 
 -- Add a named color.
@@ -1239,7 +1250,7 @@ flexprompt.append_text = append_text
 flexprompt.can_use_extended_colors = can_use_extended_colors
 
 -- Function that takes (name) and retrieves the named icon (same as get_symbol,
--- but only gets the symbol if flexprompt.settings.use_icons is true).
+-- but only gets the symbol if flexprompt.settings.use_icons is set).
 flexprompt.get_icon = get_icon
 
 -- Function that takes (name) and retrieves the named symbol.
@@ -1844,15 +1855,14 @@ local function render_exit(args)
     else
         text = value
     end
-    text = append_text(flexprompt.get_module_symbol(), text)
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
         color = "black"
-        altcolor = "red"
+        altcolor = "green"
     else
-        color = "red"
+        color = "darkgreen"
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
@@ -1861,14 +1871,14 @@ local function render_exit(args)
         altcolor = "brightyellow"
     end
 
+    local sym = flexprompt.get_module_symbol()
+    if sym == "" then
+        sym = flexprompt.get_icon(value ~= 0 and "exit_nonzero" or "exit_zero")
+    end
+    text = append_text(sym, text)
+
     if flexprompt.get_flow() == "fluent" then
         text = append_text(flexprompt.make_fluent_text("exit"), text)
-    else
-        local sym = flexprompt.get_module_symbol()
-        if not sym then
-            sym = flexprompt.get_icon(value ~= 0 and "exit_nonzero" or "exit_zero")
-        end
-        text = append_text(text, sym)
     end
 
     return text, color, altcolor
