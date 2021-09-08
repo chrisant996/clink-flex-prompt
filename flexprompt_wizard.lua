@@ -444,6 +444,42 @@ local function choose_spacing(settings, title)
     return s
 end
 
+local function choose_icons(settings, title)
+    local choices = ""
+    local preview
+
+    clear_screen()
+    display_centered(title)
+    clink.print()
+
+    choices = "12"
+
+    clink.print("(1)  Few icons.\n")
+    preview = copy_table(settings)
+    preview.use_icons = nil
+    display_preview(preview)
+    clink.print()
+
+    clink.print("(2)  Many icons.\n")
+    preview = copy_table(settings)
+    preview.use_icons = true
+    display_preview(preview)
+    clink.print()
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local s = readchoice(choices)
+    if not s then return end
+
+    if s == "r" then
+    elseif s == "q" then
+    else
+        settings.use_icons = (s == "2") and true or nil
+    end
+    return s
+end
+
 local function choose_transient(settings, title)
     local choices = ""
     local preview
@@ -706,6 +742,12 @@ local function config_wizard()
         s = choose_spacing(preview, "Prompt Spacing")
         if not s or s == "q" then break end
         if s == "r" then goto continue end
+
+        if preview.charset == "unicode" then
+            s = choose_icons(preview, "Icons")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
 
         s = choose_setting(preview, "Prompt Flow", "flows", "flow", { "concise", "fluent" })
         if not s or s == "q" then break end

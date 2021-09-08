@@ -1,7 +1,6 @@
 ### Bugs
 
 ### General
-- [ ] Wizard ask about icons.
 - [ ] Documentation.
 - [ ] Ask romkatv if I can reference/copy the Meslo font.
 
