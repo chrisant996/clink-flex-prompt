@@ -1775,7 +1775,7 @@ local function render_exit(args)
     if flexprompt.get_flow() == "fluent" then
         text = append_text(flexprompt.make_fluent_text("exit"), text)
     else
-        local sym = get_module_symbol()
+        local sym = flexprompt.get_module_symbol()
         if not sym then
             sym = flexprompt.get_icon(value ~= 0 and "exit_nonzero" or "exit_zero")
         end
