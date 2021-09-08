@@ -497,7 +497,12 @@ end
 
 local function has_dir(dir, subdir)
     local test = path.join(dir, subdir)
-    return os.isdir(test) and test
+    return os.isdir(test) and test or nil
+end
+
+local function has_file(dir, file)
+    local test = path.join(dir, file)
+    return os.isfile(test) and test or nil
 end
 
 local function append_text(lhs, rhs)
@@ -1219,6 +1224,34 @@ function flexprompt.get_module_symbol()
     return s
 end
 
+-- Function that takes (dir, subdir) and returns "dir\subdir" if the subdir
+-- exists, otherwise it returns nil.
+flexprompt.has_dir = has_dir
+
+-- Function that takes (dir, file) and returns "dir\file" if the file exists,
+-- otherwise it returns nil.
+flexprompt.has_file = has_file
+
+-- Function that walks up from dir, looking for scan_for in each directory.
+-- Starting with dir (or cwd if dir is nil), this invokes scan_func(dir), which
+-- can check for a subdir or a file or whatever it wants to check.
+-- NOTE:  scan_func(dir) must return nil to keep scanning upwards; any other
+-- value (including false) is returned to the caller.
+function flexprompt.scan_upwards(dir, scan_func)
+    -- Set default path to current directory.
+    if not dir or dir == '.' then dir = os.getcwd() end
+
+    repeat
+        -- Call the supplied function.
+        local result = scan_func(dir)
+        if result ~= nil then return result end
+
+        -- Walk up to parent path.
+        local parent = get_parent(dir)
+        dir = parent
+    until not dir
+end
+
 -- Function to register a module's prompt coroutine.
 -- IMPORTANT:  Use this instead of clink.promptcoroutine()!
 flexprompt.promptcoroutine = promptcoroutine
@@ -1303,18 +1336,10 @@ function flexprompt.get_git_dir(dir)
         end
     end
 
-    -- Set default path to current directory.
-    if not dir or dir == '.' then dir = os.getcwd() end
-
-    repeat
+    return flexprompt.scan_upwards(dir, function (dir)
         -- Return if it's a git dir.
-        local has = has_dir(dir, ".git") or has_git_file(dir)
-        if has then return has end
-
-        -- Walk up to parent path.
-        local parent = get_parent(dir)
-        dir = parent
-    until not dir
+        return has_dir(dir, ".git") or has_git_file(dir)
+    end)
 end
 
 -- Get the name of the current branch.
@@ -1969,18 +1994,10 @@ local hg_colors =
 }
 
 local function get_hg_dir(dir)
-    -- Set default path to current directory.
-    if not dir or dir == '.' then dir = os.getcwd() end
-
-    repeat
+    return flexprompt.scan_upwards(dir, function (dir)
         -- Return if it's a hg (Mercurial) dir.
-        local has = has_dir(dir, ".hg")
-        if has then return has end
-
-        -- Walk up to parent path.
-        local parent = get_parent(dir)
-        dir = parent
-    until not dir
+        return has_dir(dir, ".hg")
+    end)
 end
 
 local function render_hg(args)
@@ -2028,16 +2045,11 @@ end
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
 local function get_pom_xml_dir(dir)
-    if not dir or dir == "." then dir = os.getcwd() end
-
-    repeat
+    return flexprompt.scan_upwards(dir, function (dir)
         local pom_file = path.join(dir, "pom.xml")
         -- More efficient than opening the file.
         if os.isfile(pom_file) then return true end
-
-        local parent = get_parent(dir)
-        dir = parent
-    until not dir
+    end)
 end
 
 local function render_maven(args)
@@ -2081,15 +2093,10 @@ end
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
 local function get_package_json_file(dir)
-    if not dir or dir == "." then dir = os.getcwd() end
-
-    repeat
+    return flexprompt.scan_upwards(dir, function (dir)
         local file = io.open(path.join(dir, "package.json"))
         if file then return file end
-
-        local parent = get_parent(dir)
-        dir = parent
-    until not dir
+    end)
 end
 
 local function render_npm(args)
@@ -2131,16 +2138,11 @@ local function get_virtual_env(env_var)
 end
 
 local function has_py_files(dir)
-    if not dir or dir == "." then dir = os.getcwd() end
-
-    repeat
+    return flexprompt.scan_upwards(dir, function (dir)
         for _ in pairs(os.globfiles(path.join(dir, "*.py"))) do
             return true
         end
-
-        local parent = get_parent(dir)
-        dir = parent
-    until not dir
+    end)
 end
 
 local function render_python(args)
@@ -2171,18 +2173,11 @@ local svn_colors =
 }
 
 local function get_svn_dir(dir)
-    -- Set default path to current directory.
-    if not dir or dir == '.' then dir = os.getcwd() end
-
-    repeat
+    return flexprompt.scan_upwards(dir, function (dir)
         -- Return if it's a svn (Subversion) dir.
         local has = has_dir(dir, ".svn")
         if has then return has end
-
-        -- Walk up to parent path.
-        local parent = get_parent(dir)
-        dir = parent
-    until not dir
+    end)
 end
 
 local function get_svn_branch()
