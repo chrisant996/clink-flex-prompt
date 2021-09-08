@@ -506,8 +506,11 @@ local function has_file(dir, file)
 end
 
 local function append_text(lhs, rhs)
-    if not lhs then return rhs end
-    if not rhs then return lhs end
+    if not lhs then return tostring(rhs) end
+    if not rhs then return tostring(lhs) end
+
+    lhs = tostring(lhs)
+    rhs = tostring(rhs)
 
     if #lhs > 0 and #rhs > 0 then
         return lhs .. " " .. rhs
