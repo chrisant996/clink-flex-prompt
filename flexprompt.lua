@@ -318,7 +318,7 @@ local function get_connector()
     return flexprompt.choices.connections[flexprompt.settings.connection or "disconnected"] or " "
 end
 
-local function lookup_color(args, verbatim)
+local function lookup_color(args)
     if not args or type(args) == "table" then
         return args
     end
@@ -427,6 +427,13 @@ local function make_fluent_text(text, force)
     if not force and get_style() == "rainbow" then
         return text
     else
+        local t = type(force)
+        if t == "string" or t == "table" then
+            local color = lookup_color(force)
+            if color then
+                return sgr(color.fg) .. text .. "\002"
+            end
+        end
         return "\001" .. text .. "\002"
     end
 end
@@ -1197,8 +1204,11 @@ function flexprompt.parse_colors(text, default, altdefault)
     return color, altcolor
 end
 
--- Function that takes (text) and surrounds it with control codes to apply
--- fluent coloring to the text.
+-- Function that takes (text, force) and surrounds it with control codes to
+-- apply fluent coloring to the text.  If force is true, the fluent color is
+-- applied even when using the rainbow style.  If force is a string it's a named
+-- color to use instead of the fluent color, and if force is a table and its fg
+-- field is used instead of the fluent color.
 flexprompt.make_fluent_text = make_fluent_text
 
 -- Function that takes (lhs, rhs) and appends them together with a space in
@@ -1620,9 +1630,10 @@ local function render_battery(args)
 end
 
 --------------------------------------------------------------------------------
--- CWD MODULE:  {cwd:color=color_name,alt_color_name:type=type_name}
+-- CWD MODULE:  {cwd:color=color_name,alt_color_name:rootcolor=rootcolor_name:type=type_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
+--  - rootcolor_name overrides the repo parent color when using "rootsmart".
 --  - type_name is the format to use:
 --      - "full" is the full path.
 --      - "folder" is just the folder name.
@@ -1679,7 +1690,9 @@ local function render_cwd(args)
                     local appended_dir = string.sub(cwd, string.len(git_root_dir) + 1)
                     local smart_dir = get_folder_name(git_root_dir) .. appended_dir
                     if type == "rootsmart" then
-                        cwd = flexprompt.make_fluent_text(cwd:sub(1, #cwd - #smart_dir), true) .. smart_dir
+                        local rootcolor = flexprompt.parse_arg_token(args, "rc", "rootcolor")
+                        local parent = cwd:sub(1, #cwd - #smart_dir)
+                        cwd = flexprompt.make_fluent_text(parent, rootcolor or true) .. smart_dir
                     else
                         cwd = smart_dir
                     end
