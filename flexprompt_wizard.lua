@@ -454,7 +454,9 @@ local function choose_icons(settings, title)
 
     choices = "12"
 
-    clink.print("(1)  Few icons.\n")
+    local few_no = (settings.style == "lean") and "No" or "Few"
+
+    clink.print("(1)  " .. few_no .. " icons.\n")
     preview = copy_table(settings)
     preview.use_icons = nil
     display_preview(preview)
@@ -568,7 +570,9 @@ local function config_wizard()
             lines = "two",
             left_prompt = "{cwd}{git}",
             right_prompt = "{duration}{time}",
-            symbols = {}
+            symbols = {
+                branch=""
+            },
         }
 
         _transient = nil
@@ -656,6 +660,8 @@ local function config_wizard()
         s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow" })
         if not s or s == "q" then break end
         if s == "r" then goto continue end
+
+        preview.symbols.branch = nil
 
         if preview.charset == "unicode" then
             s = choose_setting(preview, "Character Set", "charsets", "charset", { "unicode", "ascii" })
