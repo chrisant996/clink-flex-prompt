@@ -734,6 +734,7 @@ end
 -- Coroutines.
 
 local coroutines = {}
+local _promptcoroutine
 
 local function coroutines_onbeginedit()
     coroutines = {}
@@ -765,21 +766,22 @@ local function promptcoroutine(func)
         if async then
             -- Create the prompt coroutine manager if needed.
             if not _promptcoroutine then
-                _promptcoroutine = clink.promptcoroutine(promptcoroutine_manager)
+                clink.promptcoroutine(promptcoroutine_manager)
+                _promptcoroutine = true
             end
         else
             -- Create coroutine for running func synchronously.  We must
             -- maintain func's expectation that it is run as a coroutine, even
             -- when it's not being run asynchronously.
-            local c = coroutine.create(function (async)
-                entry.func(async)
+            local c = coroutine.create(function ()
+                entry.func(false--[[async]])
             end)
 
             -- Run the coroutine synchronously.
             local max_iter = 25
             for iteration = 1, max_iter + 1, 1 do
                 -- Pass false to let it know it is not async.
-                local result, _ = coroutine.resume(c, false--[[async]])
+                local result, _ = coroutine.resume(c)
                 if result then
                     if coroutine.status(c) == "dead" then
                         break
