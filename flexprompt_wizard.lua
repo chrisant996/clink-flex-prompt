@@ -38,11 +38,11 @@ end
 
 local function get_settings_filename()
     local info = debug.getinfo(get_settings_filename, 'S')
-    if not info.short_src then
+    if not info.source then
         error("Unable to write settings; file location unknown.")
     end
 
-    local name = path.join(path.toparent(info.short_src), "flexprompt_autoconfig.lua")
+    local name = path.join(path.toparent(info.source), "flexprompt_autoconfig.lua")
     return name
 end
 
