@@ -267,21 +267,19 @@ local function sgr(args)
 end
 
 local _can_use_extended_colors = nil
-local function can_use_extended_colors()
-    if _can_use_extended_colors ~= nil then
-        return _can_use_extended_colors
-    end
-
-    if clink.getansihost then
-        local host = clink.getansihost()
-        if host == "conemu" or host == "winconsolev2" or host == "winterminal" then
+local function can_use_extended_colors(force)
+    if _can_use_extended_colors == nil or force then
+        _can_use_extended_colors = false
+        if flexprompt.settings.use_8bit_color then
             _can_use_extended_colors = true
-            return true;
+        elseif clink.getansihost then
+            local host = clink.getansihost()
+            if host == "winconsolev2" or host == "winterminal" then
+                _can_use_extended_colors = true
+            end
         end
     end
-
-    _can_use_extended_colors = false
-    return false
+    return _can_use_extended_colors
 end
 
 local function get_style()

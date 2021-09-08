@@ -489,9 +489,20 @@ local function choose_transient(settings, title)
     return s
 end
 
+local function make_8bit_color_test()
+    local s = ""
+    for index = 0, 11, 1 do
+        local color = 234 + index
+        s = s .. "\x1b[48;5;"..color..";38;5;"..(color + 4 + math.floor(index*2/3)).."m" .. string.char(65 + index)
+    end
+    return s .. "\x1b[m"
+end
+
 local function config_wizard()
     local s
     local settings_filename = get_settings_filename()
+    local eight_bit_color_test = make_8bit_color_test()
+    local four_bit_color
     local callout
     local wrote
 
@@ -517,6 +528,8 @@ local function config_wizard()
 
         _transient = nil
         _striptime = true
+
+        four_bit_color = false
 
         -- Find out about the font being used.
 
@@ -571,6 +584,30 @@ local function config_wizard()
         end
         --]]
 
+        if flexprompt.can_use_extended_colors(true) then
+            clink.print("\x1b[4H\x1b[J", NONL)
+            display_centered("Are the letters "..brightgreen.."A"..normal.." to "..brightgreen.."L"..normal.." readable, in a smooth gradient?")
+            clink.print()
+            display_centered("-->  "..eight_bit_color_test.."  <--")
+            clink.print()
+            choices = ""
+            choices = display_yes(choices)
+            choices = display_no(choices)
+            choices = display_restart(choices)
+            choices = display_quit(choices)
+            s = readchoice(choices)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+            if s == "y" then
+                preview.use_8bit_color = true
+            end
+        end
+
+        if not flexprompt.can_use_extended_colors(true) then
+            four_bit_color = true
+            preview.frame_color = { "brightblack", "brightblack", "darkwhite", "darkblack" }
+        end
+
         -- Configuration.
 
         s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow" })
@@ -595,7 +632,7 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
-        if preview.style == "classic" then
+        if preview.style == "classic" and not four_bit_color then
             s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
             if not s or s == "q" then break end
             if s == "r" then goto continue end
@@ -651,9 +688,8 @@ local function config_wizard()
                 if s == "r" then goto continue end
             end
 
-            if preview.style ~= "classic" and (preview.left_frame ~= "none" or
-                                               preview.right_frame ~= "none" or
-                                               preview.connection ~= "disconnected") then
+            if preview.style ~= "classic" and not four_bit_color and
+                    (preview.left_frame ~= "none" or preview.right_frame ~= "none" or preview.connection ~= "disconnected") then
                 s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
