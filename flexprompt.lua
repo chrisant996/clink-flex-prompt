@@ -220,6 +220,8 @@ local symbols =
     battery         = { "%" },
     charging        = { "++",   unicode="⚡" },
     prompt          = "angle",
+    exit_zero       = nil,
+    exit_nonzero    = nil,
 }
 
 --flexprompt.settings.battery_idle_refresh
@@ -385,9 +387,16 @@ local function get_symbol(name)
     local symbol = flexprompt.settings.symbols[name] or symbols[name] or ""
     if type(symbol) == "table" then
         if not _charset then get_charset() end
-        symbol = symbol[_charset] or symbol[1] or "?!"
+        symbol = symbol[_charset] or symbol[1] or ""
     end
     return symbol
+end
+
+local function get_icon(name)
+    if not flexprompt.settings.use_icons then return "" end
+    if type(flexprompt.settings.use_icons) == "table" and not flexprompt.settings.use_icons[name] then return "" end
+
+    return get_symbol(name) or ""
 end
 
 local function get_prompt_symbol_color()
@@ -613,7 +622,8 @@ local function color_segment_transition(color, symbol, close)
 end
 
 local function apply_fluent_colors(text, base_color)
-    return string.gsub(text, "\001", sgr(segmenter.frame_color[fc_fore].fg)):gsub("\002", base_color)
+    local fluent_color = sgr((get_flow() == "lean") and nil or segmenter.frame_color[fc_fore].fg)
+    return string.gsub(text, "\001", fluent_color):gsub("\002", base_color)
 end
 
 local function next_segment(text, color, rainbow_text_color)
@@ -1192,11 +1202,20 @@ flexprompt.make_fluent_text = make_fluent_text
 -- color codes).
 flexprompt.can_use_extended_colors = can_use_extended_colors
 
--- Function to get customizable symbol for current module.
+-- Function to get named icon (same as get_symbol, but only gets the symbol if
+-- flexprompt.settings.use_icons is true).
+flexprompt.get_icon = get_icon
+
+-- Function to get named symbol.
+flexprompt.get_symbol = get_symbol
+
+-- Function to get customizable symbol for current module (only gets the symbol
+-- if flexprompt.settings.use_icons is true).
 function flexprompt.get_module_symbol()
     local s = ""
     if segmenter and segmenter._current_module then
-        s = flexprompt.settings.symbols[segmenter._current_module .. "_module"] or ""
+        local name = segmenter._current_module .. "_module"
+        s = flexprompt.get_icon(name)
     end
     return s
 end
@@ -1355,7 +1374,7 @@ function flexprompt.get_git_status()
     end
     file:close()
 
-    if get_symbol("renamecount") == "" then
+    if flexprompt.get_symbol("renamecount") == "" then
         s_mod = s_mod + s_ren
         s_ren = 0
     end
@@ -1481,7 +1500,7 @@ local rainbow_battery_colors =
 
 local function get_battery_status()
     local level, acpower, charging
-    local batt_symbol = get_symbol("battery")
+    local batt_symbol = flexprompt.get_symbol("battery")
 
     local status = os.getbatterystatus()
     level = status.level
@@ -1492,7 +1511,7 @@ local function get_battery_status()
         return "", 0
     end
     if charging then
-        batt_symbol = get_symbol("charging")
+        batt_symbol = flexprompt.get_symbol("charging")
     end
 
     return level..batt_symbol, level
@@ -1601,6 +1620,7 @@ local function render_cwd(args)
     local cwd = _cwd or os.getcwd()
     local git_dir
 
+    local sym
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
     if _cwd then
         -- Disable cwd/git integration in the configuration wizard.
@@ -1635,13 +1655,13 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    cwd = append_text(get_symbol("cwd_git_symbol"), cwd)
+                    sym = flexprompt.get_icon("cwd_git_symbol")
                 end
             end
         until true
     end
 
-    cwd = append_text(flexprompt.get_module_symbol(), cwd)
+    cwd = append_text(sym or flexprompt.get_module_symbol(), cwd)
 
     return dirStackDepth .. cwd, color, "white"
 end
@@ -1694,11 +1714,11 @@ local function render_duration(args)
             text = append_text(duration .. "h", text)
         end
     end
-    text = append_text(flexprompt.get_module_symbol(), text)
 
     if flexprompt.get_flow() == "fluent" then
-        text = flexprompt.make_fluent_text("took ") .. text
+        text = append_text(flexprompt.make_fluent_text("took"), text)
     end
+    text = append_text(text, flexprompt.get_module_symbol())
 
     return text, color, altcolor
 end
@@ -1753,7 +1773,13 @@ local function render_exit(args)
     end
 
     if flexprompt.get_flow() == "fluent" then
-        text = flexprompt.make_fluent_text("exit ") .. text
+        text = append_text(flexprompt.make_fluent_text("exit"), text)
+    else
+        local sym = get_module_symbol()
+        if not sym then
+            sym = flexprompt.get_icon(value ~= 0 and "exit_nonzero" or "exit_zero")
+        end
+        text = append_text(text, sym)
     end
 
     return text, color, altcolor
@@ -1782,22 +1808,22 @@ local cached_info = {}
 local function add_details(text, details)
     if git.status_details then
         if details.add > 0 then
-            text = append_text(text, get_symbol("addcount") .. details.add)
+            text = append_text(text, flexprompt.get_symbol("addcount") .. details.add)
         end
         if details.modify > 0 then
-            text = append_text(text, get_symbol("modifycount") .. details.modify)
+            text = append_text(text, flexprompt.get_symbol("modifycount") .. details.modify)
         end
         if details.delete > 0 then
-            text = append_text(text, get_symbol("deletecount") .. details.delete)
+            text = append_text(text, flexprompt.get_symbol("deletecount") .. details.delete)
         end
         if (details.rename or 0) > 0 then
-            text = append_text(text, get_symbol("renamecount") .. details.rename)
+            text = append_text(text, flexprompt.get_symbol("renamecount") .. details.rename)
         end
     else
-        text = append_text(text, get_symbol("summarycount") .. (details.add + details.modify + details.delete + (details.rename or 0)))
+        text = append_text(text, flexprompt.get_symbol("summarycount") .. (details.add + details.modify + details.delete + (details.rename or 0)))
     end
     if (details.untracked or 0) > 0 then
-        text = append_text(text, get_symbol("untrackedcount") .. details.untracked)
+        text = append_text(text, flexprompt.get_symbol("untrackedcount") .. details.untracked)
     end
     return text
 end
@@ -1872,7 +1898,7 @@ local function render_git(args)
     local gitUnknown = not info.finished
     local colors = git_colors.clean
     local showRemote = flexprompt.parse_arg_keyword(args, "sr", "showremote")
-    local text = branch
+    local text = append_text(flexprompt.get_module_symbol(), branch)
     if showRemote then
         local remote = flexprompt.get_git_remote(git_dir)
         if remote then
@@ -1882,20 +1908,17 @@ local function render_git(args)
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
     elseif style ~= "lean" then
-        text = append_text(get_symbol("branch"), text)
+        text = append_text(flexprompt.get_symbol("branch"), text)
     end
     if gitConflict then
         colors = git_colors.conflict
-        if get_symbol("conflict") and #get_symbol("conflict") then
-            text = append_text(text, get_symbol("conflict"))
-        end
+        text = append_text(text, flexprompt.get_symbol("conflict"))
     elseif gitStatus and gitStatus.working then
         colors = git_colors.dirty
         text = add_details(text, gitStatus.working)
     elseif gitUnknown then
         colors = git_colors.unknown
     end
-    text = append_text(flexprompt.get_module_symbol(), text)
 
     local color, altcolor = parse_color_token(args, colors)
     table.insert(segments, { text, color, altcolor })
@@ -1903,10 +1926,7 @@ local function render_git(args)
     -- Staged status.
     local noStaged = flexprompt.parse_arg_keyword(args, "ns", "nostaged")
     if not noStaged and gitStatus and gitStatus.staged then
-        text = ""
-        if get_symbol("staged") and #get_symbol("staged") then
-            text = append_text(text, get_symbol("staged"))
-        end
+        text = append_text("", flexprompt.get_symbol("staged"))
         colors = git_colors.staged
         text = add_details(text, gitStatus.staged)
         color, altcolor = parse_color_token(args, colors)
@@ -1919,16 +1939,13 @@ local function render_git(args)
         local ahead = info.ahead or "0"
         local behind = info.behind or "0"
         if ahead ~= "0" or behind ~= "0" then
-            text = ""
-            if get_symbol("aheadbehind") and #get_symbol("aheadbehind") > 0 then
-                text = append_text(text, get_symbol("aheadbehind"))
-            end
+            text = append_text("", flexprompt.get_symbol("aheadbehind"))
             colors = git_colors.remote
             if ahead ~= "0" then
-                text = append_text(text, get_symbol("aheadcount") .. ahead)
+                text = append_text(text, flexprompt.get_symbol("aheadcount") .. ahead)
             end
             if behind ~= "0" then
-                text = append_text(text, get_symbol("behindcount") .. behind)
+                text = append_text(text, flexprompt.get_symbol("behindcount") .. behind)
             end
             color, altcolor = parse_color_token(args, colors)
             table.insert(segments, { text, color, altcolor })
@@ -1983,22 +2000,21 @@ local function render_hg(args)
     if string.find(branch, "is not recognized") then return end
 
     local flow = flexprompt.get_flow()
-    local text = branch
-    local colors = hg_colors.clean
-
+    local text = append_text(flexprompt.get_symbol("branch"), branch)
+    text = append_text(flexprompt.get_module_symbol(), text)
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
-    elseif style ~= "lean" then
-        text = append_text(get_symbol("branch"), text)
     end
-    text = append_text(flexprompt.get_module_symbol(), text)
 
+    local colors
     local pipe = io.popen("hg status -amrd 2>&1")
     local output = pipe:read('*all')
     local rc = { pipe:close() }
     if (output or "") ~= "" then
         text = append_text(text, get_symbol("modifycount"))
         colors = hg_colors.dirty
+    else
+        colors = hg_colors.clean
     end
 
     local color, altcolor = parse_color_token(args, colors)
@@ -2209,7 +2225,7 @@ local function render_svn(args)
 
     if get_svn_status() then
         colors = svn_colors.dirty
-        text = append_text(text, get_symbol("modifycount"))
+        text = append_text(text, flexprompt.get_symbol("modifycount"))
     end
 
     local color, altcolor = parse_color_token(args, colors)
@@ -2244,8 +2260,10 @@ local function render_time(args)
     local text = os.date(format)
 
     if flexprompt.get_flow() == "fluent" then
-        text = flexprompt.make_fluent_text("at ") .. text
+        text = append_text(flexprompt.make_fluent_text("at"), text)
     end
+
+    text = append_text(text, flexprompt.get_module_symbol())
 
     return text, color, altcolor
 end
