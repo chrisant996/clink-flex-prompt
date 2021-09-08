@@ -570,9 +570,12 @@ local function init_segmenter(side, frame_color)
     segmenter.close_cap = close_caps[2]
 
     if segmenter.style == "lean" then
-        segmenter.separator = " "
+        segmenter.separator = flexprompt.settings.lean_separators or " "
         segmenter.open_cap = ""
         segmenter.close_cap = ""
+        if type(segmenter.separator) == "table" then
+            segmenter.separator = segmenter.separator[side + 1]
+        end
     else
         local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
         local available_separators = (charset == "ascii") and flexprompt.choices.ascii_separators or flexprompt.choices.separators

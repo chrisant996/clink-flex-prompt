@@ -227,6 +227,9 @@ flexprompt.settings.exit_nonzero_color = "brightred"
 
 -- Override a symbol that isn't in the font being used:
 flexprompt.settings.symbol.charging = "++"
+
+-- Override separators when style is 'lean':
+flexprompt.settings.lean_separators = "   "
 ```
 
 # Writing Custom Prompt Modules
