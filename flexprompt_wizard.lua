@@ -455,6 +455,8 @@ local function choose_transient(settings, title)
     choices = "yn"
 
     clink.print("(y)  Yes.\n")
+    clink.print("     Past prompts are compacted, if the current directory")
+    clink.print("     hasn't changed.\n")
     clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard() .. "git pull")
     clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard() .. "git branch x")
     if settings.spacing == "sparse" then clink.print() end
@@ -531,7 +533,8 @@ local function config_wizard()
         choices = display_no(choices)
         clink.print("     Visit "..bold.."https://nerdfonts.com"..normal.." to find fonts that support the")
         clink.print("     powerline symbols flexprompt uses for its fancy text-mode graphics.")
-        clink.print("\n     Meslo NF and Fira Code NF are two fonts I highly recommend.\n\n")
+        clink.print("\n     Some excellent fonts to consider are Meslo NF, Fira Code NF,")
+        clink.print("     or Cascadia Code PL (and many other suitable fonts exist).\n\n")
         choices = display_quit(choices)
         s = readchoice(choices)
         if not s or s == "q" then break end
@@ -676,7 +679,7 @@ local function config_wizard()
         if os.isfile(settings_filename) then
             clear_screen()
             display_centered("Flexprompt autoconfig file already exists.")
-            display_centered(bold.."Overwrite "..brightgreen..settings_filename..normal..bold.."?")
+            display_centered(bold.."Overwrite "..brightgreen..settings_filename..normal..bold.."?"..normal)
             clink.print()
             choices = ""
             choices = display_yes(choices)
