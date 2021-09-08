@@ -1954,36 +1954,45 @@ local git_colors =
 }
 
 local function render_git(args)
+    local git_dir
+    local branch
+    local info
+
     if _in_wizard then
-        local color, altcolor = parse_color_token(args, git_colors.clean)
-        return "master", color, altcolor
-    end
-
-    local git_dir = flexprompt.get_git_dir()
-    if not git_dir then
-        return
-    end
-
-    local branch = flexprompt.get_git_branch(git_dir)
-    if not branch then
-        return
-    end
-
-    -- Discard cached info if from a different repo or branch.
-    if (cached_info.git_dir ~= git_dir) or (cached_info.git_branch ~= branch) then
-        cached_info = {}
-        cached_info.git_dir = git_dir
-        cached_info.git_branch = branch
-    end
-
-    -- Use coroutine to collect status info asynchronously.
-    local info = flexprompt.promptcoroutine(collect_git_info)
-
-    -- Use cached info until coroutine is finished.
-    if not info then
-        info = cached_info.git_info or {}
+        git_dir = true
+        branch = "main"
+        info = { finished=true }
     else
-        cached_info.git_info = info
+        git_dir = flexprompt.get_git_dir()
+        if not git_dir then return end
+
+        branch = flexprompt.get_git_branch(git_dir)
+        if not branch then return end
+
+        -- Discard cached info if from a different repo or branch.
+        if (cached_info.git_dir ~= git_dir) or (cached_info.git_branch ~= branch) then
+            cached_info = {}
+            cached_info.git_dir = git_dir
+            cached_info.git_branch = branch
+        end
+
+        -- Use coroutine to collect status info asynchronously.
+        info = flexprompt.promptcoroutine(collect_git_info)
+
+        -- Use cached info until coroutine is finished.
+        if not info then
+            info = cached_info.git_info or {}
+        else
+            cached_info.git_info = info
+        end
+
+        -- Add remote to branch name if requested.
+        if flexprompt.parse_arg_keyword(args, "sr", "showremote") then
+            local remote = flexprompt.get_git_remote(git_dir)
+            if remote then
+                branch = branch .. flexprompt.make_fluent_text("->") .. remote
+            end
+        end
     end
 
     -- Segments.
@@ -1996,15 +2005,7 @@ local function render_git(args)
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
     local colors = git_colors.clean
-    local showRemote = flexprompt.parse_arg_keyword(args, "sr", "showremote")
-    local text = branch
-    if showRemote then
-        local remote = flexprompt.get_git_remote(git_dir)
-        if remote then
-            text = text .. flexprompt.make_fluent_text("->") .. remote
-        end
-    end
-    text = flexprompt.format_branch_name(text)
+    text = flexprompt.format_branch_name(branch)
     if gitConflict then
         colors = git_colors.conflict
         text = append_text(text, flexprompt.get_symbol("conflict"))
