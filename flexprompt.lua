@@ -219,9 +219,10 @@ local symbols =
     staged          = { "#",    unicode="↗" },
     battery         = { "%" },
     charging        = { "++",   unicode="⚡" },
-    prompt          = "angle",
     exit_zero       = nil,
     exit_nonzero    = nil,
+
+    prompt          = { ">" },
 }
 
 --flexprompt.settings.battery_idle_refresh
@@ -382,8 +383,8 @@ local function get_frame_color()
     return frame_color
 end
 
-local function get_symbol(name)
-    local symbol = flexprompt.settings.symbols[name] or symbols[name] or ""
+local function get_symbol(name, fallback)
+    local symbol = flexprompt.settings.symbols[name] or symbols[name] or fallback or ""
     if type(symbol) == "table" then
         if not _charset then get_charset() end
         symbol = symbol[_charset] or symbol[1] or ""
@@ -395,7 +396,7 @@ local function get_icon(name)
     if not flexprompt.settings.use_icons then return "" end
     if type(flexprompt.settings.use_icons) == "table" and not flexprompt.settings.use_icons[name] then return "" end
 
-    return get_symbol(name) or ""
+    return get_symbol(name)
 end
 
 local function get_prompt_symbol_color()
@@ -414,13 +415,7 @@ local function get_prompt_symbol_color()
 end
 
 local function get_prompt_symbol()
-    local p = flexprompt.settings.symbols.prompt
-    local symbol = flexprompt.choices.prompt_symbols[p or symbols.prompt] or p
-    if type(symbol) == "table" then
-        if not _charset then get_charset() end
-        symbol = symbol[_charset] or symbol[1] or "?!"
-    end
-    return symbol
+    return get_symbol("prompt", ">")
 end
 
 local function get_flow()
