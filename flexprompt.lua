@@ -168,7 +168,7 @@ local fc_back = 2
 local fc_fore = 3
 local fc_sep = 4
 flexprompt.choices.frame_colors =
-{               --  Frame       Back        Fore
+{               --  Frame       Back        Fore        Separator (optional; falls back to Frame)
     lightest    = { "38;5;244", "38;5;240", "38;5;248"  },
     light       = { "38;5;242", "38;5;238", "38;5;246"  },
     dark        = { "38;5;240", "38;5;236", "38;5;244"  },
@@ -612,7 +612,7 @@ local function color_segment_transition(color, symbol, close)
     local bg = swap and "fg" or "bg"
     if segmenter.style == "rainbow" then
         if segmenter.back_color.bg == color.bg then
-            return sgr(segmenter.frame_color[fc_frame].fg) .. segmenter.altseparator
+            return sgr(segmenter.frame_color[fc_sep].fg) .. segmenter.altseparator
         else
             return sgr(segmenter.back_color[fg] .. ";" .. color[bg]) .. symbol
         end
@@ -651,7 +651,7 @@ local function next_segment(text, color, rainbow_text_color)
     else
         sep = segmenter.separator
         if classic then
-            transition_color = segmenter.frame_color[fc_frame]
+            transition_color = segmenter.frame_color[fc_sep]
         end
     end
 
