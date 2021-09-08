@@ -1131,9 +1131,27 @@ end
 -- Named colors must be a table { fg=_sgr_code_, bg=_sgr_code_ }.
 -- The fg and bg are needed for the rainbow style to properly color transitions
 -- between segments.
+-- If the fore argument is a table then back is ignored.  The table should
+-- include fg and bg fields.  It can also contain lean, classic, or rainbow
+-- fields to redirect to another color when using that style.  E.g. this table
+-- defined red foreground and background, but in the lean style it redirects to
+-- bright yellow:  { fg="31", bg="41", lean="brightyellow" }
 function flexprompt.add_color(name, fore, back)
-    flexprompt.colors[name] = { fg=fore, bg=back }
+    if type(fore) == "table" then
+        flexprompt.colors[name] = fore
+    else
+        flexprompt.colors[name] = { fg=fore, bg=back }
+    end
 end
+
+-- Function to lookup a color.  If it's a named color, the named color
+-- definition is returned.  If it starts with "38;" or "48;" then it's an
+-- extended color (8-bit or 24-bit), and lookup_color automatically builds a
+-- color table with corresponding foreground and background colors (so that it
+-- can be used with the rainbow style).  Otherwise, the function gives up and
+-- builds a color table using the literal input string for both the foreground
+-- and background SGR codes (beware of unexpected side effects).
+flexprompt.lookup_color = lookup_color
 
 -- Function to get the prompt style.
 flexprompt.get_style = get_style
