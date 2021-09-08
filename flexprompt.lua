@@ -1266,6 +1266,34 @@ function flexprompt.scan_upwards(dir, scan_func)
     until not dir
 end
 
+-- Function to format a version control branch name:
+-- "on module_symbol branch_symbol branch"
+--  - The "on" is present when flow is fluent.
+--  - The module_symbol is present when using icons and the module has a symbol.
+--  - The branch_symbol is present when not lean and not fluent, or when using
+--    icons.
+--  - The branch name is always present.
+function flexprompt.format_branch_name(branch)
+    local style = get_style()
+    local flow = get_flow()
+
+    local text
+
+    if style == "lean" or flow == "fluent" then
+        text = append_text(flexprompt.get_icon("branch"), branch)
+    else
+        text = append_text(flexprompt.get_symbol("branch"), branch)
+    end
+
+    text = append_text(flexprompt.get_module_symbol(), text)
+
+    if flow == "fluent" then
+        text = append_text(flexprompt.make_fluent_text("on"), text)
+    end
+
+    return text
+end
+
 -- Function to register a module's prompt coroutine.
 -- IMPORTANT:  Use this instead of clink.promptcoroutine()!
 flexprompt.promptcoroutine = promptcoroutine
@@ -1941,18 +1969,14 @@ local function render_git(args)
     local gitUnknown = not info.finished
     local colors = git_colors.clean
     local showRemote = flexprompt.parse_arg_keyword(args, "sr", "showremote")
-    local text = append_text(flexprompt.get_module_symbol(), branch)
+    local text = branch
     if showRemote then
         local remote = flexprompt.get_git_remote(git_dir)
         if remote then
             text = text .. flexprompt.make_fluent_text("->") .. remote
         end
     end
-    if flow == "fluent" then
-        text = append_text(flexprompt.make_fluent_text("on"), text)
-    elseif style ~= "lean" then
-        text = append_text(flexprompt.get_symbol("branch"), text)
-    end
+    text = flexprompt.format_branch_name(text)
     if gitConflict then
         colors = git_colors.conflict
         text = append_text(text, flexprompt.get_symbol("conflict"))
@@ -2035,11 +2059,7 @@ local function render_hg(args)
     if string.find(branch, "is not recognized") then return end
 
     local flow = flexprompt.get_flow()
-    local text = append_text(flexprompt.get_symbol("branch"), branch)
-    text = append_text(flexprompt.get_module_symbol(), text)
-    if flow == "fluent" then
-        text = append_text(flexprompt.make_fluent_text("on"), text)
-    end
+    local text = flexprompt.format_branch_name(branch)
 
     local colors
     local pipe = io.popen("hg status -amrd 2>&1")
@@ -2226,16 +2246,9 @@ local function render_svn(args)
     if not branch then return end
 
     local flow = flexprompt.get_flow()
-    local text = branch
+    local text = flexprompt.format_branch_name(branch)
+
     local colors = svn_colors.clean
-
-    if flow == "fluent" then
-        text = append_text(flexprompt.make_fluent_text("on"), text)
-    elseif style ~= "lean" then
-        text = append_text(get_symbol("branch"), text)
-    end
-    text = append_text(flexprompt.get_module_symbol(), text)
-
     if get_svn_status() then
         colors = svn_colors.dirty
         text = append_text(text, flexprompt.get_symbol("modifycount"))
