@@ -1694,13 +1694,15 @@ local function render_duration(args)
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
-    if not flexprompt.can_use_extended_colors() then
-        color = "darkyellow"
-    elseif flexprompt.get_style() == "rainbow" then
+    if flexprompt.get_style() == "rainbow" then
         color = "yellow"
         altcolor = "black"
     else
-        color = "38;5;214"
+        if not flexprompt.can_use_extended_colors() then
+            color = "darkyellow"
+        else
+            color = "38;5;214"
+        end
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
