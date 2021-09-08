@@ -2023,7 +2023,7 @@ local function get_pom_xml_dir(dir)
     until not dir
 end
 
-local function render_npm(args)
+local function render_maven(args)
     if get_pom_xml_dir() then
         local handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
         local package_group = handle:read("*a")
