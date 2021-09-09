@@ -1766,7 +1766,7 @@ local function render_cwd(args)
 
     cwd = append_text(sym or flexprompt.get_module_symbol(), cwd)
 
-    return dirStackDepth .. cwd, color, "white"
+    return dirStackDepth .. cwd, color, altcolor
 end
 
 --------------------------------------------------------------------------------
