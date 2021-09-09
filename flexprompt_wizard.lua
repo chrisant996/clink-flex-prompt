@@ -809,6 +809,10 @@ local function onfilterinput(text)
     end
 end
 
-clink.onfilterinput(onfilterinput)
+if clink.onfilterinput then
+    clink.onfilterinput(onfilterinput)
+else
+    clink.onendedit(onfilterinput)
+end
 
 local argmatcher = clink.argmatcher("flexprompt"):addarg("configure")
