@@ -20,6 +20,9 @@ flexprompt.settings = flexprompt.settings or {}
 flexprompt.settings.symbols = flexprompt.settings.symbols or {}
 local modules
 
+-- Is reset to {} at each onbeginedit.
+local _cached_state = {}
+
 --------------------------------------------------------------------------------
 -- Color codes.
 
@@ -234,29 +237,14 @@ local symbols =
     prompt          = { ">" },
 }
 
---flexprompt.settings.battery_idle_refresh
---flexprompt.settings.use_home_tilde
---flexprompt.settings.prompt_symbol
---flexprompt.settings.prompt_symbol_color
---flexprompt.settings.exit_zero_color
---flexprompt.settings.exit_nonzero_color
---flexprompt.settings.exit_nonzero_color
---flexprompt.settings.symbols.cwd_git_symbol
---flexprompt.settings.symbols.{name}_module
-
 --------------------------------------------------------------------------------
 -- Wizard state.
 
-local _in_wizard
-local _screen_width
-local _wizard_prefix = ""
-local _cwd
-local _duration
-local _exit
-local _git
+local _wizard
 
 local function get_errorlevel()
-    return _exit or os.geterrorlevel()
+    if _wizard then return _wizard.exit or 0 end
+    return os.geterrorlevel()
 end
 
 --------------------------------------------------------------------------------
@@ -448,7 +436,7 @@ local function make_fluent_text(text, force)
 end
 
 local function get_screen_width()
-    return _screen_width or console.getwidth()
+    return _wizard and _wizard.width or console.getwidth()
 end
 
 local function connect(lhs, rhs, frame, sgr_frame_color)
@@ -474,17 +462,10 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     return lhs..rhs..frame
 end
 
-local function reset_cached_state()
+local function reset_render_state()
     _can_use_extended_colors = nil
     _charset = nil
-
-    _in_wizard = nil
-    _screen_width = nil
-    _wizard_prefix = ""
-    _cwd = nil
-    _duration = nil
-    _exit = nil
-    _git = nil
+    _wizard = nil
 end
 
 --------------------------------------------------------------------------------
@@ -733,27 +714,23 @@ end
 --------------------------------------------------------------------------------
 -- Coroutines.
 
-local coroutines = {}
-local _promptcoroutine
-
-local function coroutines_onbeginedit()
-    coroutines = {}
-    _promptcoroutine = nil
-end
-
 local function promptcoroutine_manager()
-    for _,entry in pairs(coroutines) do
-        entry.func(true--[[async]])
+    if _cached_state.coroutines then
+        for _,entry in pairs(_cached_state.coroutines) do
+            entry.func(true--[[async]])
+        end
     end
 end
 
 local function promptcoroutine(func)
     if not segmenter._current_module then return end
 
-    local entry = coroutines[segmenter._current_module]
+    _cached_state.coroutines = _cached_state.coroutines or {}
+
+    local entry = _cached_state.coroutines[segmenter._current_module]
     if entry == nil then
         entry = { done=false, result=nil }
-        coroutines[segmenter._current_module] = entry
+        _cached_state.coroutines[segmenter._current_module] = entry
 
         -- Wrap func to track completion and result.
         entry.func = function (async)
@@ -765,9 +742,9 @@ local function promptcoroutine(func)
         local async = settings.get("prompt.async")
         if async then
             -- Create the prompt coroutine manager if needed.
-            if not _promptcoroutine then
+            if not _cached_state.has_promptcoroutine then
                 clink.promptcoroutine(promptcoroutine_manager)
-                _promptcoroutine = true
+                _cached_state.has_promptcoroutine = true
             end
         else
             -- Create coroutine for running func synchronously.  We must
@@ -885,28 +862,20 @@ local function render_modules(prompt, side, frame_color, anchors)
 end
 
 local function render_prompts(settings, need_anchors)
-    reset_cached_state()
+    reset_render_state()
 
     local old_settings = flexprompt.settings
     if settings then
         flexprompt.settings = settings
         if settings.wizard then
             local width = console.getwidth()
-            reset_cached_state()
-            _in_wizard = true
-            _screen_width = settings.wizard.width or (width - 8)
-            _wizard_prefix = ""
-            if _screen_width < width then
-                _wizard_prefix = string.rep(" ", (width - _screen_width) / 2)
+            reset_render_state()
+            _wizard = settings.wizard
+            _wizard.width = _wizard.width or (width - 8)
+            _wizard.prefix = ""
+            if _wizard.width < width then
+                _wizard.prefix = string.rep(" ", (width - _wizard.width) / 2)
             end
-            _cwd = settings.wizard.cwd
-            _duration = settings.wizard.duration
-            _exit = settings.wizard.exit
-            _git = settings.wizard.git
-
-            -- Let the wizard know the width and prefix.
-            settings.wizard.width = _screen_width
-            settings.wizard.prefix = _wizard_prefix
         end
     end
 
@@ -994,9 +963,10 @@ local function render_prompts(settings, need_anchors)
 
     local prompt = left1
     local rprompt
+    local wizard_prefix = _wizard and _wizard.prefix or ""
 
     if lines == 1 then
-        prompt = _wizard_prefix .. prompt
+        prompt = wizard_prefix .. prompt
         rprompt = right1
     else
         rprompt = right2
@@ -1008,14 +978,14 @@ local function render_prompts(settings, need_anchors)
             end
             prompt = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
         end
-        prompt = _wizard_prefix .. prompt .. sgr() .. "\r\n" .. _wizard_prefix .. left2
+        prompt = wizard_prefix .. prompt .. sgr() .. "\r\n" .. wizard_prefix .. left2
     end
 
     if rprompt and #rprompt > 0 then
         rprompt = rprompt .. sgr() .. pad_right_edge
     end
 
-    if get_spacing() == "sparse" and not _in_wizard then
+    if get_spacing() == "sparse" and not _wizard then
         prompt = sgr() .. "\r\n" .. prompt
     end
 
@@ -1024,13 +994,13 @@ local function render_prompts(settings, need_anchors)
     if need_anchors then
         local left_frame_len = left_frame and console.cellcount(left_frame[1]) or 0
         if anchors[1] then
-            anchors[1] = #_wizard_prefix + left_frame_len + anchors[1]
+            anchors[1] = #wizard_prefix + left_frame_len + anchors[1]
         end
         if anchors[2] then
-            anchors[2] = #_wizard_prefix + left_frame_len + anchors[2]
+            anchors[2] = #wizard_prefix + left_frame_len + anchors[2]
         end
         if rightframe1 then
-            anchors[3] = #_wizard_prefix + _screen_width + - #pad_right_edge - console.cellcount(rightframe1)
+            anchors[3] = #wizard_prefix + (_wizard and _wizard.width or 0) + - #pad_right_edge - console.cellcount(rightframe1)
         end
     end
 
@@ -1047,7 +1017,7 @@ function flexprompt.render_wizard(settings, need_anchors)
     if not right or right == "" then
         right = nil
     else
-        col = #_wizard_prefix + (_screen_width - console.cellcount(right)) + 1
+        col = #_wizard.prefix + (_wizard.width - console.cellcount(right)) + 1
     end
     return left, right, col, anchors
 end
@@ -1641,7 +1611,6 @@ local function update_battery_prompt()
     end
 end
 
-local cached_battery_coroutine
 local function render_battery(args)
     if not os.getbatterystatus then return end
 
@@ -1650,9 +1619,9 @@ local function render_battery(args)
     prev_battery_status = batteryStatus
     prev_battery_level = level
 
-    if flexprompt.settings.battery_idle_refresh ~= false and not cached_battery_coroutine then
+    if clink.addcoroutine and flexprompt.settings.battery_idle_refresh ~= false and not _cached_state.battery_coroutine then
         local t = coroutine.create(update_battery_prompt)
-        cached_battery_coroutine = t
+        _cached_state.battery_coroutine = t
         clink.addcoroutine(t, flexprompt.settings.battery_refresh_interval or 15)
     end
 
@@ -1718,12 +1687,12 @@ local function render_cwd(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local cwd = _cwd or os.getcwd()
+    local cwd = _wizard and _wizard.cwd or os.getcwd()
     local git_dir
 
     local sym
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
-    if _cwd then
+    if _wizard then
         -- Disable cwd/git integration in the configuration wizard.
     elseif type == "folder" then
         cwd = get_folder_name(cwd)
@@ -1792,7 +1761,7 @@ local function duration_onendedit()
 end
 
 local function render_duration(args)
-    local duration = _duration or last_duration
+    local duration = _wizard and _wizard.duration or last_duration
     if (duration or 0) <= 0 then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
@@ -1963,9 +1932,9 @@ local function render_git(args)
     local branch
     local info
 
-    if _in_wizard then
+    if _wizard then
         git_dir = true
-        branch = "main"
+        branch = _wizard.branch or "main"
         info = { finished=true }
     else
         git_dir = flexprompt.get_git_dir()
@@ -2394,7 +2363,10 @@ local function onbeginedit()
     if not flexprompt.settings then flexprompt.settings = {} end
     if not flexprompt.settings.symbols then flexprompt.settings.symbols = {} end
 
-    coroutines_onbeginedit()
+    _cached_state = {}
+
+    reset_render_state()
+
     duration_onbeginedit()
     spacing_onbeginedit()
 
