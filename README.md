@@ -18,6 +18,22 @@ Some of the prompt modules are based on [cmder-powerline-prompt](https://github.
 
 - [ ] _TBD: publish via scoop?_
 
+# Fonts
+
+Flex prompt can use fancy characters to make the prompt look nice.
+
+However:
+1. If you copy/paste from the screen to somewhere else, then fancy characters may not be readable by other people depending on what font they're using.
+2. Some of the fancy characters require special fonts.  The [nerd fonts](https://nerdfonts.com) site has a large selection of special fonts.  The fancy characters are Powerline symbols, and some icon characters.  You can also manually configure flex prompt to use just about any special characters, though the configuration wizard only offers the most common ones.
+
+Here are some recommended fonts:
+- [Meslo Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  and an even better version is available from the zsh [powerlevel10k theme's site](https://github.com/romkatv/powerlevel10k/blob/master/font.md).
+- [Cascadia Code](https://github.com/microsoft/cascadia-code/releases):  recent versions of this font include Powerline symbols, but the font doesn't include icon characters.
+- [Caskaydia Cove Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Cascadia Code that adds many icon characters.
+- [FiraCode Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Fira Code that adds Powerline symbols and many icon characters.
+- [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
+- And there are many other fonts to have fun with -- enjoy!
+
 # Configuration Wizard
 
 Flex prompt can be easily customized via its configuration wizard.
@@ -75,8 +91,6 @@ flexprompt.settings.style = "classic"
 - `"ascii"` uses only ASCII characters, and is compatible with all fonts; text copy/pasted from the terminal display will look right everywhere.
 - `"unicode"` uses Unicode characters to add styling to the prompt, and requires fonts compatible with powerline symbols; text copy/pasted from the terminal display will look wrong when pasted somewhere that doesn't use a compatible font.
 
-The "rainbow" style requires Unicode.
-
 ```lua
 flexprompt.settings.charset = "unicode"
 ```
@@ -115,7 +129,8 @@ For the "classic" style:
 - `"dot"` is a dot (requires Unicode).
 - `"updiagonal"` is a small slash from bottom left to top right (requires Unicode).
 - `"downdiagonal"` is a small slash from top left to bottom right (requires Unicode).
-- Custom separators can be provided as a string.
+- (See flexprompt.lua for the most up to date list.)
+- Custom separators can be provided as a table with two values, for the left and right separators.
 
 For the "rainbow" style:
 - Any of the **Heads** or **Tails** options may be used as separators (except not "blurred").
@@ -125,7 +140,7 @@ For the "rainbow" style:
 flexprompt.settings.separator = "pointed"
 
 -- Or use a custom separator:
-flexprompt.settings.separator = "»"
+flexprompt.settings.separator = { "»", "«" }
 ```
 
 ## Tails and Heads
@@ -156,6 +171,7 @@ Only when using "both" sides:
 - `"disconnected"` shows blank space between the left and right side prompts.
 - `"dotted"` shows dots between the left and right side prompts.
 - `"solid"` draws a horizontal line connecting the left and right side prompts.
+- `"dashed"` draws a horizontal line using minus signs to connect the left and right side prompts.
 - A custom connection can be provided as a string.
 
 ```lua
