@@ -97,7 +97,7 @@ flexprompt.choices.prompts =
 flexprompt.choices.ascii_caps =
 {
                 --  Open    Close
-    flat        = { "",     "",     separators="vertical" },
+    flat        = { "",     "",     separators="bar" },
 }
 
 -- Only if style != lean.
@@ -113,18 +113,11 @@ flexprompt.choices.caps =
 }
 
 -- Only if style == classic.
-flexprompt.choices.ascii_separators =
-{               --  Left    Right
-    none        = { "",     ""      },
-    vertical    = { "|",    "|"     },
-    slant       = { "/",    "/"     },
-    backslant   = { "\\",   "\\"    },
-}
-
--- Only if style == classic.
 flexprompt.choices.separators =
 {               --  Left    Right
     none        = { "",     ""      },
+    space       = { " ",    " ",    lean=" " },     -- Also when style == lean.
+    spaces      = { "  ",   "  ",   lean="  " },    -- Also when style == lean.
     vertical    = { "│",    "│"     },
     pointed     = { "",    ""     },
     slant       = { "",    ""     },
@@ -133,6 +126,9 @@ flexprompt.choices.separators =
     dot         = { "·",    "·"     },
     updiagonal  = { "╱",    "╱"     },
     downdiagonal= { "╲",    "╲"     },
+    bar         = { "|",    "|"     },
+    slash       = { "/",    "/"     },
+    backslash   = { "\\",   "\\"    },
 }
 
 flexprompt.choices.lines =
@@ -147,6 +143,7 @@ flexprompt.choices.connections =
     disconnected= " ",
     dotted      = "·",
     solid       = "─",
+    dashed      = "-",
 }
 
 -- Only if lines > 1.
@@ -384,7 +381,9 @@ local function get_symbol(name, fallback)
     local symbol = flexprompt.settings.symbols[name] or symbols[name] or fallback or ""
     if type(symbol) == "table" then
         if not _charset then get_charset() end
-        symbol = symbol[_charset] or symbol[1] or ""
+        local term = console.ansihost and console.ansihost() or nil
+        local term_symbol = term and symbol[term] or nil
+        symbol = term_symbol or symbol[_charset] or symbol[1] or ""
     end
     return symbol
 end
@@ -519,6 +518,7 @@ local segmenter = nil
 local function init_segmenter(side, frame_color)
     local charset = get_charset()
     local open_caps, close_caps, separators
+    local default_separator
 
     if side == 0 then
         open_caps = flexprompt.settings.tails or "flat"
@@ -551,13 +551,23 @@ local function init_segmenter(side, frame_color)
     segmenter.close_cap = close_caps[2]
 
     if segmenter.style == "lean" then
-        segmenter.separator = flexprompt.settings.lean_separators or " "
+        default_separator = "space"
+
+        local available_separators = flexprompt.choices.separators
+        separators = flexprompt.settings.lean_separators or default_separator
+
+        if type(separators) ~= "table" then
+            separators = available_separators[separators] or available_separators[default_separator]
+            if separators.lean then
+                separators = { separators.lean, separators.lean }
+            end
+        end
+
         segmenter.open_cap = ""
         segmenter.close_cap = ""
-        if type(segmenter.separator) == "table" then
-            segmenter.separator = segmenter.separator[side + 1]
-        end
     else
+        default_separator = (charset == "ascii") and "bar" or "vertical"
+
         local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
         local available_separators = (charset == "ascii") and flexprompt.choices.ascii_separators or flexprompt.choices.separators
         separators = flexprompt.settings.separators or flexprompt.settings.heads or "flat"
@@ -567,16 +577,11 @@ local function init_segmenter(side, frame_color)
                 separators = redirect
             end
         end
+
         if segmenter.style == "classic" then
             if type(separators) ~= "table" then
-                separators = available_separators[separators] or available_separators["vertical"]
-            else
-                local custom = available_separators[separators[side + 1]]
-                if custom then
-                    separators = { custom[side + 1], custom[side] }
-                end
+                separators = available_separators[separators] or available_separators[default_separator]
             end
-            segmenter.separator = separators[side + 1]
         elseif segmenter.style == "rainbow" then
             if type(separators) ~= "table" then
                 local altseparators = available_separators[separators]
@@ -584,15 +589,14 @@ local function init_segmenter(side, frame_color)
                     segmenter.altseparator = altseparators[side + 1]
                 end
                 separators = available_caps[separators] or available_caps["flat"]
-            else
-                local custom = available_caps[separators[side + 1]]
-                if custom then
-                    separators = { custom[side + 1], custom[side] }
-                end
             end
-            segmenter.separator = separators[2 - side]
+
+            -- Convert end cap index to separator index.
+            side = 1 - side
         end
     end
+
+    segmenter.separator = separators[side + 1]
 end
 
 local function color_segment_transition(color, symbol, close)

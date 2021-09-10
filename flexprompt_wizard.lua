@@ -548,6 +548,8 @@ end
 local function config_wizard()
     local s
     local settings_filename = get_settings_filename()
+
+    local powerline
     local eight_bit_color_test = make_8bit_color_test()
     local four_bit_color
     local callout
@@ -578,6 +580,7 @@ local function config_wizard()
         _transient = nil
         _striptime = true
 
+        powerline = false
         four_bit_color = false
 
         -- Find out about the font being used.
@@ -587,58 +590,95 @@ local function config_wizard()
         display_centered("This will ask a few questions and configure your prompt.")
         clink.print()
         display_centered("Does this look like a "..brightgreen.."diamond"..normal.." (rotated square)?")
-        clink.print()
+        clink.print("\n")
         display_centered("-->  "..brightgreen..""..normal.."  <--")
-        clink.print()
+        clink.print("\n")
         choices = ""
         choices = display_yes(choices)
         choices = display_no(choices)
-        clink.print("     Visit "..bold.."https://nerdfonts.com"..normal.." to find fonts that support the")
+        clink.print("     Visit "..brightgreen.."https://nerdfonts.com"..normal.." to find fonts that support the")
         clink.print("     powerline symbols flexprompt uses for its fancy text-mode graphics.")
         clink.print("\n     Some excellent fonts to consider are Meslo NF, Fira Code NF,")
         clink.print("     or Cascadia Code PL (and many other suitable fonts exist).\n\n")
         choices = display_quit(choices)
         s = readchoice(choices)
         if not s or s == "q" then break end
-        if s == "y" then preview.charset = "unicode" end
-        if s == "n" then preview.charset = "ascii" end
+        if s == "y" then
+            preview.charset = "unicode"
+            powerline = true
+        end
+
+        if not preview.charset then
+            clink.print("\x1b[4H\x1b[J", NONL)
+            display_centered("Does this look like a "..brightgreen.."rectangle"..normal.."?")
+            clink.print()
+            display_centered(brightgreen..flexprompt.choices.left_frames["square"][1]..flexprompt.choices.right_frames["square"][1]..normal)
+            display_centered("-->  "..brightgreen.."│  │"..normal.."  <--")
+            display_centered(brightgreen..flexprompt.choices.left_frames["square"][2]..flexprompt.choices.right_frames["square"][2]..normal)
+            clink.print()
+            choices = ""
+            choices = display_yes(choices)
+            choices = display_no(choices)
+            choices = display_restart(choices)
+            choices = display_quit(choices)
+            s = readchoice(choices)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+            if s == "y" then
+                preview.charset = "unicode"
+            else
+                preview.charset = "ascii"
+                if console.ansihost then
+                    local term = console.ansihost()
+                    if term ~= "clink" and term ~= "winterminal" then
+                        preview.symbols.prompt = { ">", winterminal="❯" }
+                    end
+                end
+            end
+        end
 
         if preview.charset == "ascii" then
+            callout = { 4, {1,1}, "\x1b[1;33m/\x1b[A\x1b[Dseparator\x1b[m" }
             preview.left_frame = "none"
             preview.right_frame = "none"
         else
-            preview.heads = "pointed"
+            callout = { 4, 1, "\x1b[1;33m↓\x1b[A\x1b[2Dseparator\x1b[m" }
+            preview.heads = powerline and "pointed" or nil
             preview.left_frame = "round"
             preview.right_frame = "round"
-        end
 
-        --[[
-        -- THIS IS INCONCLUSIVE BECAUSE WINDOWS TERMINAL SEEMS TO ALWAYS SHOW
-        -- THE THICK ANGLE BRACKET, USING THE SAME FONT AS THE DEFAULT TERMINAL.
-        clink.print("\x1b[4H\x1b[J", NONL)
-        display_centered("Does this look like a "..brightgreen.."angle bracket"..normal.." (greater than sign)?")
-        clink.print()
-        display_centered("-->  "..brightgreen.."❯"..normal.."  <--")
-        clink.print()
-        choices = ""
-        choices = display_yes(choices)
-        choices = display_no(choices)
-        choices = display_restart(choices)
-        choices = display_quit(choices)
-        s = readchoice(choices)
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
-        if s == "y" then
-            preview.symbols.prompt = "❯"
+            clink.print("\x1b[4H\x1b[J", NONL)
+            display_centered("Does this look like "..brightgreen.."><"..normal.." but taller and fatter?")
+            clink.print("\n")
+            display_centered("-->  "..brightgreen.."❯❮"..normal.."  <--")
+            clink.print("\n")
+            choices = ""
+            choices = display_yes(choices)
+            choices = display_no(choices)
+            choices = display_restart(choices)
+            choices = display_quit(choices)
+            s = readchoice(choices)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+            if s == "y" then
+                preview.symbols.prompt = "❯"
+            else
+                preview.symbols.prompt = ">"
+                if console.ansihost then
+                    local term = console.ansihost()
+                    if term ~= "clink" and term ~= "winterminal" then
+                        preview.symbols.prompt = { ">", winterminal="❯" }
+                    end
+                end
+            end
         end
-        --]]
 
         if wizard_can_use_extended_colors(preview) then
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Are the letters "..brightgreen.."A"..normal.." to "..brightgreen.."L"..normal.." readable, in a smooth gradient?")
-            clink.print()
+            clink.print("\n")
             display_centered("-->  "..eight_bit_color_test.."  <--")
-            clink.print()
+            clink.print("\n")
             choices = ""
             choices = display_yes(choices)
             choices = display_no(choices)
@@ -663,7 +703,7 @@ local function config_wizard()
 
         preview.symbols.branch = nil
 
-        if preview.charset == "unicode" then
+        if preview.charset == nil then
             s = choose_setting(preview, "Character Set", "charsets", "charset", { "unicode", "ascii" })
             if not s or s == "q" then break end
             if s == "r" then goto continue end
@@ -676,6 +716,15 @@ local function config_wizard()
         end
 
         if preview.style == "lean" then
+            if preview.charset == "unicode" then
+                -- Callout needs to be shifted right 1, because lean doesn't
+                -- include segment padding.
+                callout[2] = { callout[2], 1}
+            end
+            s = choose_setting(preview, "Prompt Separators", "separators", "lean_separators", { "space", "spaces" }, callout)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
             s = choose_sides(preview, "Prompt Sides")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
@@ -693,24 +742,29 @@ local function config_wizard()
         if s == "r" then goto continue end
 
         if preview.style ~= "lean" then
-            if preview.charset == "ascii" then
-                callout = { 4, {1,1}, "\x1b[1;33m/\x1b[A\x1b[Dseparator\x1b[m" }
-                s = choose_setting(preview, "Prompt Separators", "ascii_separators", "separators", { "vertical", "slant", "none" }, callout)
+            local seps
+            if powerline then
+                seps = { "pointed", "vertical", "slant", "round", "none" }
             else
-                callout = { 4, 1, "\x1b[1;33m↓\x1b[A\x1b[2Dseparator\x1b[m" }
-                s = choose_setting(preview, "Prompt Separators", "separators", "separators", { "pointed", "vertical", "slant", "round", "none" }, callout)
+                seps = { "bar", "slash", "space", "none" }
             end
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
 
-            if preview.charset ~= "ascii" then
+            if powerline or preview.style ~= "rainbow" then
+                s = choose_setting(preview, "Prompt Separators", "separators", "separators", seps, callout)
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
+
+            if preview.charset ~= "ascii" and preview.style ~= "lean" then
+                local caps = powerline and { "pointed", "blurred", "slant", "round", "flat" } or { "flat", "blurred" }
+
                 callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
-                s = choose_setting(preview, "Prompt Heads", "caps", "heads", { "pointed", "blurred", "slant", "round", "flat" }, callout)
+                s = choose_setting(preview, "Prompt Heads", "caps", "heads", caps, callout)
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
 
                 callout = { 4, 3, "\x1b[1;33m↓\x1b[A\x1b[2Dtail\x1b[m" }
-                s = choose_setting(preview, "Prompt Tails", "caps", "tails", { "pointed", "blurred", "slant", "round", "flat" }, callout)
+                s = choose_setting(preview, "Prompt Tails", "caps", "tails", caps, callout)
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
             end
@@ -727,7 +781,8 @@ local function config_wizard()
         if s == "r" then goto continue end
 
         if preview.lines == "two" then
-            s = choose_setting(preview, "Prompt Connection", "connections", "connection", { "disconnected", "dotted", "solid" })
+            local conns = (charset == "unicode") and { "disconnected", "dotted", "solid" } or { "disconnected", "dashed" }
+            s = choose_setting(preview, "Prompt Connection", "connections", "connection", conns)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
 
