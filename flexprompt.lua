@@ -1873,6 +1873,7 @@ end
 
 local git = {}
 local cached_info = {}
+local fetched_repos = {}
 
 -- Add status details to the segment text.  Depending on git.status_details this
 -- may show verbose counts for operations, or a concise overall count.
@@ -1905,6 +1906,17 @@ end
 --
 -- Uses async coroutine calls.
 local function collect_git_info()
+    if flexprompt.settings.git_fetch_interval then
+        local git_dir = flexprompt.get_git_dir():lower()
+        local when = fetched_repos[git_dir]
+        if not when or os.clock() - when > flexprompt.settings.git_fetch_interval * 60 then
+            local file = io.popenyield("git fetch 2>nul")
+            if file then file:close() end
+
+            fetched_repos[git_dir] = os.clock()
+        end
+    end
+
     local status = flexprompt.get_git_status()
     local conflict = flexprompt.get_git_conflict()
     local ahead, behind = flexprompt.get_git_ahead_behind()

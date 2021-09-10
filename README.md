@@ -230,6 +230,9 @@ flexprompt.settings.symbol.charging = "++"
 
 -- Override separators when style is 'lean':
 flexprompt.settings.lean_separators = "   "
+
+-- Run `git fetch` in a repo up to once every 60 minutes:
+flexprompt.settings.git_fetch_interval = 60
 ```
 
 # Writing Custom Prompt Modules
