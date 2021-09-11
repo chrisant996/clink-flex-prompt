@@ -846,7 +846,7 @@ local function config_wizard()
 
             if preview.style ~= "classic" and not four_bit_color and
                     (preview.left_frame ~= "none" or preview.right_frame ~= "none" or preview.connection ~= "disconnected") then
-                s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
+                s = choose_setting(preview, "Prompt Frame Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
             end

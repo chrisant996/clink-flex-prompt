@@ -123,7 +123,6 @@ flexprompt.choices.separators =
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
     round       = { "",    ""     },
-    --blurred     = { "▓▒░",  "░▒▓"   },
     dot         = { "·",    "·"     },
     updiagonal  = { "╱",    "╱"     },
     downdiagonal= { "╲",    "╲"     },
