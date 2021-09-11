@@ -150,6 +150,20 @@ end
 --
 -- The default type is "rootsmart" if not specified.
 
+-- Returns the folder name of the specified directory.
+--  - For c:\foo\bar it yields bar
+--  - For c:\ it yields c:\
+--  - For \\server\share\subdir it yields subdir
+--  - For \\server\share it yields \\server\share
+local function get_folder_name(dir)
+    local parent,child = path.toparent(dir)
+    dir = child
+    if #dir == 0 then
+        dir = parent
+    end
+    return dir
+end
+
 local function render_cwd(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor

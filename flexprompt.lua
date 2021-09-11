@@ -463,15 +463,6 @@ end
 --------------------------------------------------------------------------------
 -- Other helpers.
 
-local function get_folder_name(dir)
-    local parent,child = path.toparent(dir)
-    dir = child
-    if #dir == 0 then
-        dir = parent
-    end
-    return dir
-end
-
 local function get_parent(dir)
     local parent = path.toparent(dir)
     if parent and parent ~= "" and parent ~= dir then
