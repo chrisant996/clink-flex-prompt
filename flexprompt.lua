@@ -1750,18 +1750,24 @@ end
 local endedit_time
 local last_duration
 
+-- Clink v1.2.30 has a fix for Lua's os.clock() implementation failing after the
+-- program has been running more than 24 days.  Without that fix, os.time() must
+-- be used instead, but the resulting duration can be off by up to +/- 1 second.
+local duration_clock = ((clink.version_encoded or 0) >= 10020030) and os.clock or os.time
+
 local function duration_onbeginedit()
+    last_duration = nil
     if endedit_time then
-        local beginedit_time = os.time()
+        local beginedit_time = duration_clock()
         local elapsed = beginedit_time - endedit_time
         if elapsed >= 0 then
-            last_duration = math.floor(elapsed)
+            last_duration = math.floor(elapsed + 0.5)
         end
     end
 end
 
 local function duration_onendedit()
-    endedit_time = os.time()
+    endedit_time = duration_clock()
 end
 
 local function render_duration(args)
