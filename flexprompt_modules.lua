@@ -281,17 +281,17 @@ local function render_duration(args)
     text = (duration % 60) .. "s"
     duration = math.floor(duration / 60)
     if duration > 0 then
-        text = append_text((duration % 60) .. "m", text)
+        text = flexprompt.append_text((duration % 60) .. "m", text)
         duration = math.floor(duration / 60)
         if duration > 0 then
-            text = append_text(duration .. "h", text)
+            text = flexprompt.append_text(duration .. "h", text)
         end
     end
 
     if flexprompt.get_flow() == "fluent" then
-        text = append_text(flexprompt.make_fluent_text("took"), text)
+        text = flexprompt.append_text(flexprompt.make_fluent_text("took"), text)
     end
-    text = append_text(text, flexprompt.get_module_symbol())
+    text = flexprompt.append_text(text, flexprompt.get_module_symbol())
 
     return text, color, altcolor
 end
