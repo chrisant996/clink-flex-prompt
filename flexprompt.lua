@@ -206,6 +206,8 @@ flexprompt.choices.prompt_symbols =
 local symbols =
 {
     branch          = {         unicode="" },
+    unpublished     = {         unicode="" },
+
     conflict        = { "!" },
     addcount        = { "+" },
     modifycount     = { "*" },
@@ -1267,18 +1269,18 @@ end
 --  - The "on" is present when flow is fluent.
 --  - The module_symbol is present when using icons and the module has a symbol.
 --  - The branch_symbol is present when not lean and not fluent, or when using
---    icons.
+--    icons (the icon_name argument is optional, and defaults to "branch").
 --  - The branch name is always present.
-function flexprompt.format_branch_name(branch)
+function flexprompt.format_branch_name(branch, icon_name)
     local style = get_style()
     local flow = get_flow()
 
     local text
 
     if style == "lean" or flow == "fluent" then
-        text = append_text(flexprompt.get_icon("branch"), branch)
+        text = append_text(flexprompt.get_icon(icon_name or "branch"), branch)
     else
-        text = append_text(flexprompt.get_symbol("branch"), branch)
+        text = append_text(flexprompt.get_symbol(icon_name or "branch"), branch)
     end
 
     text = append_text(flexprompt.get_module_symbol(), text)
@@ -1391,7 +1393,7 @@ function flexprompt.get_git_dir(dir)
 end
 
 -- Get the name of the current branch.
--- @return  branch name.
+-- @return  branch_name, is_detached.
 --
 -- Synchronous call.
 function flexprompt.get_git_branch(git_dir)
@@ -1408,8 +1410,11 @@ function flexprompt.get_git_branch(git_dir)
     -- If HEAD matches branch expression, then we're on named branch otherwise
     -- it is a detached commit.
     local branch_name = HEAD:match('ref: refs/heads/(.+)')
-
-    return branch_name or 'HEAD detached at '..HEAD:sub(1, 7)
+    if branch_name then
+        return branch_name
+    else
+        return 'HEAD detached at '..HEAD:sub(1, 7), true
+    end
 end
 
 -- Get the status of working dir.
@@ -1417,11 +1422,21 @@ end
 --
 -- Uses async coroutine call.
 function flexprompt.get_git_status()
-    local file = io.popenyield("git --no-optional-locks status --porcelain 2>nul")
+    local file = io.popenyield("git --no-optional-locks status --branch --porcelain 2>nul")
     local w_add, w_mod, w_del, w_unt = 0, 0, 0, 0
     local s_add, s_mod, s_del, s_ren = 0, 0, 0, 0
+    local unpublished
+    local line
 
-    for line in file:lines() do
+    line = file:read("*l")
+    if line then
+        unpublished = not line:find("^## ([^.]+)%.%.%.")
+    end
+
+    while true do
+        line = file:read("*l")
+        if not line then break end
+
         local kindStaged, kind = string.match(line, "(.)(.) ")
 
         if kind == "A" then
@@ -1472,9 +1487,13 @@ function flexprompt.get_git_status()
 
     local status
     if working or staged then
-        status = {}
+        status = status or {}
         status.working = working
         status.staged = staged
+    end
+    if unpublished then
+        status = status or {}
+        status.unpublished = true
     end
     return status
 end
