@@ -781,7 +781,7 @@ local function config_wizard()
         if s == "r" then goto continue end
 
         if preview.lines == "two" then
-            local conns = (charset == "unicode") and { "disconnected", "dotted", "solid" } or { "disconnected", "dashed" }
+            local conns = (preview.charset == "unicode") and { "disconnected", "dotted", "solid" } or { "disconnected", "dashed" }
             s = choose_setting(preview, "Prompt Connection", "connections", "connection", conns)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
