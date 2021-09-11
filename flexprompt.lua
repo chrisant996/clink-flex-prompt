@@ -1419,31 +1419,53 @@ end
 --
 -- Uses async coroutine call.
 function flexprompt.get_git_status()
-    local file = io.popenyield("git --no-optional-locks status --porcelain 2>nul")
+    local file = io.popenyield("git --no-optional-locks status --porcelain --branch 2>nul")
     local w_add, w_mod, w_del, w_unt = 0, 0, 0, 0
     local s_add, s_mod, s_del, s_ren = 0, 0, 0, 0
+    local line_number = 0
+    local branch = nil
+    local unpublished_branch = nil
+    local upstream = nil
+    local tracking = nil
 
     for line in file:lines() do
-        local kindStaged, kind = string.match(line, "(.)(.) ")
+        line_number = line_number + 1
 
-        if kind == "A" then
-            w_add = w_add + 1
-        elseif kind == "M" then
-            w_mod = w_mod + 1
-        elseif kind == "D" then
-            w_del = w_del + 1
-        elseif kind == "?" then
-            w_unt = w_unt + 1
+        if line_number == 1 then  -- parsing the first line
+            _, _, branch, upstream, tracking = string.find(
+                line, "^## (.+)%.%.%.(%S+) ?%[?([^%]]*)")
+            if tracking == "" then tracking = nil end
+            if branch == nil then
+                _, _, unpublished_branch = string.find(line, "^## (.+)$")
+                if unpublished_branch ~= nil then
+                    branch = unpublished_branch
+                end
+            end
         end
+        if branch == nil then break end  -- this means no git repository
 
-        if kindStaged == "A" then
-            s_add = s_add + 1
-        elseif kindStaged == "M" then
-            s_mod = s_mod + 1
-        elseif kindStaged == "D" then
-            s_del = s_del + 1
-        elseif kindStaged == "R" then
-            s_ren = s_ren + 1
+        if line_number > 1 and line and line ~= "" then
+            local kindStaged, kind = string.match(line, "(.)(.) ")
+
+            if kind == "A" then
+                w_add = w_add + 1
+            elseif kind == "M" then
+                w_mod = w_mod + 1
+            elseif kind == "D" then
+                w_del = w_del + 1
+            elseif kind == "?" then
+                w_unt = w_unt + 1
+            end
+
+            if kindStaged == "A" then
+                s_add = s_add + 1
+            elseif kindStaged == "M" then
+                s_mod = s_mod + 1
+            elseif kindStaged == "D" then
+                s_del = s_del + 1
+            elseif kindStaged == "R" then
+                s_ren = s_ren + 1
+            end
         end
     end
     file:close()
@@ -1478,7 +1500,11 @@ function flexprompt.get_git_status()
         status.working = working
         status.staged = staged
     end
-    return status
+    local summary = {}
+    summary.branch = branch
+    summary.upstream = upstream
+    summary.tracking = tracking
+    return summary, status
 end
 
 -- Gets the number of commits ahead/behind from upstream.
@@ -1921,10 +1947,10 @@ local function collect_git_info()
         end
     end
 
-    local status = flexprompt.get_git_status()
+    local summary, status = flexprompt.get_git_status()
     local conflict = flexprompt.get_git_conflict()
     local ahead, behind = flexprompt.get_git_ahead_behind()
-    return { status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
+    return { summary=summary, status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
 end
 
 local function parse_color_token(args, colors)
@@ -1995,6 +2021,10 @@ local function render_git(args)
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
     local colors = git_colors.clean
+    if info.summary and info.summary.branch and not info.summary.upstream then
+        colors = git_colors.staged
+    end
+
     text = flexprompt.format_branch_name(branch)
     if gitConflict then
         colors = git_colors.conflict
