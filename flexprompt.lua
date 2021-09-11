@@ -109,7 +109,7 @@ flexprompt.choices.caps =
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
     round       = { "",    ""     },
-    blurred     = { "░▒▓",  "▓▒░",  separators="vertical" },
+    blurred     = { "░▒▓",  "▓▒░"   },
 }
 
 -- Only if style == classic.
@@ -123,6 +123,7 @@ flexprompt.choices.separators =
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
     round       = { "",    ""     },
+    --blurred     = { "▓▒░",  "░▒▓"   },
     dot         = { "·",    "·"     },
     updiagonal  = { "╱",    "╱"     },
     downdiagonal= { "╲",    "╲"     },

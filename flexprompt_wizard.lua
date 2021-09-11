@@ -788,20 +788,27 @@ local function config_wizard()
 
         if preview.style ~= "lean" then
             local seps
-            if powerline then
-                seps = { "pointed", "vertical", "slant", "round", "none" }
+            if preview.style == "rainbow" then
+                if powerline then
+                    seps = { "pointed", "vertical", "slant", "round", "blurred" }
+                elseif preview.charset ~= "ascii" then
+                    seps = { "vertical", "blurred" }
+                end
             else
-                seps = { "bar", "slash", "space", "none" }
+                if powerline then
+                    seps = { "pointed", "vertical", "slant", "round", "none" }
+                else
+                    seps = { "bar", "slash", "space", "none" }
+                end
             end
-
-            if powerline or preview.style ~= "rainbow" then
+            if seps then
                 s = choose_setting(preview, "Prompt Separators", "separators", "separators", seps, callout)
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
             end
 
             if preview.charset ~= "ascii" and preview.style ~= "lean" then
-                local caps = powerline and { "pointed", "blurred", "slant", "round", "flat" } or { "flat", "blurred" }
+                local caps = powerline and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
 
                 callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
                 s = choose_setting(preview, "Prompt Heads", "caps", "heads", caps, callout)
