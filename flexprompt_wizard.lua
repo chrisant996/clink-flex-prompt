@@ -55,18 +55,28 @@ local function write_var(file, line, name, value, indent)
     local t = type(value)
     if not indent then indent = "" end
 
+    local comma = ((#indent > 0) and "," or "")
+
     if t == "table" then
-        file:write(indent .. name .. " =\n")
-        inc_line(line)
+        if type(name) == "string" then
+            file:write(indent .. name .. " =\n")
+            inc_line(line)
+        end
 
         file:write(indent .. "{\n")
         inc_line(line)
 
-        for n,v in pairs(value) do
-            write_var(file, line, n, v, indent .. "    ")
+        for n,v in ipairs(value) do
+            write_var(file, line, tonumber(n), v, indent .. "    ")
         end
 
-        file:write(indent .. "}" .. ((#indent > 0) and "," or "") .. "\n")
+        for n,v in pairs(value) do
+            if type(n) == "string" then
+                write_var(file, line, n, v, indent .. "    ")
+            end
+        end
+
+        file:write(indent .. "}" .. comma .. "\n")
         inc_line(line)
         return
     end
@@ -88,7 +98,13 @@ local function write_var(file, line, name, value, indent)
         return msg
     end
 
-    file:write(indent .. name .. " = " .. value .. comma .. "\n")
+    if name and tonumber(name) then
+        name = ""
+    else
+        name = name .. " = "
+    end
+
+    file:write(indent .. name .. value .. comma .. "\n")
     inc_line(line)
 end
 
@@ -689,15 +705,15 @@ local function config_wizard()
             s = readchoice(choices)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
-            if s == "y" then
-                preview.symbols.prompt = "❯"
+
+            preview.symbols.prompt = { ">", winterminal="❯" }
+            if os.getenv("WT_SESSION") then
+                if s == "n" then
+                    preview.symbols.prompt = ">"
+                end
             else
-                preview.symbols.prompt = ">"
-                if console.ansihost then
-                    local term = console.ansihost()
-                    if term ~= "clink" and term ~= "winterminal" then
-                        preview.symbols.prompt = { ">", winterminal="❯" }
-                    end
+                if s == "y" then
+                    preview.symbols.prompt = "❯"
                 end
             end
         end
