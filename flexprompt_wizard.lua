@@ -1,6 +1,7 @@
 local normal = "\x1b[m"
 local bold = "\x1b[1m"
 local brightgreen = "\x1b[92m"
+local brightyellow = "\x1b[93m"
 local static_cursor = "\x1b[7m " .. normal
 
 local _transient
@@ -46,17 +47,27 @@ local function get_settings_filename()
     return name
 end
 
-local function write_var(file, name, value, indent)
+local function inc_line(line)
+    line[1] = line[1] + 1
+end
+
+local function write_var(file, line, name, value, indent)
     local t = type(value)
     if not indent then indent = "" end
 
     if t == "table" then
         file:write(indent .. name .. " =\n")
+        inc_line(line)
+
         file:write(indent .. "{\n")
+        inc_line(line)
+
         for n,v in pairs(value) do
-            write_var(file, n, v, indent .. "    ")
+            write_var(file, line, n, v, indent .. "    ")
         end
+
         file:write(indent .. "}" .. ((#indent > 0) and "," or "") .. "\n")
+        inc_line(line)
         return
     end
 
@@ -67,10 +78,18 @@ local function write_var(file, name, value, indent)
     elseif t == "number" then
         value = tostring(value)
     else
-        log.info("flexprompt couldn't write '" .. name .. "'; unknown type '" .. t .. "'.")
+        local msg
+        if type(name) == "string" then
+            msg = "flexprompt couldn't write '" .. name .. "' at line " .. line[1] .. "; unknown type '" .. t .. "'."
+        else
+            msg = "flexprompt couldn't write [" .. name .. "] at line " .. line[1] .. "; unknown type '" .. t .. "'."
+        end
+        log.info(msg)
+        return msg
     end
 
-    file:write(indent .. name .. " = " .. value .. "\n")
+    file:write(indent .. name .. " = " .. value .. comma .. "\n")
+    inc_line(line)
 end
 
 local function write_settings(settings)
@@ -85,9 +104,16 @@ local function write_settings(settings)
     file:write("-- If you want to make changes, consider copying the file to\n")
     file:write("-- 'flexprompt_config.lua' and editing that file instead.\n\n")
 
+    local line = { 5 }
+
+    local errors
     for n,v in pairs(settings) do
         if n ~= "wizard" then
-            write_var(file, "flexprompt.settings."..n, v)
+            local msg = write_var(file, line, "flexprompt.settings."..n, v)
+            if msg then
+                errors = errors or {}
+                table.insert(errors, msg)
+            end
         end
     end
 
@@ -97,6 +123,8 @@ local function write_settings(settings)
         local command = os.getalias("clink"):gsub("%$%*", " set prompt.transient " .. _transient)
         os.execute(command)
     end
+
+    return errors
 end
 
 local function copy_table(settings)
@@ -548,6 +576,7 @@ end
 local function config_wizard()
     local s
     local settings_filename = get_settings_filename()
+    local errors
 
     local powerline
     local eight_bit_color_test = make_8bit_color_test()
@@ -836,7 +865,7 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
-        write_settings(preview)
+        errors = write_settings(preview)
         wrote = true
         break
 
@@ -851,6 +880,13 @@ local function config_wizard()
             clink.reload()
         else
             clink.print("\x1b[1mThe new flexprompt configuration will take effect when Clink is reloaded.\x1b[m")
+        end
+
+        if errors then
+            clink.print()
+            for _,msg in ipairs(errors) do
+                clink.print(brightyellow .. msg .. normal .. "\n")
+            end
         end
     end
 end
