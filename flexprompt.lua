@@ -1430,7 +1430,7 @@ function flexprompt.get_git_status()
 
     line = file:read("*l")
     if line then
-        unpublished = not line:find("^## ([^.]+)%.%.%.")
+        unpublished = not line:find("^## (.+)%.%.%.")
     end
 
     while true do
