@@ -361,15 +361,15 @@ end
 -- GIT MODULE:  {git:nostaged:noaheadbehind:color_options}
 --  - 'nostaged' omits the staged details.
 --  - 'noaheadbehind' omits the ahead/behind details.
---  - 'nounpublished' omits the "unpublished" indicator in unpublished branches.
 --  - 'showremote' shows the branch and its remote.
 --  - color_options override status colors as follows:
---      - clean=color_name,alt_color_name       When status is clean.
---      - conflict=color_name,alt_color_name    When a conflict exists.
---      - dirty=color_name,alt_color_name       When status is dirty.
---      - remote=color_name,alt_color_name      For ahead/behind details.
---      - staged=color_name,alt_color_name      For staged details.
---      - unknown=color_name,alt_color_name     When status is unknown.
+--      - clean=color_name,alt_color_name           When status is clean.
+--      - conflict=color_name,alt_color_name        When a conflict exists.
+--      - dirty=color_name,alt_color_name           When status is dirty.
+--      - remote=color_name,alt_color_name          For ahead/behind details.
+--      - staged=color_name,alt_color_name          For staged details.
+--      - unknown=color_name,alt_color_name         When status is unknown.
+--      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
 
 local git = {}
 local cached_info = {}
@@ -492,7 +492,19 @@ local function render_git(args)
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
     local colors = git_colors.clean
-    text = flexprompt.format_branch_name(branch)
+    local icon_name = "branch"
+    if gitStatus and gitStatus.unpublished then
+        icon_name = "unpublished"
+        if not flexprompt.can_use_extended_colors() then
+            color = "magenta"
+        elseif flexprompt.get_style() == "rainbow" then
+            color = "38;5;99"
+        else
+            color = "38;5;141"
+        end
+        colors = { token="up", alttoken="unpublished", name=color, altname="black" }
+    end
+    text = flexprompt.format_branch_name(branch, icon_name)
     if gitConflict then
         colors = git_colors.conflict
         text = flexprompt.append_text(text, flexprompt.get_symbol("conflict"))
@@ -533,23 +545,6 @@ local function render_git(args)
             color, altcolor = parse_color_token(args, colors)
             table.insert(segments, { text, color, altcolor })
         end
-    end
-
-    -- Unpublished.
-    local noUnpublished = flexprompt.parse_arg_keyword(args, "nup", "nounpublished")
-    if not noUnpublished and not detached and gitStatus and gitStatus.unpublished then
-        text = flexprompt.get_symbol("unpublished")
-        if text == "" then text = "not published" end
-        color = "magenta"
-        if flexprompt.can_use_extended_colors() then
-            if flexprompt.get_style() == "rainbow" then
-                color = "38;5;125"
-            else
-                color = "38;5;198"
-            end
-        end
-        color, altcolor = parse_color_token(args, { token="up", alttoken="unpublished", name=color, altname="black" })
-        table.insert(segments, { text, color, altcolor })
     end
 
     return segments
