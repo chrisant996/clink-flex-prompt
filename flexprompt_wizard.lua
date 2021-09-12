@@ -594,7 +594,6 @@ local function config_wizard()
     local settings_filename = get_settings_filename()
     local errors
 
-    local powerline
     local eight_bit_color_test = make_8bit_color_test()
     local four_bit_color
     local callout
@@ -617,15 +616,11 @@ local function config_wizard()
             lines = "two",
             left_prompt = "{cwd}{git}",
             right_prompt = "{duration}{time}",
-            symbols = {
-                branch=""
-            },
         }
 
         _transient = nil
         _striptime = true
 
-        powerline = false
         four_bit_color = false
 
         -- Find out about the font being used.
@@ -650,7 +645,7 @@ local function config_wizard()
         if not s or s == "q" then break end
         if s == "y" then
             preview.charset = "unicode"
-            powerline = true
+            preview.powerline_font = true
         end
 
         if not preview.charset then
@@ -688,7 +683,7 @@ local function config_wizard()
             preview.right_frame = "none"
         else
             callout = { 4, 1, "\x1b[1;33m↓\x1b[A\x1b[2Dseparator\x1b[m" }
-            preview.heads = powerline and "pointed" or nil
+            preview.heads = preview.powerline_font and "pointed" or nil
             preview.left_frame = "round"
             preview.right_frame = "round"
 
@@ -706,6 +701,7 @@ local function config_wizard()
             if not s or s == "q" then break end
             if s == "r" then goto continue end
 
+            preview.symbols = preview.symbols or {}
             preview.symbols.prompt = { ">", winterminal="❯" }
             if os.getenv("WT_SESSION") then
                 if s == "n" then
@@ -746,8 +742,6 @@ local function config_wizard()
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
-        preview.symbols.branch = nil
-
         if preview.charset == nil then
             s = choose_setting(preview, "Character Set", "charsets", "charset", { "unicode", "ascii" })
             if not s or s == "q" then break end
@@ -770,7 +764,12 @@ local function config_wizard()
             if not s or s == "q" then break end
             if s == "r" then goto continue end
 
-            s = choose_sides(preview, "Prompt Sides")
+            _striptime = nil
+            s = choose_time(preview, "Show current time?")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+                s = choose_sides(preview, "Prompt Sides")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
@@ -781,21 +780,21 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
-        _striptime = nil
-        s = choose_time(preview, "Show current time?")
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
-
         if preview.style ~= "lean" then
-            local seps
+            _striptime = nil
+            s = choose_time(preview, "Show current time?")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+
+                local seps
             if preview.style == "rainbow" then
-                if powerline then
+                if preview.powerline_font then
                     seps = { "pointed", "vertical", "slant", "round", "blurred" }
                 elseif preview.charset ~= "ascii" then
                     seps = { "vertical", "blurred" }
                 end
             else
-                if powerline then
+                if preview.powerline_font then
                     seps = { "pointed", "vertical", "slant", "round", "none" }
                 else
                     seps = { "bar", "slash", "space", "none" }
@@ -808,7 +807,7 @@ local function config_wizard()
             end
 
             if preview.charset ~= "ascii" and preview.style ~= "lean" then
-                local caps = powerline and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
+                local caps = preview.powerline_font and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
 
                 callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
                 s = choose_setting(preview, "Prompt Heads", "caps", "heads", caps, callout)

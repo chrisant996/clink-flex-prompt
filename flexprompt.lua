@@ -205,8 +205,8 @@ flexprompt.choices.prompt_symbols =
 
 local symbols =
 {
-    branch          = {         unicode="" },
-    unpublished     = {         unicode="" },
+    branch          = {         powerline="" },
+    unpublished     = {         powerline="" },
 
     conflict        = { "!" },
     addcount        = { "+" },
@@ -221,10 +221,10 @@ local symbols =
     staged          = { "#",    unicode="↗" },
 
     battery         = { "%" },
-    charging        = { "++",   unicode="" },
+    charging        = { "++",   powerline="" },
 
-    exit_zero       = {         unicode="\x1b[92m\002" },
-    exit_nonzero    = {         unicode="\x1b[91m\002" },
+    exit_zero       = {         powerline="\x1b[92m\002" },
+    exit_nonzero    = {         powerline="\x1b[91m\002" },
 
     prompt          = { ">" },
 }
@@ -375,10 +375,15 @@ end
 local function get_symbol(name, fallback)
     local symbol = flexprompt.settings.symbols[name] or symbols[name] or fallback or ""
     if type(symbol) == "table" then
-        if not _charset then get_charset() end
         local term = console.ansihost and console.ansihost() or nil
-        local term_symbol = term and symbol[term] or nil
-        symbol = term_symbol or symbol[_charset] or symbol[1] or ""
+        if term and symbol[term] then
+            symbol = symbol[term]
+        elseif flexprompt.settings.powerline_font and symbol["powerline"] then
+            symbol = symbol["powerline"]
+        else
+            local charset = get_charset()
+            symbol = symbol[charset] or symbol[1] or ""
+        end
     end
     return symbol
 end
