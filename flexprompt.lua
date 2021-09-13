@@ -640,14 +640,14 @@ local function next_segment(text, color, rainbow_text_color)
 
     if segmenter.open_cap then
         sep = segmenter.open_cap
-        if classic then
+        if not rainbow then
             transition_color = segmenter.frame_color[fc_back]
             back = segmenter.frame_color[fc_back].bg
             fore = segmenter.frame_color[fc_fore].fg
         end
     else
         sep = segmenter.separator
-        if classic then
+        if not rainbow then
             transition_color = segmenter.frame_color[fc_sep]
         end
     end
