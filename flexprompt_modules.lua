@@ -219,7 +219,8 @@ local function render_cwd(args)
                     else
                         cwd = smart_dir
                     end
-                    sym = flexprompt.get_icon("cwd_git_symbol")
+                    local tmp = flexprompt.get_icon("cwd_git_symbol")
+                    sym = (tmp ~= "") and tmp or nil
                 end
             end
         until true
