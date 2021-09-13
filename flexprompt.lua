@@ -548,7 +548,7 @@ local function init_segmenter(side, frame_color)
         separators = flexprompt.settings.lean_separators or default_separator
 
         if type(separators) ~= "table" then
-            separators = available_separators[separators] or available_separators[default_separator]
+            separators = available_separators[separators] or { separators, separators }
             if separators.lean then
                 separators = { separators.lean, separators.lean }
             end
@@ -571,7 +571,7 @@ local function init_segmenter(side, frame_color)
 
         if segmenter.style == "classic" then
             if type(separators) ~= "table" then
-                separators = available_separators[separators] or available_separators[default_separator]
+                separators = available_separators[separators] or { separators, separators }
             end
         elseif segmenter.style == "rainbow" then
             if type(separators) ~= "table" then
