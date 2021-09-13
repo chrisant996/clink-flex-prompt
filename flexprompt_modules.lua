@@ -261,7 +261,8 @@ local function duration_onendedit()
 end
 
 local function render_duration(args)
-    local duration = _wizard and _wizard.duration or last_duration
+    local wizard = flexprompt.get_wizard_state()
+    local duration = wizard and wizard.duration or last_duration
     if (duration or 0) <= 0 then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
