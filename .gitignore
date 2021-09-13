@@ -4,3 +4,4 @@ tags
 *.exe
 *.patch
 flexprompt_autoconfig.lua
+luaexec.lua
