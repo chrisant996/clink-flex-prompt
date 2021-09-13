@@ -668,8 +668,8 @@ local function config_wizard()
                 preview.charset = "unicode"
             else
                 preview.charset = "ascii"
-                if console.ansihost then
-                    local term = console.ansihost()
+                if clink.getansihost then
+                    local term = clink.getansihost()
                     if term ~= "clink" and term ~= "winterminal" then
                         preview.symbols.prompt = { ">", winterminal="❯" }
                     end

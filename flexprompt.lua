@@ -375,7 +375,7 @@ end
 local function get_symbol(name, fallback)
     local symbol = flexprompt.settings.symbols[name] or symbols[name] or fallback or ""
     if type(symbol) == "table" then
-        local term = console.ansihost and console.ansihost() or nil
+        local term = clink.getansihost and clink.getansihost() or nil
         if term and symbol[term] then
             symbol = symbol[term]
         elseif flexprompt.settings.powerline_font and symbol["powerline"] then
