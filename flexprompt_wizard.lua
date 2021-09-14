@@ -919,6 +919,10 @@ local function onfilterinput(text)
     if text == " flexprompt configure " then
         config_wizard()
         return "", false
+    elseif text:match("^ flexprompt ") then
+        clink.print("Clink flex prompt (https://github.com/chrisant996/clink-flex-prompt)")
+        clink.print('Run "flexprompt configure" to configure the prompt.')
+        return "", false
     end
 end
 
