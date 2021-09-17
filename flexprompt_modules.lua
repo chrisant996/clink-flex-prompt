@@ -109,7 +109,7 @@ local function render_battery(args)
         return
     end
 
-    local style = get_style()
+    local style = flexprompt.get_style()
 
     -- The 'breakleft' and 'breakright' args add blank segments to force a color
     -- break between rainbow segments, in case adjacent colors are too similar.
@@ -567,7 +567,7 @@ local hg_colors =
 local function get_hg_dir(dir)
     return flexprompt.scan_upwards(dir, function (dir)
         -- Return if it's a hg (Mercurial) dir.
-        return has_dir(dir, ".hg")
+        return flexprompt.has_dir(dir, ".hg")
     end)
 end
 
@@ -596,7 +596,7 @@ local function render_hg(args)
     local output = pipe:read('*all')
     local rc = { pipe:close() }
     if (output or "") ~= "" then
-        text = flexprompt.append_text(text, get_symbol("modifycount"))
+        text = flexprompt.append_text(text, flexprompt.get_symbol("modifycount"))
         colors = hg_colors.dirty
     else
         colors = hg_colors.clean
@@ -742,7 +742,7 @@ local svn_colors =
 local function get_svn_dir(dir)
     return flexprompt.scan_upwards(dir, function (dir)
         -- Return if it's a svn (Subversion) dir.
-        local has = has_dir(dir, ".svn")
+        local has = flexprompt.has_dir(dir, ".svn")
         if has then return has end
     end)
 end
