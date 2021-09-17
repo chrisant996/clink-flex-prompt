@@ -255,6 +255,26 @@ flexprompt.settings.git_fetch_interval = 60
 
 _TBD_
 
+### Options
+
+_TBD_
+
+### Text and Colors
+
+_TBD_
+
+#### Special Style Considerations
+
+_TBD_
+
+### Running Actions
+
+_TBD_
+
+### Flexprompt API Reference
+
+_TBD_
+
 # License
 
 clink-flex-prompt is distributed under the terms of The MIT License.
