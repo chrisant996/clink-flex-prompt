@@ -493,9 +493,10 @@ local function render_git(args)
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
+    local gitUnpublished = not detached and gitStatus and gitStatus.unpublished
     local colors = git_colors.clean
     local icon_name = "branch"
-    if gitStatus and gitStatus.unpublished then
+    if gitUnpublished then
         icon_name = "unpublished"
         if not flexprompt.can_use_extended_colors() then
             color = "magenta"
