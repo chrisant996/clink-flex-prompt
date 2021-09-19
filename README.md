@@ -253,25 +253,187 @@ flexprompt.settings.git_fetch_interval = 60
 
 # Writing Custom Prompt Modules
 
+You can write prompt modules in Lua.
+
+A prompt module can return a text string and a color for the text -- this adds a
+"segment" to the prompt.  It can optionally return multiple pairs of text and
+colors to add multiple segments to the prompt.  Or it can return nil to add no
+segments.
+
+Put your prompt module code in a Lua file whose name starts with `flexprompt_`
+in the same directory as the `flexprompt.lua` file.
+
+> **Advanced:**  Since scripts are loaded in alphabetical order, the easiest thing to do is name your script something that follows after `flexprompt_` alphabetically.  But another more advanced option is to defer making use of `flexprompt.` until the first [onbeginedit](https://chrisant996.github.io/clink/clink.html#clink.onbeginedit) event, and then the script name wouldn't have the alphabetical order limitation.
+
+Here is a basic example of a prompt module, which we'll call "mfm" as an
+abbreviation for "my first module":
+
+```lua
+-- This is the prompt module function.
+local function my_first_module(args)
+    -- It returns some text to show in the prompt, and a color for the text.
+    -- (The args will be explained in the next section.)
+    return "Hello World", "magenta"
+end
+
+-- This registers the prompt module function with flexprompt.
+-- Pass a string, and a function.
+-- In your prompt, refer to the prompt module by putting its name inside
+-- squiggly braces, such as "{mfm}" in this example.
+flexprompt.add_module("mfm", my_first_module)
+```
+
+With the above code installed, if you set your `flexprompt.left_prompt` string
+to include `"{mfm}"` then your prompt will include a magenta segment that says
+"Hello World".
+
+## Options
+
+Prompt modules can accept arguments to customize them.  There are two flexprompt
+API functions to help with that.
+
+If a module name is followed by a colon `:` then everything between the colon
+and the closing brace `}` is passed to the prompt module function as a string.
+
+Let's suppose your prompt string includes `"{mfm:excited:capitalize=upper}"` and
+look at how the `my_first_module` example could use the arguments.
+
+The `excited` part does not have an equal `=` sign, so it is a keyword.  Your
+module function can use `flexprompt.parse_arg_keyword()` to check whether a
+specific keyword is present.
+
+The `case=upper` part includes an equal `=` sign, so it is a token.  Your module
+function can use `flexprompt.parse_arg_token()` to retrieve the part following
+the equal `=` sign.
+
+Here is the example prompt module function, updated to recognize the two example
+arguments described above.
+
+```lua
+-- The MFM module:
+--
+-- This module replaces "{mfm}" in your prompt string with "Hello World".
+--
+-- This module accepts two arguments.  To use an argument, append a colon and
+-- the argument after the module name:
+--      excited             Adds an exclamation mark to the prompt text.
+--      case=type           Applies capitalization according to 'type':
+--                          - 'upper' applies upper case.
+--                          - 'lower' applies lower case.
+
+-- This is the prompt module function.
+local function my_first_module(args)
+    -- The text to show normally.
+    local text = "Hello World"
+
+    -- Check for the 'excited' argument keyword.  If present, then let's add
+    -- exclamation marks to the text to express excitement.
+    local excited = flexprompt.parse_arg_keyword(args, "excited")
+    if excited then
+        text = text .. "!!!"
+    end
+
+    -- Check for the 'case' argument token.  If present, then apply upper or
+    -- lower casing, depending on the value of the 'case' token.
+    local case = flexprompt.parse_arg_token(args, "case")
+    if case == "upper" then
+        text = string.upper(text)
+    elseif case == "lower" then
+        text = string.lower(text)
+    end
+
+    -- Return the final version of the text, and the color for the prompt
+    -- module's segment in the prompt string.
+    return text, "magenta"
+end
+
+-- This registers the prompt module function with flexprompt.
+flexprompt.add_module("mfm", my_first_module)
+```
+
+## Colors
+
+Flexprompt can apply colors to prompt modules' segments.  Each prompt module
+controls its own colors.  But prompt modules may accepts arguments to allow
+customizing their colors.
+
+If a module will only apply one color, then its token name may be `color`.  But
+if the module has more than one color, or if you think it ever might have more
+than one color, then give each color a separate name (e.g. `clean` and `dirty`
+and `"{mfm:clean=green:dirty=yellow}"`).
+
+Your module function can use `flexprompt.parse_colors()` to retrieve the
+specified colors.
+
+Here is where styling comes up for the first time:  Each prompt segment actually
+has three things:  text string, main color, and alternate color.  In the "lean"
+and "classic" prompt styles, the main color says what text color to use (the
+alternate color is not used).  But in the "rainbow" style the main color says
+what background color to use, and the alternate color says what text color to
+use.  If the alternate color is omitted, then `"white"` is assumed.  Overriding
+the alternate color may be desirable sometimes, for example to improve contrast.
+
+Now we'll update the example prompt module to have a customizable color:
+
+```lua
+-- The MFM module:
+--
+-- This module replaces "{mfm}" in your prompt string with "Hello World".
+--
+-- This module accepts two arguments.  To use an argument, append a colon and
+-- the argument after the module name:
+--      excited             Adds an exclamation mark to the prompt text.
+--      case=type           Applies capitalization according to 'type':
+--                          - 'upper' applies upper case.
+--                          - 'lower' applies lower case.
+--      color=main,alt      Customize the default color.
+
+-- This is the prompt module function.
+local function my_first_module(args)
+    -- The text to show normally.
+    local text = "Hello World"
+
+    -- Check for the 'excited' argument keyword.  If present, then let's add
+    -- exclamation marks to the text to express excitement.
+    local excited = flexprompt.parse_arg_keyword(args, "excited")
+    if excited then
+        text = text .. "!!!"
+    end
+
+    -- Check for the 'case' argument token.  If present, then apply upper or
+    -- lower casing, depending on the value of the 'case' token.
+    local case = flexprompt.parse_arg_token(args, "case")
+    if case == "upper" then
+        text = string.upper(text)
+    elseif case == "lower" then
+        text = string.lower(text)
+    end
+
+    -- Set up the default colors, and then parse a 'color' token to override the
+    -- defaults with customized colors.
+    local color = "magenta"
+    local altcolor = "black"
+    local color_arg = flexprompt.parse_arg_token(args, "color")
+    color, altcolor = flexprompt.parse_colors(color_arg, color, altcolor)
+
+    -- Return the final version of the text, and the color for the prompt
+    -- module's segment in the prompt string.
+    return text, color, altcolor
+end
+
+-- This registers the prompt module function with flexprompt.
+flexprompt.add_module("mfm", my_first_module)
+```
+
+## Customizable Styling
+
 _TBD_
 
-### Options
+## Running Actions
 
 _TBD_
 
-### Text and Colors
-
-_TBD_
-
-#### Special Style Considerations
-
-_TBD_
-
-### Running Actions
-
-_TBD_
-
-### Flexprompt API Reference
+# Flexprompt API Reference
 
 _TBD_
 

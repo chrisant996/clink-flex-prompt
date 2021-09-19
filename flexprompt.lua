@@ -1149,7 +1149,7 @@ function flexprompt.get_styled_sgr(name)
     return ""
 end
 
--- Parse arg "abc:def=mno:xyz" for token "def" returns value "xyz".
+-- Parse arg "abc:def=mno:xyz" for token "def" returns value "mno".
 function flexprompt.parse_arg_token(args, name, altname, include_colon)
     if not args then
         return
