@@ -672,7 +672,7 @@ local function next_segment(text, color, rainbow_text_color)
     -- separator, force a break by showing one connector character using the
     -- frame color.
     if text == "" and sep == "" and (rainbow or classic) then
-        text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. get_connector())
+        text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. sgr(segmenter.frame_color[fc_frame].fg) .. get_connector())
     end
 
     -- Applying 'color' goes last so that the module can override other colors
