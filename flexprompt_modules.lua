@@ -822,7 +822,8 @@ local function render_svn(args)
 end
 
 --------------------------------------------------------------------------------
--- TIME MODULE:  {time:color=color_name,alt_color_name:format=format_string}
+-- TIME MODULE:  {time:dim:color=color_name,alt_color_name:format=format_string}
+--  - 'dim' uses dimmer default colors for rainbow style.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 --  - format_string uses the rest of the text as a format string for os.date().
@@ -831,13 +832,18 @@ end
 -- include colons).
 
 local function render_time(args)
+    local dim = flexprompt.parse_arg_keyword(args, "d", "dim")
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
-        color = "white"
-        altcolor = "black"
+        color = (dim and
+                flexprompt.use_best_color("brightblack", ext_brightblack) or
+                flexprompt.use_best_color("white", ext_white))
+        altcolor = (dim and
+                flexprompt.use_best_color("white", ext_white) or
+                flexprompt.use_best_color("black", ext_black))
     else
-        color = "darkcyan"
+        color = flexprompt.use_best_color("darkcyan", ext_darkcyan)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 

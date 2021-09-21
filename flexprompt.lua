@@ -90,7 +90,7 @@ flexprompt.choices.prompts =
 {
     lean        = { left = { "{battery}{cwd}{git}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
     classic     = { left = { "{battery}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
-    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{duration}{time:color=brightblack,white}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{duration}{time}" } },
+    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{duration}{time:dim}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{duration}{time}" } },
 }
 
 -- Only if style != lean.

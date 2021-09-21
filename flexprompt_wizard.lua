@@ -6,6 +6,7 @@ local static_cursor = "\x1b[7m " .. normal
 
 local _transient
 local _striptime
+local _timeformat
 
 local function readinput()
     if console.readinput then
@@ -166,10 +167,27 @@ local function display_centered(s)
     clink.print(s)
 end
 
-local function strip_modules(s)
+local function replace_modules(s)
     s = s:gsub("{battery[^}]*}", "")
     if _striptime then
         s = s:gsub("{time[^}]*}", "")
+    elseif _timeformat then
+        if _timeformat == "2" then
+            s = s:gsub("{time:dim}", "{time:dim:format=%%H:%%M:%%S}")
+            s = s:gsub("{time}", "{time:format=%%H:%%M:%%S}")
+        elseif _timeformat == "3" then
+            s = s:gsub("{time:dim}", "{time:dim:format=%%a %%H:%%M}")
+            s = s:gsub("{time}", "{time:format=%%a %%H:%%M}")
+        elseif _timeformat == "4" then
+            s = s:gsub("{time:dim}", "{time:dim:format=%%I:%%M:%%S %%p}")
+            s = s:gsub("{time}", "{time:format=%%I:%%M:%%S %%p}")
+        elseif _timeformat == "5" then
+            s = s:gsub("{time:dim}", "{time:dim:format=%%a %%I:%%M %%p}")
+            s = s:gsub("{time}", "{time:format=%%a %%I:%%M %%p}")
+        else
+            s = s:gsub("{time:dim}", "")
+            s = s:gsub("{time}", "")
+        end
     end
     return s
 end
@@ -177,10 +195,10 @@ end
 local function display_preview(settings, command, show_cursor, callout)
     local preview = copy_table(settings)
     if preview.left_prompt then
-        preview.left_prompt = strip_modules(preview.left_prompt)
+        preview.left_prompt = replace_modules(preview.left_prompt)
     end
     if preview.right_prompt then
-        preview.right_prompt = strip_modules(preview.right_prompt)
+        preview.right_prompt = replace_modules(preview.right_prompt)
     end
 
     local left, right, col, anchors = flexprompt.render_wizard(preview, callout and true or nil)
@@ -323,52 +341,33 @@ local function choose_time(settings, title)
 
     choices = "12345"
 
-    local function gsub_time(settings, choice)
-        if choice == "2" then
-            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%H:%%M:%%S}")
-            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%H:%%M:%%S}")
-        elseif choice == "3" then
-            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%a %%H:%%M}")
-            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%a %%H:%%M}")
-        elseif choice == "4" then
-            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%I:%%M:%%S %%p}")
-            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%I:%%M:%%S %%p}")
-        elseif choice == "5" then
-            settings.left_prompt = settings.left_prompt:gsub("{time}", "{time:format=%%a %%I:%%M %%p}")
-            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "{time:format=%%a %%I:%%M %%p}")
-        else
-            settings.left_prompt = settings.left_prompt:gsub("{time}", "")
-            settings.right_prompt = settings.right_prompt and settings.right_prompt:gsub("{time}", "") or nil
-        end
-    end
-
     clink.print("(1)  No.\n")
     preview = copy_table(settings)
-    gsub_time(preview, "1")
+    _timeformat = "1"
     display_preview(preview)
     clink.print()
 
     clink.print("(2)  24-hour format.\n")
     preview = copy_table(settings)
-    gsub_time(preview, "2")
+    _timeformat = "2"
     display_preview(preview)
     clink.print()
 
     clink.print("(3)  24-hour format with day.\n")
     preview = copy_table(settings)
-    gsub_time(preview, "3")
+    _timeformat = "3"
     display_preview(preview)
     clink.print()
 
     clink.print("(4)  12-hour format.\n")
     preview = copy_table(settings)
-    gsub_time(preview, "4")
+    _timeformat = "4"
     display_preview(preview)
     clink.print()
 
     clink.print("(5)  12-hour format with day.\n")
     preview = copy_table(settings)
-    gsub_time(preview, "5")
+    _timeformat = "5"
     display_preview(preview)
     clink.print()
 
@@ -381,7 +380,7 @@ local function choose_time(settings, title)
     if s == "r" then
     elseif s == "q" then
     else
-        gsub_time(settings, s)
+        _timeformat = s
     end
     return s
 end
