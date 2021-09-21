@@ -309,7 +309,7 @@ end
 
 local function lookup_color(args)
     if not args or type(args) == "table" then
-        return args
+        return args[get_style()] or args
     end
 
     if args and not args:match("^[0-9]") then
