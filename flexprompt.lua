@@ -1132,6 +1132,12 @@ end
 -- and background SGR codes (beware of unexpected side effects).
 flexprompt.lookup_color = lookup_color
 
+-- Function to choose between a normal color and an extended color, based on
+-- whether extended colors are available.
+function flexprompt.use_best_color(normal, extended)
+    return flexprompt.can_use_extended_colors() and extended or normal
+end
+
 -- Function to get the prompt style.
 flexprompt.get_style = get_style
 

@@ -11,6 +11,27 @@ end
 -- Is reset to {} at each onbeginedit.
 local _cached_state = {}
 
+local ext_darkblack     = { fg="38;5;0", bg="48;5;0" }
+local ext_darkred       = { fg="38;5;1", bg="48;5;1" }
+local ext_darkgreen     = { fg="38;5;2", bg="48;5;2" }
+local ext_darkmagenta   = { fg="38;5;5", bg="48;5;5" }
+local ext_darkcyan      = { fg="38;5;6", bg="48;5;6" }
+local ext_darkwhite     = { fg="38;5;7", bg="48;5;7" }
+
+local ext_brightred     = { fg="38;5;160", bg="48;5;160" }
+local ext_brightgreen   = { fg="38;5;40", bg="48;5;40" }
+local ext_brightmagenta = { fg="38;5;164", bg="48;5;164" }
+local ext_brightcyan    = { fg="38;5;44", bg="48;5;44" }
+local ext_brightyellow  = { fg="38;5;11", bg="48;5;11" }
+
+local ext_red           = { fg="38;5;1", bg="48;5;1", lean=ext_brightred, classic=ext_brightred }
+local ext_green         = { fg="38;5;2", bg="48;5;2", lean=ext_brightgreen, classic=ext_brightgreen }
+local ext_yellow        = { fg="38;5;3", bg="48;5;3", lean=ext_brightyellow, classic=ext_brightyellow }
+local ext_magenta       = { fg="38;5;5", bg="48;5;5", lean=ext_brightmagenta, classic=ext_brightmagenta }
+local ext_cyan          = { fg="38;5;6", bg="48;5;6", lean=ext_brightcyan, classic=ext_brightcyan }
+
+local ext_lightgray     = { fg="38;5;252", bg="48;5;252" }
+
 --------------------------------------------------------------------------------
 -- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright}
 --  - show_level shows the battery module unless the battery level is greater
@@ -425,20 +446,30 @@ local function collect_git_info()
     return { status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
 end
 
+-- Expects the colors arg to follow this scheme:
+-- All elements are by index:
+--  1 = token
+--  2 = alttoken
+--  3 = color
+--  4 = altcolor
+--  5 = extended color
+--  6 = extended altcolor
 local function parse_color_token(args, colors)
-    local parsed_colors = flexprompt.parse_arg_token(args, colors.token, colors.alttoken)
-    local color, altcolor = flexprompt.parse_colors(parsed_colors, colors.name, colors.altname)
+    local parsed_colors = flexprompt.parse_arg_token(args, colors[1], colors[2])
+    local color = flexprompt.use_best_color(colors[3], colors[5] or colors[3])
+    local altcolor = flexprompt.use_best_color(colors[4], colors[6] or colors[4])
+    color, altcolor = flexprompt.parse_colors(parsed_colors, color, altcolor)
     return color, altcolor
 end
 
 local git_colors =
 {
-    clean       = { token="c",  alttoken="clean",       name="green",   altname="black" },
-    conflict    = { token="!",  alttoken="conflict",    name="red",     altname="brightwhite" },
-    dirty       = { token="d",  alttoken="dirty",       name="yellow",  altname="black" },
-    remote      = { token="r",  alttoken="remote",      name="cyan",    altname="black" },
-    staged      = { token="s",  alttoken="staged",      name="magenta", altname="black" },
-    unknown     = { token="u",  alttoken="unknown",     name="white",   altname="black" },
+    clean       = { "c",  "clean",     "green",      "black",        ext_green,      ext_black },
+    conflict    = { "!",  "conflict",  "red",        "brightwhite",  ext_red,        ext_lightgray },
+    dirty       = { "d",  "dirty",     "yellow",     "black",        ext_yellow,     ext_black },
+    remote      = { "r",  "remote",    "cyan",       "black",        ext_cyan,       ext_black },
+    staged      = { "s",  "staged",    "magenta",    "black",        ext_magenta,    ext_black },
+    unknown     = { "u",  "unknown",   "darkwhite",  "black",        ext_darkwhite,  ext_black },
 }
 
 local function render_git(args)
@@ -495,6 +526,7 @@ local function render_git(args)
     local gitUnknown = not info.finished
     local gitUnpublished = not detached and gitStatus and gitStatus.unpublished
     local colors = git_colors.clean
+    local color, altcolor
     local icon_name = "branch"
     if gitUnpublished then
         icon_name = "unpublished"
@@ -505,7 +537,7 @@ local function render_git(args)
         else
             color = "38;5;141"
         end
-        colors = { token="up", alttoken="unpublished", name=color, altname="black" }
+        colors = { "up", "unpublished", color, "black" }
     end
     text = flexprompt.format_branch_name(branch, icon_name)
     if gitConflict then
@@ -518,7 +550,7 @@ local function render_git(args)
         colors = git_colors.unknown
     end
 
-    local color, altcolor = parse_color_token(args, colors)
+    color, altcolor = parse_color_token(args, colors)
     table.insert(segments, { text, color, altcolor })
 
     -- Staged status.
