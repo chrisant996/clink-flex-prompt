@@ -138,12 +138,14 @@ For the "classic" style:
 - `"dot"` is a dot (requires Unicode).
 - `"updiagonal"` is a small slash from bottom left to top right (requires Unicode).
 - `"downdiagonal"` is a small slash from top left to bottom right (requires Unicode).
-- `"connector"` shows a frame connector (see the Connection section further below).
 - (See flexprompt.lua for the most up to date list.)
 - Custom separators can be provided as a table with two values, for the left and right separators.
 
 For the "rainbow" style:
 - Any of the **Heads** or **Tails** options may be used as separators.
+
+For all styles:
+- `"connector"` shows a frame connector (see the Connection section further below).
 
 ```lua
 -- Use a predefined separator:
