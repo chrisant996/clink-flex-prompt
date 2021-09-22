@@ -254,7 +254,10 @@ local function render_cwd(args)
 end
 
 --------------------------------------------------------------------------------
--- DURATION MODULE:  {duration:color=color_name,alt_color_name}
+-- DURATION MODULE:  {duration:format=format_name:color=color_name,alt_color_name}
+--  - format_name is the format to use:
+--      - "colons" is "H:M:S" format.
+--      - "letters" is "Hh Mm Ss" format (the default).
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
@@ -296,14 +299,32 @@ local function render_duration(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local text
-    text = (duration % 60) .. "s"
+    local h, m, s
+    s = (duration % 60)
     duration = math.floor(duration / 60)
     if duration > 0 then
-        text = flexprompt.append_text((duration % 60) .. "m", text)
+        m = (duration % 60)
         duration = math.floor(duration / 60)
         if duration > 0 then
-            text = flexprompt.append_text(duration .. "h", text)
+            h = duration
+        end
+    end
+
+    local text
+    local format = flexprompt.parse_arg_token(args, "f", "format")
+    if format and format == "colons" then
+        if h then
+            text = string.format("%u:%02u:%02u", h, m, s)
+        else
+            text = string.format("%u:%02u", (m or 0), s)
+        end
+    else
+        text = s .. "s"
+        if m then
+            text = flexprompt.append_text(m .. "m", text)
+            if h then
+                text = flexprompt.append_text(h .. "h", text)
+            end
         end
     end
 
