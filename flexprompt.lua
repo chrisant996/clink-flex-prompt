@@ -632,7 +632,11 @@ local function init_segmenter(side, frame_color)
 
         if segmenter.style == "classic" then
             if type(separators) ~= "table" then
-                separators = available_separators[separators] or { separators, separators }
+                if separators == "connector" then
+                    separators = sgr(flexprompt.colors.default.bg .. ";" .. sgr(get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector())
+                else
+                    separators = available_separators[separators] or { separators, separators }
+                end
             end
         elseif segmenter.style == "rainbow" then
             if type(separators) ~= "table" then
@@ -734,7 +738,7 @@ local function next_segment(text, color, rainbow_text_color)
     -- separator, force a break by showing one connector character using the
     -- frame color.
     if text == "" and sep == "" and (rainbow or classic) then
-        text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. sgr(get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector())
+        text = make_fluent_text(sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector())
     end
 
     -- Applying 'color' goes last so that the module can override other colors
