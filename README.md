@@ -249,6 +249,9 @@ flexprompt.settings.lean_separators = "   "
 
 -- Run `git fetch` in a repo up to once every 60 minutes:
 flexprompt.settings.git_fetch_interval = 60
+
+-- Don't show duration unless a command takes at least this many seconds:
+flexprompt.settings.duration_threshold = 10
 ```
 
 # Writing Custom Prompt Modules

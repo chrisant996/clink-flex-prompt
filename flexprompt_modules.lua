@@ -272,7 +272,7 @@ local function duration_onbeginedit()
         local beginedit_time = duration_clock()
         local elapsed = beginedit_time - endedit_time
         if elapsed >= 0 then
-            last_duration = math.floor(elapsed + 0.5)
+            last_duration = math.floor(elapsed)
         end
     end
 end
@@ -284,7 +284,7 @@ end
 local function render_duration(args)
     local wizard = flexprompt.get_wizard_state()
     local duration = wizard and wizard.duration or last_duration
-    if (duration or 0) <= 0 then return end
+    if (duration or 0) < (flexprompt.settings.duration_threshold or 3) then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
