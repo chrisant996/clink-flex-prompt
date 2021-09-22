@@ -609,7 +609,7 @@ local function config_wizard()
             {
                 width = console.getwidth() - 10, -- Align with "(1)  <-Here".
                 cwd = "c:\\directory",
-                duration = 2,
+                duration = 5,
                 exit = 0,
             },
             lines = "two",

@@ -26,10 +26,15 @@ local _cached_state = {}
 --------------------------------------------------------------------------------
 -- Color codes.
 
+local realblack = { fg="30", bg="40", extfg="38;5;0", extbg="48;5;0" }
+local realwhite = { fg="37", bg="47", extfg="38;5;7", extbg="48;5;7", altcolor=realblack }
+local nearlywhite = { fg="37", bg="47", extfg="38;5;252", extbg="48;5;252" }
+
 flexprompt.colors =
 {
     bold            = { fg="1"                  },
     default         = { fg="39",    bg="49"     },
+
     -- Normal low intensity colors.  Some styles brighten the normal low
     -- intensity colors; the "dark" versions are never brightened.
     black           = { fg="30",    bg="40",    lean="brightblack",     classic="brightblack",      },
@@ -59,9 +64,45 @@ flexprompt.colors =
     darkmagenta     = { fg="35",    bg="45",    },
     darkcyan        = { fg="36",    bg="46",    },
     darkwhite       = { fg="37",    bg="47",    },
-}
 
-local ext_lightgray = "38;5;252"
+    -- Real colors.  These use the real color (vs console theme color) when
+    -- extended colors are available.
+    realblack           = realblack,
+    realred             = { fg="31", bg="41",   extfg="38;5;1",     extbg="48;5;1"  },
+    realgreen           = { fg="32", bg="42",   extfg="38;5;2",     extbg="48;5;2"  },
+    realyellow          = { fg="33", bg="43",   extfg="38;5;3",     extbg="48;5;3"  },
+    realblue            = { fg="34", bg="44",   extfg="38;5;4",     extbg="48;5;4"  },
+    realmagenta         = { fg="35", bg="45",   extfg="38;5;5",     extbg="48;5;5"  },
+    realcyan            = { fg="36", bg="46",   extfg="38;5;6",     extbg="48;5;6"  },
+    realwhite           = realwhite,
+    realbrightblack     = { fg="91", bg="101",  extfg="38;5;8",     extbg="48;5;8"  },
+    realbrightred       = { fg="91", bg="101",  extfg="38;5;9",     extbg="48;5;9"  },
+    realbrightgreen     = { fg="92", bg="102",  extfg="38;5;10",    extbg="48;5;10" },
+    realbrightyellow    = { fg="93", bg="103",  extfg="38;5;11",    extbg="48;5;11" },
+    realbrightblue      = { fg="94", bg="104",  extfg="38;5;12",    extbg="48;5;12" },
+    realbrightmagenta   = { fg="95", bg="105",  extfg="38;5;13",    extbg="48;5;13" },
+    realbrightcyan      = { fg="96", bg="106",  extfg="38;5;14",    extbg="48;5;14" },
+    realbrightwhite     = { fg="97", bg="107",  extfg="38;5;15",    extbg="48;5;15" },
+
+    -- Default text color in rainbow style.
+    rainbow_text    = nearlywhite,
+
+    -- Version control colors.
+    vcs_blacktext   = realblack,
+    vcs_whitetext   = nearlywhite,
+    vcs_conflict    = { fg="91",    bg="101",   extfg="38;5;160",   extbg="48;5;160",   rainbow={ fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor=nearlywhite } },
+    vcs_unresolved  = { fg="91",    bg="101",   extfg="38;5;160",   extbg="48;5;160",   rainbow={ fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor=realblack } },
+    vcs_clean       = { fg="92",    bg="102",   extfg="38;5;40",    extbg="48;5;40",    rainbow={ fg="32", bg="42", extfg="38;5;2", extbg="48;5;2", altcolor=realblack } },
+    vcs_dirty       = { fg="93",    bg="103",   extfg="38;5;11",    extbg="48;5;11",    rainbow={ fg="33", bg="43", extfg="38;5;178", extbg="48;5;178", altcolor=realblack } },
+    vcs_staged      = { fg="95",    bg="105",   extfg="38;5;164",   extbg="48;5;164",   rainbow={ fg="35", bg="45", extfg="38;5;5", extbg="48;5;5", altcolor=realblack } },
+    vcs_unpublished = { fg="95",    bg="105",   extfg="38;5;141",   extbg="48;5;141",   rainbow={ fg="35", bg="45", extfg="38;5;99", extbg="48;5;99", altcolor=realblack } },
+    vcs_remote      = { fg="96",    bg="106",   extfg="38;5;44",    extbg="48;5;44",    rainbow={ fg="36", bg="46", extfg="38;5;6", extbg="48;5;6", altcolor=realblack } },
+    vcs_unknown     = realwhite,
+
+    -- Exit code colors.
+    exit_zero       = { fg="32",    bg="42",    extfg="38;5;2",     extbg="48;5;2",     rainbow={ fg="30", bg="40", extfg="38;5;0", extbg="48;5;0", altcolor={ fg="32", bg="42", extfg="38;5;34", extbg="48;5;34" } } },
+    exit_nonzero    = { fg="91",    bg="101",   extfg="38;5;160",   extbg="48;5;160",   rainbow={ fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor={ fg="93", bg="103", extfg="38;5;11", extbg="48;5;11" } } },
+}
 
 --------------------------------------------------------------------------------
 -- Configuration.
@@ -275,14 +316,28 @@ local function can_use_extended_colors(force)
     return _can_use_extended_colors
 end
 
+local function get_best_fg(color)
+    if can_use_extended_colors() then
+        return color.extfg or color.fg
+    end
+    return color.fg
+end
+
+local function get_best_bg(color)
+    if can_use_extended_colors() then
+        return color.extbg or color.bg
+    end
+    return color.bg
+end
+
+local function use_best_color(normal, extended)
+    return can_use_extended_colors() and extended or normal
+end
+
 local function get_style()
     -- Indexing into the styles table validates that the style name is
     -- recognized.
     return flexprompt.choices.styles[flexprompt.settings.style or "lean"] or "lean"
-end
-
-local function get_style_ground()
-    return (get_style() == "rainbow") and "bg" or "fg"
 end
 
 local _charset
@@ -319,7 +374,11 @@ local function lookup_color(args)
         if color then
             local redirect = color[get_style()]
             if redirect then
-                color = flexprompt.colors[redirect]
+                if type(redirect) == "table" then
+                    color = redirect
+                else
+                    color = flexprompt.colors[redirect]
+                end
             end
         end
         return color
@@ -403,13 +462,13 @@ local function get_prompt_symbol_color()
         color = flexprompt.settings.prompt_symbol_color
     elseif os.geterrorlevel then
         color = (get_errorlevel() == 0) and
-                (flexprompt.settings.exit_zero_color or "brightgreen") or
-                (flexprompt.settings.exit_nonzero_color or "brightred")
+                (flexprompt.settings.exit_zero_color or "realbrightgreen") or
+                (flexprompt.settings.exit_nonzero_color or "realbrightred")
     else
         color = "brightwhite"
     end
     color = lookup_color(color)
-    return sgr(color.fg)
+    return sgr(get_best_fg(color))
 end
 
 local function get_prompt_symbol()
@@ -429,7 +488,7 @@ local function make_fluent_text(text, force)
         if t == "string" or t == "table" then
             local color = lookup_color(force)
             if color then
-                return sgr(color.fg) .. text .. "\002"
+                return sgr(get_best_fg(color)) .. text .. "\002"
             end
         end
         return "\001" .. text .. "\002"
@@ -456,7 +515,7 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     end
     if gap > 0 then
         if not sgr_frame_color then
-            sgr_frame_color = sgr(flexprompt.colors.red.fg)
+            sgr_frame_color = sgr(get_best_fg(flexprompt.colors.red))
         end
         lhs = lhs .. sgr_frame_color .. string.rep(get_connector(), gap)
     end
@@ -607,31 +666,32 @@ local function color_segment_transition(color, symbol, close)
         end
     end
 
-    local fg = swap and "bg" or "fg"
-    local bg = swap and "fg" or "bg"
+    local get_seg_fg = swap and get_best_bg or get_best_fg
+    local get_seg_bg = swap and get_best_fg or get_best_bg
     if segmenter.style == "rainbow" then
-        if segmenter.back_color.bg == color.bg then
-            return sgr(segmenter.frame_color[fc_sep].fg) .. segmenter.altseparator
+        if get_best_bg(segmenter.back_color) == get_best_bg(color) then
+            return sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
         else
-            return sgr(segmenter.back_color[fg] .. ";" .. color[bg]) .. symbol
+            return sgr(get_seg_fg(segmenter.back_color) .. ";" .. get_seg_bg(color)) .. symbol
         end
     else
-        return sgr(segmenter.back_color[bg] .. ";" .. color[fg]) .. symbol
+        return sgr(get_seg_bg(segmenter.back_color) .. ";" .. get_seg_fg(color)) .. symbol
     end
 end
 
 local function apply_fluent_colors(text, base_color)
-    local fluent_color = sgr((get_flow() == "lean") and nil or segmenter.frame_color[fc_fore].fg)
+    local fluent_color = sgr((get_flow() == "lean") and nil or get_best_fg(segmenter.frame_color[fc_fore]))
     return string.gsub(text, "\001", fluent_color):gsub("\002", base_color)
 end
 
 local function next_segment(text, color, rainbow_text_color)
     local out = ""
 
-    if not color then
-        color = flexprompt.colors.brightred
-    end
-    rainbow_text_color = lookup_color(rainbow_text_color or (can_use_extended_colors() and lightgray or "white"))
+    if not color then color = flexprompt.colors.red end
+
+    if rainbow_text_color then rainbow_text_color = lookup_color(rainbow_text_color) end
+    if not rainbow_text_color then rainbow_text_color = color.altcolor end
+    if not rainbow_text_color then rainbow_text_color = lookup_color("rainbow_text") end
     if not rainbow_text_color then rainbow_text_color = flexprompt.colors.brightred end
 
     local sep
@@ -644,8 +704,8 @@ local function next_segment(text, color, rainbow_text_color)
         sep = segmenter.open_cap
         if not rainbow then
             transition_color = segmenter.frame_color[fc_back]
-            back = segmenter.frame_color[fc_back].bg
-            fore = segmenter.frame_color[fc_fore].fg
+            back = get_best_bg(segmenter.frame_color[fc_back])
+            fore = get_best_fg(segmenter.frame_color[fc_fore])
         end
     else
         sep = segmenter.separator
@@ -674,7 +734,7 @@ local function next_segment(text, color, rainbow_text_color)
     -- separator, force a break by showing one connector character using the
     -- frame color.
     if text == "" and sep == "" and (rainbow or classic) then
-        text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. sgr(segmenter.frame_color[fc_frame].fg) .. get_connector())
+        text = make_fluent_text(sgr(flexprompt.colors.default.bg) .. sgr(get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector())
     end
 
     -- Applying 'color' goes last so that the module can override other colors
@@ -684,11 +744,11 @@ local function next_segment(text, color, rainbow_text_color)
     -- transition colors.
     local base_color
     if rainbow then
-        base_color = sgr(rainbow_text_color.fg .. ";" .. color.bg)
+        base_color = sgr(get_best_fg(rainbow_text_color) .. ";" .. get_best_bg(color))
     elseif classic then
-        base_color = sgr(segmenter.frame_color[fc_back].bg .. ";" .. color.fg)
+        base_color = sgr(get_best_bg(segmenter.frame_color[fc_back]) .. ";" .. get_best_fg(color))
     else
-        base_color = sgr("49;" .. color.fg )
+        base_color = sgr("49;" .. get_best_fg(color))
     end
 
     out = out .. base_color
@@ -899,7 +959,7 @@ local function render_prompts(settings, need_anchors)
         left_frame, right_frame = get_frame()
     end
     local frame_color = get_frame_color()
-    local sgr_frame_color = sgr("0;" .. frame_color[fc_frame].fg) or nil
+    local sgr_frame_color = sgr("0;" .. get_best_fg(frame_color[fc_frame])) or nil
 
     -- Padding around left/right segments for lean style.
     local pad_frame = (style == "lean") and " " or ""
@@ -1115,7 +1175,7 @@ end
 -- If the fore argument is a table then back is ignored.  The table should
 -- include fg and bg fields.  It can also contain lean, classic, or rainbow
 -- fields to redirect to another color when using that style.  E.g. this table
--- defined red foreground and background, but in the lean style it redirects to
+-- defines red foreground and background, but in the lean style it redirects to
 -- bright yellow:  { fg="31", bg="41", lean="brightyellow" }
 function flexprompt.add_color(name, fore, back)
     if type(fore) == "table" then
@@ -1136,9 +1196,7 @@ flexprompt.lookup_color = lookup_color
 
 -- Function to choose between a normal color and an extended color, based on
 -- whether extended colors are available.
-function flexprompt.use_best_color(normal, extended)
-    return flexprompt.can_use_extended_colors() and extended or normal
-end
+flexprompt.use_best_color = use_best_color
 
 -- Function to get the prompt style.
 flexprompt.get_style = get_style
@@ -1152,7 +1210,14 @@ flexprompt.get_flow = get_flow
 function flexprompt.get_styled_sgr(name)
     local color = lookup_color(name)
     if color then
-        return sgr(color[get_style_ground()])
+        if get_style() == "rainbow" then
+            color = get_best_bg(color)
+        else
+            color = get_best_fg(color)
+        end
+        if color then
+            return sgr(color)
+        end
     end
     return ""
 end
@@ -1199,6 +1264,9 @@ end
 -- Parsing text "white,cyan" returns "white", "cyan".
 function flexprompt.parse_colors(text, default, altdefault)
     local color, altcolor = default, altdefault
+    if not altdefault then
+        altdefault = color.altcolor
+    end
     if text then
         if string.find(text, ",") then
             color, altcolor = string.match(text, "([^,]+),([^,]+)")
