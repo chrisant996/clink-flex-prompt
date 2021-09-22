@@ -632,7 +632,7 @@ local function init_segmenter(side, frame_color)
         separators = flexprompt.settings.lean_separators or default_separator
 
         if type(separators) ~= "table" then
-            separators = available_separators[separators] or { separators, separators }
+            separators = available_separators[separators] or separators
             if separators.lean then
                 separators = separators.lean
             end
@@ -670,14 +670,18 @@ local function init_segmenter(side, frame_color)
         end
     end
 
-    if type(segmenter.separator) == "table" then
+    if type(separators) == "table" then
         segmenter.separator = separators[side + 1]
     else
         segmenter.separator = separators
     end
 
     if segmenter.separator == "connector" then
-        segmenter.separator = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector()
+        local connector = get_connector()
+        if segmenter.style == "lean" then
+            connector = " " .. connector .. " "
+        end
+        segmenter.separator = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector
     else
         segmenter.separator = resolve_color_codes(segmenter.separator, "")
     end
