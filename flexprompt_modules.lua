@@ -24,11 +24,13 @@ local ext_brightmagenta = { fg="38;5;164", bg="48;5;164" }
 local ext_brightcyan    = { fg="38;5;44", bg="48;5;44" }
 local ext_brightyellow  = { fg="38;5;11", bg="48;5;11" }
 
-local ext_red           = { fg="38;5;1", bg="48;5;1", lean=ext_brightred, classic=ext_brightred }
-local ext_green         = { fg="38;5;2", bg="48;5;2", lean=ext_brightgreen, classic=ext_brightgreen }
-local ext_yellow        = { fg="38;5;3", bg="48;5;3", lean=ext_brightyellow, classic=ext_brightyellow }
-local ext_magenta       = { fg="38;5;5", bg="48;5;5", lean=ext_brightmagenta, classic=ext_brightmagenta }
-local ext_cyan          = { fg="38;5;6", bg="48;5;6", lean=ext_brightcyan, classic=ext_brightcyan }
+local ext_conflict      = { fg="38;5;1", bg="48;5;1", lean=ext_brightred, classic=ext_brightred }
+local ext_clean         = { fg="38;5;2", bg="48;5;2", lean=ext_brightgreen, classic=ext_brightgreen }
+local ext_dirty         = { fg="38;5;172", bg="48;5;172", lean=ext_brightyellow, classic=ext_brightyellow }
+local ext_staged        = { fg="38;5;5", bg="48;5;5", lean=ext_brightmagenta, classic=ext_brightmagenta }
+local ext_remote        = { fg="38;5;6", bg="48;5;6", lean=ext_brightcyan, classic=ext_brightcyan }
+local ext_unknown       = ext_darkwhite
+local ext_unpublished   = { fg="38;5;141", bg="48;5;141", rainbow={ fg="38;5;99", bg="48;5;99" } }
 
 local ext_lightgray     = { fg="38;5;252", bg="48;5;252" }
 
@@ -141,7 +143,7 @@ local function render_battery(args)
     end
 
     local color, warning = get_battery_status_color(level)
-    local black = flexprompt.use_best_color("black", ext_black)
+    local black = flexprompt.use_best_color("black", ext_darkblack)
 
     if warning and style == "classic" then
         -- batteryStatus = flexprompt.make_fluent_text(sgr(color.bg .. ";30") .. batteryStatus)
@@ -293,7 +295,7 @@ local function render_duration(args)
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
         color = flexprompt.use_best_color("yellow", "38;5;136")
-        altcolor = flexprompt.use_best_color("black", ext_black)
+        altcolor = flexprompt.use_best_color("black", ext_darkblack)
     else
         color = flexprompt.use_best_color("darkyellow", "38;5;214")
     end
@@ -373,7 +375,7 @@ local function render_exit(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     if style == "rainbow" then
-        color = flexprompt.use_best_color("black", ext_black)
+        color = flexprompt.use_best_color("black", ext_darkblack)
         altcolor = flexprompt.use_best_color("green", "38;5;34")
     else
         color = flexprompt.use_best_color("darkgreen", ext_darkgreen)
@@ -482,12 +484,13 @@ end
 
 local git_colors =
 {
-    clean       = { "c",  "clean",     "green",      "black",        ext_green,      ext_black },
-    conflict    = { "!",  "conflict",  "red",        "brightwhite",  ext_red,        ext_lightgray },
-    dirty       = { "d",  "dirty",     "yellow",     "black",        ext_yellow,     ext_black },
-    remote      = { "r",  "remote",    "cyan",       "black",        ext_cyan,       ext_black },
-    staged      = { "s",  "staged",    "magenta",    "black",        ext_magenta,    ext_black },
-    unknown     = { "u",  "unknown",   "darkwhite",  "black",        ext_darkwhite,  ext_black },
+    clean       = { "c",   "clean",        "green",      "black",        ext_clean,        ext_darkblack },
+    conflict    = { "!",   "conflict",     "red",        "brightwhite",  ext_conflict,     ext_lightgray },
+    dirty       = { "d",   "dirty",        "yellow",     "black",        ext_dirty,        ext_darkblack },
+    remote      = { "r",   "remote",       "cyan",       "black",        ext_remote,       ext_darkblack },
+    staged      = { "s",   "staged",       "magenta",    "black",        ext_staged,       ext_darkblack },
+    unknown     = { "u",   "unknown",      "darkwhite",  "black",        ext_unknown,      ext_darkblack },
+    unpublished = { "up",  "unpublished",  "magenta",    "black",        ext_unpublished,  ext_darkblack },
 }
 
 local function render_git(args)
@@ -548,13 +551,8 @@ local function render_git(args)
     local icon_name = "branch"
     if gitUnpublished then
         icon_name = "unpublished"
-        if flexprompt.get_style() == "rainbow" then
-            color = flexprompt.use_best_color("magenta", "38;5;99")
-        else
-            color = flexprompt.use_best_color("magenta", "38;5;141")
-        end
-        altcolor = flexprompt.use_best_color("black", ext_black)
-        colors = { "up", "unpublished", color, altcolor }
+        altcolor = flexprompt.use_best_color("black", ext_darkblack)
+        colors = git_colors.unpublished
     end
     text = flexprompt.format_branch_name(branch, icon_name)
     if gitConflict then
@@ -610,8 +608,8 @@ end
 
 local hg_colors =
 {
-    clean       = { "c",  "clean",  "green",  "black",  ext_green,  ext_black },
-    dirty       = { "d",  "dirty",  "red",    "white",  ext_red,    ext_lightgray },
+    clean       = { "c",  "clean",  "green",  "black",  ext_clean,     ext_darkblack },
+    dirty       = { "d",  "dirty",  "red",    "white",  ext_conflict,  ext_lightgray },
 }
 
 local function get_hg_dir(dir)
@@ -785,8 +783,8 @@ end
 
 local svn_colors =
 {
-    clean       = { "c",  "clean",  "green",  "black",  ext_green,  ext_black },
-    dirty       = { "d",  "dirty",  "red",    "white",  ext_red,    ext_lightgray },
+    clean       = { "c",  "clean",  "green",  "black",  ext_clean,     ext_darkblack },
+    dirty       = { "d",  "dirty",  "red",    "white",  ext_conflict,  ext_lightgray },
 }
 
 local function get_svn_dir(dir)
@@ -855,10 +853,10 @@ local function render_time(args)
     if flexprompt.get_style() == "rainbow" then
         color = (dim and
                 flexprompt.use_best_color("brightblack", ext_brightblack) or
-                flexprompt.use_best_color("white", ext_white))
+                flexprompt.use_best_color("white", ext_darkwhite))
         altcolor = (dim and
-                flexprompt.use_best_color("white", ext_white) or
-                flexprompt.use_best_color("black", ext_black))
+                flexprompt.use_best_color("white", ext_darkwhite) or
+                flexprompt.use_best_color("black", ext_darkblack))
     else
         color = flexprompt.use_best_color("darkcyan", ext_darkcyan)
     end
