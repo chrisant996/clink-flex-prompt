@@ -611,7 +611,7 @@ local function init_segmenter(side, frame_color)
         if type(separators) ~= "table" then
             separators = available_separators[separators] or { separators, separators }
             if separators.lean then
-                separators = { separators.lean, separators.lean }
+                separators = separators.lean
             end
         end
 
@@ -633,9 +633,9 @@ local function init_segmenter(side, frame_color)
         if segmenter.style == "classic" then
             if type(separators) ~= "table" then
                 if separators == "connector" then
-                    separators = sgr(flexprompt.colors.default.bg .. ";" .. sgr(get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector())
+                    separators = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector()
                 else
-                    separators = available_separators[separators] or { separators, separators }
+                    separators = available_separators[separators] or separators
                 end
             end
         elseif segmenter.style == "rainbow" then
@@ -652,7 +652,11 @@ local function init_segmenter(side, frame_color)
         end
     end
 
-    segmenter.separator = separators[side + 1]
+    if type(segmenter.separator) == "table" then
+        segmenter.separator = separators[side + 1]
+    else
+        segmenter.separator = separators
+    end
 end
 
 local function color_segment_transition(color, symbol, close)
