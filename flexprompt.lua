@@ -574,6 +574,22 @@ end
 
 local segmenter = nil
 
+-- `\001` => Fluent text foreground color.
+-- `\002` => Restore base color of segment (foreground and background).
+-- `\003` => Frame color (foreground and background).
+-- `\004` => Separator foreground color.
+local function resolve_color_codes(text, base_color)
+    local frame_color = segmenter.frame_color
+    text = string.gsub(text, "\001", sgr(get_best_fg(frame_color[fc_fore]))):gsub("\002", base_color)
+    if text:find("\003") then
+        text = text:gsub("\003", sgr("0;" .. get_best_fg(frame_color[fc_frame])))
+    end
+    if text:find("\004") then
+        text = text:gsub("\004", sgr(get_best_fg(frame_color[fc_sep])))
+    end
+    return text
+end
+
 local function init_segmenter(side, frame_color)
     local charset = get_charset()
     local open_caps, close_caps, separators
@@ -664,6 +680,8 @@ local function init_segmenter(side, frame_color)
     else
         segmenter.separator = separators
     end
+
+    segmenter.separator = resolve_color_codes(segmenter.separator, "")
 end
 
 local function color_segment_transition(color, symbol, close)
@@ -692,11 +710,6 @@ local function color_segment_transition(color, symbol, close)
     else
         return sgr(get_seg_bg(segmenter.back_color) .. ";" .. get_seg_fg(color)) .. symbol
     end
-end
-
-local function apply_fluent_colors(text, base_color)
-    local fluent_color = sgr((get_flow() == "lean") and nil or get_best_fg(segmenter.frame_color[fc_fore]))
-    return string.gsub(text, "\001", fluent_color):gsub("\002", base_color)
 end
 
 local function next_segment(text, color, rainbow_text_color)
@@ -770,7 +783,8 @@ local function next_segment(text, color, rainbow_text_color)
     if pad ~= "" and not (classic and (sep == "" or sep == " ") and not segmenter.open_cap) then
         out = out .. pad
     end
-    out = out .. apply_fluent_colors(text, base_color) .. pad
+
+    out = out .. resolve_color_codes(text, base_color) .. pad
 
     if rainbow then
         segmenter.back_color = color
