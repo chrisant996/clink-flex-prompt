@@ -361,7 +361,14 @@ local function get_spacing()
 end
 
 local function get_connector()
-    return flexprompt.choices.connections[flexprompt.settings.connection or "disconnected"] or " "
+    local connector = flexprompt.settings.connection or "disconnected"
+    if flexprompt.choices.connections[connector] then
+        return flexprompt.choices.connections[connector]
+    end
+    if console.cellcount(connector) == 1 then
+        return connector
+    end
+    return " "
 end
 
 local function lookup_color(args)
