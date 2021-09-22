@@ -61,6 +61,8 @@ flexprompt.colors =
     darkwhite       = { fg="37",    bg="47",    },
 }
 
+local ext_lightgray = "38;5;252"
+
 --------------------------------------------------------------------------------
 -- Configuration.
 
@@ -629,7 +631,7 @@ local function next_segment(text, color, rainbow_text_color)
     if not color then
         color = flexprompt.colors.brightred
     end
-    rainbow_text_color = lookup_color(rainbow_text_color or "white")
+    rainbow_text_color = lookup_color(rainbow_text_color or (can_use_extended_colors() and lightgray or "white"))
     if not rainbow_text_color then rainbow_text_color = flexprompt.colors.brightred end
 
     local sep

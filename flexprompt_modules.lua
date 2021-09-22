@@ -141,6 +141,7 @@ local function render_battery(args)
     end
 
     local color, warning = get_battery_status_color(level)
+    local black = flexprompt.use_best_color("black", ext_black)
 
     if warning and style == "classic" then
         -- batteryStatus = flexprompt.make_fluent_text(sgr(color.bg .. ";30") .. batteryStatus)
@@ -151,9 +152,9 @@ local function render_battery(args)
     end
 
     local segments = {}
-    if bl then table.insert(segments, { "", "black" }) end
-    table.insert(segments, { batteryStatus, color, "black" })
-    if br then table.insert(segments, { "", "black" }) end
+    if bl then table.insert(segments, { "", black }) end
+    table.insert(segments, { batteryStatus, color, black })
+    if br then table.insert(segments, { "", black }) end
 
     return segments
 end
@@ -190,12 +191,11 @@ local function render_cwd(args)
     local color, altcolor
     local style = flexprompt.get_style()
     if style == "rainbow" then
-        color = "blue"
-        altcolor = "white"
+        color = flexprompt.use_best_color("blue", "38;5;19")
     elseif style == "classic" then
-        color = flexprompt.can_use_extended_colors() and "38;5;39" or "cyan"
+        color = flexprompt.use_best_color("cyan", "38;5;39")
     else
-        color = flexprompt.can_use_extended_colors() and "38;5;33" or "blue"
+        color = flexprompt.use_best_color("blue", "38;5;33")
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
@@ -289,14 +289,10 @@ local function render_duration(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
-        color = "yellow"
-        altcolor = "black"
+        color = flexprompt.use_best_color("yellow", "38;5;136")
+        altcolor = flexprompt.use_best_color("black", ext_black)
     else
-        if not flexprompt.can_use_extended_colors() then
-            color = "darkyellow"
-        else
-            color = "38;5;214"
-        end
+        color = flexprompt.use_best_color("darkyellow", "38;5;214")
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
@@ -352,19 +348,20 @@ local function render_exit(args)
         text = value
     end
 
+    local style = flexprompt.get_style()
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
-    if flexprompt.get_style() == "rainbow" then
-        color = "black"
-        altcolor = "green"
+    if style == "rainbow" then
+        color = flexprompt.use_best_color("black", ext_black)
+        altcolor = flexprompt.use_best_color("green", "38;5;34")
     else
-        color = "darkgreen"
+        color = flexprompt.use_best_color("darkgreen", ext_darkgreen)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
     if value ~= 0 then
-        color = "red"
-        altcolor = "brightyellow"
+        color = flexprompt.use_best_color("red", ext_red)
+        altcolor = flexprompt.use_best_color("brightyellow", ext_brightyellow)
     end
 
     local sym = flexprompt.get_module_symbol()
@@ -530,14 +527,13 @@ local function render_git(args)
     local icon_name = "branch"
     if gitUnpublished then
         icon_name = "unpublished"
-        if not flexprompt.can_use_extended_colors() then
-            color = "magenta"
-        elseif flexprompt.get_style() == "rainbow" then
-            color = "38;5;99"
+        if flexprompt.get_style() == "rainbow" then
+            color = flexprompt.use_best_color("magenta", "38;5;99")
         else
-            color = "38;5;141"
+            color = flexprompt.use_best_color("magenta", "38;5;141")
         end
-        colors = { "up", "unpublished", color, "black" }
+        altcolor = flexprompt.use_best_color("black", ext_black)
+        colors = { "up", "unpublished", color, altcolor }
     end
     text = flexprompt.format_branch_name(branch, icon_name)
     if gitConflict then
@@ -593,8 +589,8 @@ end
 
 local hg_colors =
 {
-    clean       = { "c", "clean", "green", "black" },
-    dirty       = { "d", "dirty", "red", "white" },
+    clean       = { "c",  "clean",  "green",  "black",  ext_green,  ext_black },
+    dirty       = { "d",  "dirty",  "red",    "white",  ext_red,    ext_lightgray },
 }
 
 local function get_hg_dir(dir)
@@ -682,7 +678,7 @@ local function render_maven(args)
         local text = package_group .. ":" .. package_artifact .. ":" .. package_version
         text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
 
-        local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
+        local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white", ext_cyan, ext_lightgray })
         return text, color, altcolor
     end
 end
@@ -712,7 +708,7 @@ local function render_npm(args)
     local text = package_name .. "@" .. package_version
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
 
-    local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
+    local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white", ext_cyan, ext_lightgray })
     return text, color, altcolor
 end
 
@@ -756,7 +752,7 @@ local function render_python(args)
     local text = "[" .. venv .. "]"
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
 
-    local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white" })
+    local color, altcolor = parse_color_token(args, { "c", "color", "cyan", "white", ext_cyan, ext_lightgray })
     return text, color, altcolor
 end
 
@@ -768,8 +764,8 @@ end
 
 local svn_colors =
 {
-    clean       = { "c", "clean", "green", "black" },
-    dirty       = { "d", "dirty", "red", "white" },
+    clean       = { "c",  "clean",  "green",  "black",  ext_green,  ext_black },
+    dirty       = { "d",  "dirty",  "red",    "white",  ext_red,    ext_lightgray },
 }
 
 local function get_svn_dir(dir)
@@ -873,15 +869,13 @@ local function render_user(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     local style = flexprompt.get_style()
-    if not flexprompt.can_use_extended_colors() then
-        color = "magenta"
-    elseif style == "rainbow" then
-        color = "38;5;90"
-        altcolor = "white"
+    if style == "rainbow" then
+        color = flexprompt.use_best_color("magenta", "38;5;90")
+        altcolor = flexprompt.use_best_color("white", ext_lightgray)
     elseif style == "classic" then
-        color = "38;5;171"
+        color = flexprompt.use_best_color("magenta", "38;5;171")
     else
-        color = "38;5;135"
+        color = flexprompt.use_best_color("magenta", "38;5;135")
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
