@@ -55,6 +55,15 @@ flexprompt.settings.left_prompt = "{battery}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
+> **Tip:**  By making your manual customizations modify settings (rather than replacing them), your customizations can adapt according to the options you've chosen in the flexprompt configuration wizard.
+>
+> For example:
+> ```lua
+> flexprompt.settings.left_prompt = flexprompt.settings.left_prompt:gsub("{git}", "{git:showremote}")
+> -- or
+> flexprompt.settings.left_prompt = flexprompt.settings.left_prompt .. "{my_custom_module}{python}"
+> ```
+
 ## Modules
 The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` string variables list prompt modules to be displayed.
 
