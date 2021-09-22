@@ -655,11 +655,7 @@ local function init_segmenter(side, frame_color)
 
         if segmenter.style == "classic" then
             if type(separators) ~= "table" then
-                if separators == "connector" then
-                    separators = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector()
-                else
-                    separators = available_separators[separators] or separators
-                end
+                separators = available_separators[separators] or separators
             end
         elseif segmenter.style == "rainbow" then
             if type(separators) ~= "table" then
@@ -667,7 +663,6 @@ local function init_segmenter(side, frame_color)
                 if altseparators then
                     segmenter.altseparator = altseparators[side + 1]
                 end
-                separators = available_caps[separators] or available_caps["flat"]
             end
 
             -- Convert end cap index to separator index.
@@ -681,7 +676,11 @@ local function init_segmenter(side, frame_color)
         segmenter.separator = separators
     end
 
-    segmenter.separator = resolve_color_codes(segmenter.separator, "")
+    if segmenter.separator == "connector" then
+        segmenter.separator = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector()
+    else
+        segmenter.separator = resolve_color_codes(segmenter.separator, "")
+    end
 end
 
 local function color_segment_transition(color, symbol, close)
