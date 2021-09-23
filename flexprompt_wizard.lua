@@ -755,6 +755,16 @@ local function config_wizard()
             preview.right_frame = "none"
         end
 
+        -- Since the prompt (frame) color is so prominent in classic style, ask
+        -- about it very early.
+        if preview.style == "classic" and not four_bit_color then
+            s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
+
+        -- Since separators are subtle in lean style, ask about separators
+        -- before asking about time so that there are two separators visible.
         if preview.style == "lean" then
             if preview.charset == "unicode" then
                 -- Callout needs to be shifted right 1, because lean doesn't
@@ -764,30 +774,15 @@ local function config_wizard()
             s = choose_setting(preview, "Prompt Separators", "separators", "lean_separators", { "space", "spaces" }, callout)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
-
-            _striptime = nil
-            s = choose_time(preview, "Show current time?")
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
-
-                s = choose_sides(preview, "Prompt Sides")
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
         end
 
-        if preview.style == "classic" and not four_bit_color then
-            s = choose_setting(preview, "Prompt Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
-        end
+        _striptime = nil
+        s = choose_time(preview, "Show current time?")
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
 
         if preview.style ~= "lean" then
-            _striptime = nil
-            s = choose_time(preview, "Show current time?")
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
-
-                local seps
+            local seps
             if preview.style == "rainbow" then
                 if preview.powerline_font then
                     seps = { "pointed", "vertical", "slant", "round", "blurred" }
@@ -806,27 +801,27 @@ local function config_wizard()
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
             end
+        end
 
-            if preview.charset ~= "ascii" and preview.style ~= "lean" then
-                local caps = preview.powerline_font and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
+        if preview.charset ~= "ascii" and preview.style ~= "lean" then
+            local caps = preview.powerline_font and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
 
-                callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
-                s = choose_setting(preview, "Prompt Heads", "caps", "heads", caps, callout)
-                if not s or s == "q" then break end
-                if s == "r" then goto continue end
+            callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
+            s = choose_setting(preview, "Prompt Heads", "caps", "heads", caps, callout)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
 
-                callout = { 4, 3, "\x1b[1;33m↓\x1b[A\x1b[2Dtail\x1b[m" }
-                s = choose_setting(preview, "Prompt Tails", "caps", "tails", caps, callout)
-                if not s or s == "q" then break end
-                if s == "r" then goto continue end
-            end
-
-            -- Choose sides after choosing tails, so there's a good anchor for
-            -- the tails callout.
-            s = choose_sides(preview, "Prompt Sides")
+            callout = { 4, 3, "\x1b[1;33m↓\x1b[A\x1b[2Dtail\x1b[m" }
+            s = choose_setting(preview, "Prompt Tails", "caps", "tails", caps, callout)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
+
+        -- Choose sides after choosing tails, so there's a good anchor for
+        -- the tails callout.
+        s = choose_sides(preview, "Prompt Sides")
+        if not s or s == "q" then break end
+        if s == "r" then goto continue end
 
         s = choose_setting(preview, "Prompt Height", "lines", "lines", { "one", "two" })
         if not s or s == "q" then break end
@@ -844,7 +839,7 @@ local function config_wizard()
                 if s == "r" then goto continue end
             end
 
-            if preview.style ~= "classic" and not four_bit_color and
+            if not preview.frame_color and not four_bit_color and
                     (preview.left_frame ~= "none" or preview.right_frame ~= "none" or preview.connection ~= "disconnected") then
                 s = choose_setting(preview, "Prompt Frame Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
                 if not s or s == "q" then break end
