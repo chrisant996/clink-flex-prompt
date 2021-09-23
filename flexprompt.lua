@@ -593,7 +593,6 @@ end
 local function init_segmenter(side, frame_color)
     local charset = get_charset()
     local open_caps, close_caps, separators
-    local default_separator
 
     if side == 0 then
         open_caps = flexprompt.settings.tails or "flat"
@@ -626,10 +625,8 @@ local function init_segmenter(side, frame_color)
     segmenter.close_cap = close_caps[2]
 
     if segmenter.style == "lean" then
-        default_separator = "space"
-
         local available_separators = flexprompt.choices.separators
-        separators = flexprompt.settings.lean_separators or default_separator
+        separators = flexprompt.settings.lean_separators or "space"
 
         if type(separators) ~= "table" then
             separators = available_separators[separators] or separators
@@ -641,8 +638,8 @@ local function init_segmenter(side, frame_color)
         segmenter.open_cap = ""
         segmenter.close_cap = ""
     else
-        default_separator = (charset == "ascii") and "bar" or "vertical"
-
+        -- Default is chosen by "flat" caps redirecting to "bar" or "vertical"
+        -- separators.
         local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
         local available_separators = (charset == "ascii") and flexprompt.choices.ascii_separators or flexprompt.choices.separators
         separators = flexprompt.settings.separators or flexprompt.settings.heads or "flat"
@@ -662,6 +659,9 @@ local function init_segmenter(side, frame_color)
                 local altseparators = available_separators[separators]
                 if altseparators then
                     segmenter.altseparator = altseparators[side + 1]
+                end
+                if available_caps[separators] then
+                    separators = available_caps[separators]
                 end
             end
 
