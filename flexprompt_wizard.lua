@@ -168,6 +168,8 @@ local function display_centered(s)
 end
 
 local function replace_modules(s)
+    if not s then return end
+
     s = s:gsub("{battery[^}]*}", "")
     if _striptime then
         s = s:gsub("{time[^}]*}", "")
