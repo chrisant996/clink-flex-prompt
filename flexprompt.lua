@@ -147,7 +147,8 @@ flexprompt.choices.ascii_caps =
 flexprompt.choices.caps =
 {
                 --  Open    Close
-    flat        = { "",     "",     separators="vertical" },
+    flat        = { "",     ""      },
+    vertical    = { "",     ""      },  -- A separator when style == rainbow.
     pointed     = { "",    ""     },
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
@@ -161,7 +162,7 @@ flexprompt.choices.separators =
     none        = { "",     ""      },
     space       = { " ",    " ",    lean=" " },     -- Also when style == lean.
     spaces      = { "  ",   "  ",   lean="  " },    -- Also when style == lean.
-    vertical    = { "│",    "│"     },
+    vertical    = { "│",    "│",    rainbow="" },
     pointed     = { "",    ""     },
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
@@ -592,7 +593,7 @@ end
 
 local function init_segmenter(side, frame_color)
     local charset = get_charset()
-    local open_caps, close_caps, separators
+    local open_caps, close_caps, separators, altseparators
 
     if side == 0 then
         open_caps = flexprompt.settings.tails or "flat"
@@ -624,6 +625,9 @@ local function init_segmenter(side, frame_color)
     segmenter.open_cap = open_caps[1]
     segmenter.close_cap = close_caps[2]
 
+    local sep_index = side + 1      -- Overridden later if sep is an end cap.
+    local altsep_index = side + 1
+
     if segmenter.style == "lean" then
         local available_separators = flexprompt.choices.separators
         separators = flexprompt.settings.lean_separators or "space"
@@ -638,53 +642,65 @@ local function init_segmenter(side, frame_color)
         segmenter.open_cap = ""
         segmenter.close_cap = ""
     else
-        -- Default is chosen by "flat" caps redirecting to "bar" or "vertical"
+        -- If separators missing, default to heads.  If heads missing, default
+        -- to "flat".  Note that "flat" end cap redirects to "bar" or "vertical"
         -- separators.
-        local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
+        separators = flexprompt.settings.separators or flexprompt.settings.heads
+
+        -- Rainbow needs to know available_separators for setting up
+        -- altseparators, for when bg == fg.
         local available_separators = (charset == "ascii") and flexprompt.choices.ascii_separators or flexprompt.choices.separators
-        separators = flexprompt.settings.separators or flexprompt.settings.heads or "flat"
-        if available_caps[separators] then
-            local redirect = available_caps[separators].separators
-            if redirect then
-                separators = redirect
-            end
-        end
 
         if segmenter.style == "classic" then
-            if type(separators) ~= "table" then
-                separators = available_separators[separators] or separators
-            end
-        elseif segmenter.style == "rainbow" then
-            if type(separators) ~= "table" then
-                local altseparators = available_separators[separators]
-                if altseparators then
-                    segmenter.altseparator = altseparators[side + 1]
-                end
-                if available_caps[separators] then
-                    separators = available_caps[separators]
-                end
+            -- If separators (still) missing, default based on charset.
+            if not separators then
+                separators = (charset == "ascii") and "bar" or "vertical"
             end
 
-            -- Convert end cap index to separator index.
-            side = 1 - side
+            -- If specified separators not found, use it as a literal separator.
+            separators = available_separators[separators] or separators
+        else
+            -- If separators (still) missing, default to "flat".
+            if not separators then
+                separators = "flat"
+            end
+
+            local sep_name = separators
+
+            -- If specified separators not found, use it as a literal separator.
+            local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
+            if available_caps[sep_name] then
+                separators = available_caps[sep_name]
+                sep_index = (1 - side) + 1 -- Convert to an end cap index.
+            end
+
+            -- Set up altseparators, if available, for when bg == fg.
+            altseparators = available_separators[sep_name]
         end
     end
 
-    if type(separators) == "table" then
-        segmenter.separator = separators[side + 1]
-    else
-        segmenter.separator = separators
+    local resolve_separator = function(separators, index)
+        if not separators then return end
+
+        if type(separators) == "table" then
+            separators = separators[index]
+        end
+
+        if separators == "connector" then
+            local connector = get_connector()
+            if segmenter.style == "lean" then
+                connector = " " .. connector .. " "
+            end
+            separators = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector
+        else
+            separators = resolve_color_codes(separators, "")
+        end
+
+        return separators
     end
 
-    if segmenter.separator == "connector" then
-        local connector = get_connector()
-        if segmenter.style == "lean" then
-            connector = " " .. connector .. " "
-        end
-        segmenter.separator = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector
-    else
-        segmenter.separator = resolve_color_codes(segmenter.separator, "")
-    end
+    segmenter.separator = resolve_separator(separators, sep_index)
+    segmenter.altseparator = resolve_separator(altseparators, altsep_index)
 end
 
 local function color_segment_transition(color, symbol, close)
@@ -705,7 +721,7 @@ local function color_segment_transition(color, symbol, close)
     local get_seg_fg = swap and get_best_bg or get_best_fg
     local get_seg_bg = swap and get_best_fg or get_best_bg
     if segmenter.style == "rainbow" then
-        if get_best_bg(segmenter.back_color) == get_best_bg(color) then
+        if get_best_bg(segmenter.back_color) == get_best_bg(color) and segmenter.altseparator then
             return sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
         else
             return sgr(get_seg_fg(segmenter.back_color) .. ";" .. get_seg_bg(color)) .. symbol
