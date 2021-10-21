@@ -20,14 +20,22 @@ Some of the prompt modules are based on [cmder-powerline-prompt](https://github.
 
 # Fonts
 
-Flex prompt can use fancy characters to make the prompt look nice.
+There is no "best" or "right" or "wrong" font.  The most important thing is to pick a font whose shape you like.
 
-However:
-1. If you copy/paste from the screen to somewhere else, then fancy characters may not be readable by other people depending on what font they're using.
-2. Some of the fancy characters require special fonts.  The [nerd fonts](https://nerdfonts.com) site has a large selection of special fonts.  The fancy characters are Powerline symbols, and some icon characters.  You can also manually configure flex prompt to use just about any special characters, though the configuration wizard only offers the most common ones.
+Flex prompt's configuration wizard will ask few questions, and it's ok for some of the questions to look ugly -- choose the appropriate answer, and the wizard will adapt accordingly.
 
-Here are some recommended fonts:
-- [Meslo Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  and an even better version is available from the zsh [powerlevel10k theme's site](https://github.com/romkatv/powerlevel10k/blob/master/font.md).
+Flex prompt can use fancy characters, if you want, to personalize the prompt with shapes and icons.  To use fancy characters, you'll need to find a font with Powerline characters and/or icon characters.  The [nerd fonts](https://nerdfonts.com) site has a large selection of special fonts.  The configuration wizard lets you choose from the most common fancy characters, but you can also manually configure flex prompt (with Lua code) to use just about any special characters.
+
+Benefits of fancy characters:
+- Your prompt will look fancy on the screen.
+
+Drawbacks of fancy characters:
+- If you copy/paste from the screen to somewhere else, then fancy characters may not be readable by other people depending on what font they're using.
+- The same font may look different in different terminal programs, because of features or limitations in the terminal programs.
+- Some of the fancy characters require special fonts.
+
+Here are some recommended fonts to consider:
+- [Meslo Nerd Font patched by romkatv](https://github.com/romkatv/powerlevel10k/blob/master/font.md):  this is a patched version of Meslo Nerd Font.
 - [Cascadia Code](https://github.com/microsoft/cascadia-code/releases):  recent versions of this font include Powerline symbols, but the font doesn't include icon characters.
 - [Caskaydia Cove Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Cascadia Code that adds many icon characters.
 - [FiraCode Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Fira Code that adds Powerline symbols and many icon characters.
