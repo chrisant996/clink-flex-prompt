@@ -319,13 +319,14 @@ local function render_duration(args)
 end
 
 --------------------------------------------------------------------------------
--- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
+-- EXIT MODULE:  {exit:always:color=color_name,alt_color_name}
 --  - 'always' always shows the exit code even when 0.
 --  - color_name is used when the exit code is 0, and is a name like "green", or
 --    an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style when the
 --    exit code is 0.
---  - 'hex' shows the exit code in hex when > 255 or < -255.
+--
+-- The exit code is shown in hex when > 255 or < -255.
 
 local function render_exit(args)
     if not os.geterrorlevel then return end
@@ -336,7 +337,7 @@ local function render_exit(args)
     local always = flexprompt.parse_arg_keyword(args, "a", "always")
     if not always and value == 0 then return end
 
-    local hex = flexprompt.parse_arg_keyword(args, "h", "hex")
+    local hex = true --flexprompt.parse_arg_keyword(args, "h", "hex")
 
     if hex and math.abs(value) > 255 then
         local lo = bit32.band(value, 0xffff)
