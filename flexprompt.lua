@@ -101,7 +101,8 @@ flexprompt.colors =
 
     -- Exit code colors.
     exit_zero       = { fg="32",    bg="42",    extfg="38;5;2",     extbg="48;5;2",     rainbow={ fg="30", bg="40", extfg="38;5;0", extbg="48;5;0", altcolor={ fg="32", bg="42", extfg="38;5;34", extbg="48;5;34" } } },
-    exit_nonzero    = { fg="91",    bg="101",   extfg="38;5;160",   extbg="48;5;160",   rainbow={ fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor={ fg="93", bg="103", extfg="38;5;11", extbg="48;5;11" } } },
+    exit_nonzero    = { fg="91",    bg="101",   extfg="38;5;160",   extbg="48;5;160",   rainbow={ fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor={ fg="93", bg="103", extfg="38;5;11", extbg="48;5;11" } },
+                                                                                        classic={ fg="91", bg="101", extfg="38;5;196", extbg="48;5;196" } },
 }
 
 --------------------------------------------------------------------------------
