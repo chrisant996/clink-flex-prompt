@@ -424,7 +424,7 @@ local function collect_git_info()
         local git_dir = flexprompt.get_git_dir():lower()
         local when = fetched_repos[git_dir]
         if not when or os.clock() - when > flexprompt.settings.git_fetch_interval * 60 then
-            local file = io.popenyield("git fetch 2>nul")
+            local file = flexprompt.popenyield("git fetch 2>nul")
             if file then file:close() end
 
             fetched_repos[git_dir] = os.clock()
