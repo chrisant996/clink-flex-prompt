@@ -877,6 +877,74 @@ local function render_user(args)
 end
 
 --------------------------------------------------------------------------------
+-- VPN MODULE:  {color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local vpn_cached_info = {}
+
+-- Collects connection info.
+--
+-- Uses async coroutine calls.
+local function collect_vpn_info()
+    local file = flexprompt.popenyield("rasdial 2>nul")
+    local line
+
+    line = file:read("*l")
+    if line ~= "Connected to" then
+        return {}
+    end
+
+    line = file:read("*l")
+    file:close()
+
+    return { connection=line }
+end
+
+local function render_vpn(args)
+    local info
+    local wizard = flexprompt.get_wizard_state()
+
+    if wizard then
+        info = { connection="WORKVPN", finished=true }
+    else
+        -- Get connection status.
+        info = flexprompt.promptcoroutine(collect_vpn_info)
+
+        -- Use cached info until coroutine is finished.
+        if not info then
+            info = vpn_cached_info or {}
+        else
+            vpn_cached_info = info
+        end
+    end
+
+    if not info or not info.connection then
+        return
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        color = flexprompt.use_best_color("cyan", "38;5;67")
+    elseif style == "classic" then
+        color = flexprompt.use_best_color("cyan", "38;5;117")
+    else
+        color = flexprompt.use_best_color("cyan", "38;5;110")
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    local text = info.connection
+    if flexprompt.get_flow() == "fluent" then
+        text = flexprompt.append_text(flexprompt.make_fluent_text("over"), text)
+    end
+    text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- Event handlers.  Since this file contains multiple modules, let them all
 -- share one event handler per event type, rather than adding separate handlers
 -- for separate modules.
@@ -908,3 +976,4 @@ flexprompt.add_module( "python",    render_python,      { unicode="" } )
 flexprompt.add_module( "svn",       render_svn                          )
 flexprompt.add_module( "time",      render_time,        { unicode="" } )
 flexprompt.add_module( "user",      render_user,        { unicode="" } )
+flexprompt.add_module( "vpn",       render_vpn,         { unicode="嬨" } )

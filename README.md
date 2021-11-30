@@ -87,6 +87,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{svn}"` shows Subversion status.
 - `"{time}"` shows the current time and/or date.
 - `"{user}"` shows the current user name and/or computer name.
+- `"{vpn}"` shows the current VPN or dialup connection.
 
 ```lua
 flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
