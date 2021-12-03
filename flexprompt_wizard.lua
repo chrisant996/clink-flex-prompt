@@ -869,6 +869,24 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
+        if true then
+            local old_settings = flexprompt.settings
+            flexprompt.settings = preview
+
+            local left_frame, right_frame = flexprompt.get_frame()
+            local style = flexprompt.get_style()
+            if left_frame and style ~= "lean" then
+                if preview.left_prompt then
+                    preview.left_prompt = preview.left_prompt:gsub("{exit}", "{exit}{overtype}") or preview.left_prompt
+                end
+                if preview.right_prompt then
+                    preview.right_prompt = preview.right_prompt:gsub("{exit}", "{exit}{overtype}") or preview.right_prompt
+                end
+            end
+
+            flexprompt.settings = old_settings
+        end
+
         -- Done.
 
         if os.isfile(settings_filename) then

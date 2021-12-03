@@ -577,6 +577,34 @@ local function append_text(lhs, rhs)
 end
 
 --------------------------------------------------------------------------------
+-- Overtype helpers.
+
+local _insertmode
+
+local function insertmode_onbeginedit()
+    if rl.insertmode then
+        _insertmode = rl.insertmode()
+    end
+end
+
+if clink.onaftercommand then
+    local function insertmode_aftercommand()
+        if _insertmode ~= rl.insertmode() then
+            _insertmode = rl.insertmode()
+            local left_prompt = flexprompt.settings.left_prompt
+            local right_prompt = flexprompt.settings.right_prompt
+            if left_prompt and left_prompt:match("{overtype[:}]") then
+                clink.refilterprompt()
+            elseif right_prompt and right_prompt:match("{overtype[:}]") then
+                clink.refilterprompt()
+            end
+        end
+    end
+
+    clink.onaftercommand(insertmode_aftercommand)
+end
+
+--------------------------------------------------------------------------------
 -- Segments.
 
 local segmenter = nil
@@ -1252,6 +1280,9 @@ flexprompt.lookup_color = lookup_color
 -- whether extended colors are available.
 flexprompt.use_best_color = use_best_color
 
+-- Function to get the prompt frame.
+flexprompt.get_frame = get_frame
+
 -- Function to get the prompt style.
 flexprompt.get_style = get_style
 
@@ -1708,6 +1739,8 @@ local function onbeginedit()
     reset_render_state()
 
     spacing_onbeginedit()
+
+    insertmode_onbeginedit()
 
     if not offered_wizard then
         local empty = true
