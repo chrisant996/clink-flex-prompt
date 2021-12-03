@@ -955,6 +955,9 @@ local function collect_vpn_info()
 
     -- Discard the last line, which says the command completed successfully.
     table.remove(conns)
+    if #conns == 0 then
+        return {}
+    end
 
     -- Concatenate the connection(s) into a string.
     line = ""
