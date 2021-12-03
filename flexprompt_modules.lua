@@ -930,14 +930,38 @@ local vpn_cached_info = {}
 local function collect_vpn_info()
     local file = flexprompt.popenyield("rasdial 2>nul")
     local line
+    local conns = {}
 
+    -- Skip first line, which is always a header line.
     line = file:read("*l")
-    if line ~= "Connected to" then
+    if not line or line == "" then
         return {}
     end
 
-    line = file:read("*l")
-    file:close()
+    -- Read the rest of the lines.
+    while true do
+        line = file:read("*l")
+        if not line then
+            break
+        end
+        table.insert(conns, line)
+    end
+
+    -- If the spawned process returned a non-zero exit code, it failed.
+    local ok,what,stat = file:close()
+    if not ok then
+        return {}
+    end
+
+    -- Discard the last line, which says the command completed successfully.
+    table.remove(conns)
+
+    -- Concatenate the connection(s) into a string.
+    line = ""
+    for _,c in ipairs(conns) do
+        if #line > 0 then line = line .. "," end
+        line = line .. c
+    end
 
     return { connection=line }
 end
@@ -1017,7 +1041,7 @@ flexprompt.add_module( "python",    render_python,      { unicode="" } )
 flexprompt.add_module( "svn",       render_svn                          )
 flexprompt.add_module( "time",      render_time,        { unicode="" } )
 flexprompt.add_module( "user",      render_user,        { unicode="" } )
-flexprompt.add_module( "vpn",       render_vpn,         { unicode="嬨" } )
+flexprompt.add_module( "vpn",       render_vpn,         { unicode="" } )
 
 if rl.insertmode then
 flexprompt.add_module( "overtype",  render_overtype                     )
