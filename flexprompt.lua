@@ -272,6 +272,7 @@ local symbols =
     exit_nonzero    = {         powerline="\x1b[91m\002" },
 
     prompt          = { ">" },
+    overtype_prompt = { "►" },
 }
 
 --------------------------------------------------------------------------------
@@ -481,7 +482,11 @@ local function get_prompt_symbol_color()
 end
 
 local function get_prompt_symbol()
-    return get_symbol("prompt", ">")
+    local p = nil
+    if rl.insertmode and not rl.insertmode() then
+        p = get_symbol("overtype_prompt", "►")
+    end
+    return p or get_symbol("prompt", ">")
 end
 
 local function get_flow()

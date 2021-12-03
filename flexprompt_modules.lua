@@ -702,6 +702,47 @@ local function render_npm(args)
 end
 
 --------------------------------------------------------------------------------
+-- OVERTYPE MODULE:  {overtype:text=overtype_name,insert_name:color=color_name,alt_color_name}
+--  - text provides strings to show in the is the format to use:
+--      - "overtype_name" is shown when overtype mode is on.
+--      - "insert_name" is shown when insert mode is on.
+--      - An empty text makes the module not show up in the corresponding mode.
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--
+-- Requires Clink v1.2.50 or higher.
+
+local function render_overtype(args)
+    local overtype
+    local wizard = flexprompt.get_wizard_state()
+    if wizard then
+        overtype = wizard.overtype
+    else
+        overtype = rl.insertmode()
+    end
+
+    local text
+    local name = flexprompt.parse_arg_token(args, "t", "text") or "OVERTYPE"
+    local names = name:explode(",")
+    text = names[(not overtype) and 1 or 2]
+    if not text or text == "" then
+        return
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    if flexprompt.get_style() == "rainbow" then
+        color = flexprompt.use_best_color("yellow", "38;5;214")
+        altcolor = "realblack"
+    else
+        color = flexprompt.use_best_color("darkyellow", "38;5;172")
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- PYTHON MODULE:  {python:always:color=color_name,alt_color_name}
 --  - 'always' shows the python module even if there are no python files.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
@@ -977,3 +1018,8 @@ flexprompt.add_module( "svn",       render_svn                          )
 flexprompt.add_module( "time",      render_time,        { unicode="" } )
 flexprompt.add_module( "user",      render_user,        { unicode="" } )
 flexprompt.add_module( "vpn",       render_vpn,         { unicode="嬨" } )
+
+if rl.insertmode then
+flexprompt.add_module( "overtype",  render_overtype                     )
+end
+
