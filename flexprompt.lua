@@ -544,10 +544,19 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     return lhs..rhs..frame
 end
 
+local _refilter_modules
+local _module_results
+local function refilter_module(module)
+    _refilter_modules = _refilter_modules or {}
+    _refilter_modules[module] = true
+end
+
 local function reset_render_state()
     _can_use_extended_colors = nil
     _charset = nil
     _wizard = nil
+    _refilter_modules = nil
+    _module_results = nil
 end
 
 --------------------------------------------------------------------------------
@@ -606,11 +615,8 @@ if clink.onaftercommand then
             _insertmode = rl.insertmode()
             local left_prompt = flexprompt.settings.left_prompt
             local right_prompt = flexprompt.settings.right_prompt
-            if left_prompt and left_prompt:match("{overtype[:}]") then
-                clink.refilterprompt()
-            elseif right_prompt and right_prompt:match("{overtype[:}]") then
-                clink.refilterprompt()
-            end
+            flexprompt.refilter_module("overtype")
+            clink.refilterprompt()
         end
     end
 
@@ -944,9 +950,21 @@ end
 -- Module parsing and rendering.
 
 local function render_module(name, args)
-    local func = modules[string.lower(name)]
+    local key = string.lower(name)
+
+    if _refilter_modules and not _refilter_modules[key] then
+        local results = _module_results[key]
+        if results then
+            return table.unpack(results)
+        end
+    end
+
+    local func = modules[key]
     if func then
-        return func(args)
+        _module_results = _module_results or {}
+        local results = { func(args) }
+        _module_results[key] = results
+        return table.unpack(results)
     end
 end
 
@@ -1386,6 +1404,13 @@ flexprompt.make_fluent_text = make_fluent_text
 -- between.  If either string is empty or nil, the other string is returned
 -- (without appending them).
 flexprompt.append_text = append_text
+
+-- Function that flags the named module to be re-filtered.  If no modules are
+-- flagged then all modules are re-filtered.  If any modules are flagged then
+-- only those modules are re-filtered.  This is how only the overtype module
+-- gets refreshed when toggling insert/overtype mode.  The flags are reset
+-- whenever a new prompt is begun (i.e. a new edit line is begun).
+flexprompt.refilter_module = refilter_module
 
 -- Function to check whether extended colors are available (256 color and 24 bit
 -- color codes).
