@@ -857,7 +857,18 @@ end
 -- If present, the 'format=' option must be last (otherwise it could never
 -- include colons).
 
+local last_time
+
+local function time_onbeginedit()
+    last_time = nil
+end
+
 local function render_time(args)
+    local wizard = flexprompt.get_wizard_state()
+    if not wizard and last_time then
+        return last_time[1], last_time[2], last_time[3]
+    end
+
     local dim = flexprompt.parse_arg_keyword(args, "d", "dim")
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -881,6 +892,8 @@ local function render_time(args)
     end
 
     text = flexprompt.append_text(text, flexprompt.get_module_symbol())
+
+    last_time = { text, color, altcolor }
 
     return text, color, altcolor
 end
@@ -1020,6 +1033,7 @@ end
 local function builtin_modules_onbeginedit()
     _cached_state = {}
     duration_onbeginedit()
+    time_onbeginedit()
 end
 
 local function builtin_modules_onendedit()
