@@ -489,6 +489,14 @@ local function get_prompt_symbol()
     return p or get_symbol("prompt", ">")
 end
 
+local function get_transient_prompt_symbol()
+    local p = get_symbol("transient_prompt")
+    if p ~= "" then
+        return p
+    end
+    return get_symbol("prompt", ">")
+end
+
 local function get_flow()
     -- Indexing into the flows table validates that the flow name is recognized.
     return flexprompt.choices.flows[flexprompt.settings.flow or "concise"] or "concise"
@@ -1147,7 +1155,7 @@ local function render_prompts(settings, need_anchors)
 end
 
 local function render_transient_prompt()
-    return get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+    return get_prompt_symbol_color() .. get_transient_prompt_symbol() .. sgr() .. " "
 end
 
 function flexprompt.render_wizard(settings, need_anchors)
