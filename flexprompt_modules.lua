@@ -702,13 +702,20 @@ local function render_npm(args)
 end
 
 --------------------------------------------------------------------------------
--- OVERTYPE MODULE:  {overtype:text=overtype_name,insert_name:color=color_name,alt_color_name}
+-- OVERTYPE MODULE:  {overtype:text=overtype_name,insert_name:color=c,a:overtypecolor=c,a:insertcolor=c,a}
 --  - text provides strings to show in the is the format to use:
 --      - "overtype_name" is shown when overtype mode is on.
 --      - "insert_name" is shown when insert mode is on.
 --      - An empty text makes the module not show up in the corresponding mode.
---  - color_name is a name like "green", or an sgr code like "38;5;60".
---  - alt_color_name is optional; it is the text color in rainbow style.
+--  - color specifies the colors for both overtype and insert mode.
+--      - c is a name like "green", or an sgr code like "38;5;60".
+--      - a is optional; it is the text color in rainbow style.
+--  - overtypecolor specifies the colors for overtype mode.
+--      - c is a name like "green", or an sgr code like "38;5;60".
+--      - a is optional; it is the text color in rainbow style.
+--  - insertcolor specifies the colors for overtype mode.
+--      - c is a name like "green", or an sgr code like "38;5;60".
+--      - a is optional; it is the text color in rainbow style.
 --
 -- Requires Clink v1.2.50 or higher.
 
@@ -718,18 +725,25 @@ local function render_overtype(args)
     if wizard then
         overtype = wizard.overtype
     else
-        overtype = rl.insertmode()
+        overtype = not rl.insertmode()
     end
 
     local text
     local name = flexprompt.parse_arg_token(args, "t", "text") or "OVERTYPE"
     local names = name:explode(",")
-    text = names[(not overtype) and 1 or 2]
+    text = names[(not overtype) and 2 or 1]
     if not text or text == "" then
         return
     end
 
-    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local colors
+    if overtype then
+        colors = flexprompt.parse_arg_token(args, "o", "overtypecolor")
+    else
+        colors = flexprompt.parse_arg_token(args, "i", "insertcolor")
+    end
+    colors = colors or flexprompt.parse_arg_token(args, "c", "color")
+
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
         color = flexprompt.use_best_color("yellow", "38;5;214")
