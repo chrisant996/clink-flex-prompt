@@ -591,7 +591,12 @@ local _insertmode
 
 local function insertmode_onbeginedit()
     if rl.insertmode then
-        _insertmode = rl.insertmode()
+        -- Readline _always_ sets it true at the beginning of a new edit line.
+        -- But that happens _after_ prompt filtering.  Since flexprompt can show
+        -- the insert/overtype mode in the prompt, it's necessary to forcibly
+        -- reset it ourselves.  Otherwise in certain cases (such as reloading
+        -- Lua) the prompt initially shows an inaccurate insert/overtype mode.
+        _insertmode = rl.insertmode(true)
     end
 end
 
