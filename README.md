@@ -60,7 +60,7 @@ flexprompt.settings.style = "classic"
 flexprompt.settings.heads = "pointed"
 flexprompt.settings.lines = "two"
 flexprompt.settings.left_prompt = "{battery}{cwd}{git}"
-flexprompt.settings.right_prompt = "{exit}{duration}{time}"
+flexprompt.settings.right_prompt = "{exit}{overtype}{vpn}{duration}{time}"
 ```
 
 > **Tip:**  By making your manual customizations modify settings (rather than replacing them), your customizations can adapt according to the options you've chosen in the flexprompt configuration wizard.
@@ -83,6 +83,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{hg}"` shows Mercurial status.
 - `"{maven}"` shows package info.
 - `"{npm}"` shows package name and version.
+- `"{overtype}"` shows indicator when overtype mode is on (i.e. when insert mode is off).
 - `"{python}"` shows the virtual environment.
 - `"{svn}"` shows Subversion status.
 - `"{time}"` shows the current time and/or date.
@@ -254,9 +255,13 @@ flexprompt.settings.use_home_tilde = true
 flexprompt.settings.symbols.cwd_git_symbol
 
 -- Use custom prompt symbol (instead of >):
-flexprompt.settings.prompt_symbol = "$"
+flexprompt.settings.symbols.prompt = "$"
 -- Use custom prompt color (supersedes exit_zero_color and exit_nonzero_color):
 flexprompt.settings.prompt_symbol_color = "magenta"
+-- Use custom prompt symbol when overtype mode is on (i.e. insert mode is off):
+flexprompt.settings.symbols.overtype_prompt = "#"
+-- Use custom prompt symbol for the transient prompt:
+flexprompt.settings.symbols.transient_prompt = ")"
 -- Use custom prompt color when last exit code is zero:
 flexprompt.settings.exit_zero_color = "brightgreen"
 -- Use custom prompt color when last exit code is non-zero:
