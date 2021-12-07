@@ -962,6 +962,7 @@ local function collect_vpn_info()
     -- Skip first line, which is always a header line.
     line = file:read("*l")
     if not line or line == "" then
+        file:close()
         return {}
     end
 
