@@ -81,6 +81,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{exit}"` shows the exit code of the previous command.
 - `"{git}"` shows git status.
 - `"{hg}"` shows Mercurial status.
+- `"{keymap}"` shows the current key bindings keymap (emacs mode, vi command mode, or vi insert mode).
 - `"{maven}"` shows package info.
 - `"{modmark}"` shows a modified line indicator when the current line is a history entry and has been modified (only when the `mark-modified-lines` Readline config setting is `on`).
 - `"{npm}"` shows package name and version.
