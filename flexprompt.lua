@@ -615,7 +615,9 @@ if clink.onaftercommand then
             _insertmode = rl.insertmode()
             local left_prompt = flexprompt.settings.left_prompt
             local right_prompt = flexprompt.settings.right_prompt
-            if left_prompt:match("{overtype[:}]") or right_prompt:match("{overtype[:}]") then
+            if (flexprompt.get_symbol("overtype_prompt") ~= flexprompt.get_symbol("prompt") or
+                    left_prompt:match("{overtype[:}]") or
+                    right_prompt:match("{overtype[:}]")) then
                 flexprompt.refilter_module("overtype")
                 clink.refilterprompt()
             end
