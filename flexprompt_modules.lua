@@ -673,6 +673,69 @@ local function render_maven(args)
 end
 
 --------------------------------------------------------------------------------
+-- MODMARK MODULE:  {modmark:color=color_name,alt_color_name:text=modmark_text}
+--  - modmark_text provides a string to show when the current line is modified.
+--      - The default is '*'.
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--
+-- Requires Clink v1.2.51 or higher.
+
+local _modmark
+local _modifiedline
+
+local function modmark_onbeginedit()
+    _modmark = nil
+    _modifiedline = nil
+
+    if rl.ismodifiedline then
+        local left_prompt = flexprompt.settings.left_prompt or ""
+        local right_prompt = flexprompt.settings.right_prompt or ""
+        if left_prompt:match("{modmark[:}]") or right_prompt:match("{modmark[:}]") then
+            _modmark = rl.isvariabletrue("mark-modified-lines")
+            _modifiedline = rl.ismodifiedline()
+            rl.setvariable("mark-modified-lines", "off")
+        end
+    end
+end
+
+if clink.onaftercommand and rl.ismodifiedline then
+    local function modmark_aftercommand()
+        if not _modmark then return end
+
+        if rl.ismodifiedline() ~= _modifiedline then
+            _modifiedline = rl.ismodifiedline()
+            flexprompt.refilter_module("modmark")
+            clink.refilterprompt()
+        end
+    end
+
+    clink.onaftercommand(modmark_aftercommand)
+end
+
+local function render_modmark(args)
+    local modmark
+    local wizard = flexprompt.get_wizard_state()
+    if wizard then
+        modmark = wizard.modmark
+    else
+        modmark = rl.ismodifiedline()
+    end
+
+    if not modmark then
+        return
+    end
+
+    local text = flexprompt.parse_arg_token(args, "t", "text") or "*"
+    if not text or text == "" then
+        return
+    end
+
+    local color, altcolor = parse_color_token(args, { "c", "color", "mod_cyan" })
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- NPM MODULE:  {npm:color=color_name,alt_color_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1048,6 +1111,7 @@ end
 local function builtin_modules_onbeginedit()
     _cached_state = {}
     duration_onbeginedit()
+    modmark_onbeginedit()
     time_onbeginedit()
 end
 
@@ -1079,3 +1143,6 @@ if rl.insertmode then
 flexprompt.add_module( "overtype",  render_overtype                     )
 end
 
+if rl.ismodifiedline then
+flexprompt.add_module( "modmark",   render_modmark                      )
+end
