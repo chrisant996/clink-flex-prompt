@@ -651,9 +651,7 @@ local _keymap
 local function keymap_onbeginedit()
     _keymap = rl.getvariable("keymap")
 
-    local left_prompt = flexprompt.settings.left_prompt or ""
-    local right_prompt = flexprompt.settings.right_prompt or ""
-    if left_prompt:match("{keymap[:}]") or right_prompt:match("{keymap[:}]") then
+    if flexprompt.is_module_in_prompt("keymap") then
         rl.setvariable("emacs-mode-string", "")
         rl.setvariable("vi-cmd-mode-string", "")
         rl.setvariable("vi-ins-mode-string", "")
@@ -771,9 +769,7 @@ local function modmark_onbeginedit()
     _modifiedline = nil
 
     if rl.ismodifiedline then
-        local left_prompt = flexprompt.settings.left_prompt or ""
-        local right_prompt = flexprompt.settings.right_prompt or ""
-        if left_prompt:match("{modmark[:}]") or right_prompt:match("{modmark[:}]") then
+        if flexprompt.is_module_in_prompt("modmark") then
             _modmark = rl.isvariabletrue("mark-modified-lines")
             _modifiedline = rl.ismodifiedline()
             rl.setvariable("mark-modified-lines", "off")

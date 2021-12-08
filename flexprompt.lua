@@ -593,6 +593,12 @@ local function append_text(lhs, rhs)
     end
 end
 
+local function is_module_in_prompt(name)
+    local pattern = "{" .. name .. "[:}]"
+    return ((flexprompt.settings.left_prompt and flexprompt.settings.left_prompt:match(pattern)) or
+            (flexprompt.settings.right_prompt and flexprompt.settings.right_prompt:match(pattern)))
+end
+
 --------------------------------------------------------------------------------
 -- Overtype helpers.
 
@@ -616,8 +622,7 @@ if clink.onaftercommand then
             local left_prompt = flexprompt.settings.left_prompt
             local right_prompt = flexprompt.settings.right_prompt
             if (flexprompt.get_symbol("overtype_prompt") ~= flexprompt.get_symbol("prompt") or
-                    left_prompt:match("{overtype[:}]") or
-                    right_prompt:match("{overtype[:}]")) then
+                    is_module_in_prompt("overtype")) then
                 flexprompt.refilter_module("overtype")
                 clink.refilterprompt()
             end
@@ -1408,6 +1413,9 @@ flexprompt.make_fluent_text = make_fluent_text
 -- between.  If either string is empty or nil, the other string is returned
 -- (without appending them).
 flexprompt.append_text = append_text
+
+-- Function that returns whether the prompt settings include the name module.
+flexprompt.is_module_in_prompt = is_module_in_prompt
 
 -- Function that flags the named module to be re-filtered.  If no modules are
 -- flagged then all modules are re-filtered.  If any modules are flagged then
