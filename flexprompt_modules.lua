@@ -15,6 +15,10 @@ local mod_brightcyan = { fg="96", bg="106", extfg="38;5;44", extbg="48;5;44" }
 local mod_cyan = { fg="36", bg="46", extfg="38;5;6", extbg="48;5;6", lean=mod_brightcyan, classic=mod_brightcyan }
 flexprompt.add_color("mod_cyan", mod_cyan)
 
+local keymap_bright = { fg="94", bg="104", extfg="38;5;69", extbg="48;5;69" }
+local keymap_color = { fg="34", bg="44", extfg="38;5;26", extbg="48;5;26", lean=keymap_bright, classic=keymap_bright }
+flexprompt.add_color("keymap", keymap_color)
+
 --------------------------------------------------------------------------------
 -- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright}
 --  - show_level shows the battery module unless the battery level is greater
@@ -625,6 +629,81 @@ local function render_hg(args)
 end
 
 --------------------------------------------------------------------------------
+-- KEYMAP MODULE:  {keymap:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--
+-- The default keymap names are:
+--  - emacs mode is "" (don't show the module).
+--  - vi command mode is "vi-CMD".
+--  - vi insert mode is "vi-ins".
+--
+-- You can override the keymap names by setting the following variables in your
+-- flexprompt_config.lua file:
+--  - flexprompt.settings.emacs_keymap = "emacs"
+--  - flexprompt.settings.vicmd_keymap = "vi-command"
+--  - flexprompt.settings.viins_keymap = "vi-insert"
+--
+-- Requires Clink v1.2.50 or higher.
+
+local _keymap
+
+local function keymap_onbeginedit()
+    _keymap = rl.getvariable("keymap")
+
+    local left_prompt = flexprompt.settings.left_prompt or ""
+    local right_prompt = flexprompt.settings.right_prompt or ""
+    if left_prompt:match("{keymap[:}]") or right_prompt:match("{keymap[:}]") then
+        rl.setvariable("emacs-mode-string", "")
+        rl.setvariable("vi-cmd-mode-string", "")
+        rl.setvariable("vi-ins-mode-string", "")
+    end
+end
+
+if clink.onaftercommand then
+    local function keymap_aftercommand()
+        if rl.getvariable("keymap") ~= _keymap then
+            _keymap = rl.getvariable("keymap")
+            flexprompt.refilter_module("keymap")
+            clink.refilterprompt()
+        end
+    end
+
+    clink.onaftercommand(keymap_aftercommand)
+end
+
+local function render_keymap(args)
+    local keymap
+    local wizard = flexprompt.get_wizard_state()
+    if wizard then
+        keymap = wizard.keymap
+    else
+        keymap = rl.getvariable("keymap")
+    end
+
+    if not keymap then
+        return
+    end
+
+    local text
+    if keymap == "vi" then
+        text = flexprompt.settings.vicmd_keymap or "vi-CMD"
+    elseif keymap == "vi-insert" then
+        text = flexprompt.settings.viins_keymap or "vi-ins"
+    else
+        text = flexprompt.settings.emacs_keymap or ""
+    end
+
+    if not text or text == "" then
+        return
+    end
+
+    local color, altcolor = parse_color_token(args, { "c", "color", "keymap" })
+    text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- MAVEN MODULE:  {maven:color=color_name,alt_color_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1114,6 +1193,7 @@ end
 local function builtin_modules_onbeginedit()
     _cached_state = {}
     duration_onbeginedit()
+    keymap_onbeginedit()
     modmark_onbeginedit()
     time_onbeginedit()
 end
@@ -1141,6 +1221,10 @@ flexprompt.add_module( "svn",       render_svn                          )
 flexprompt.add_module( "time",      render_time,        { unicode="" } )
 flexprompt.add_module( "user",      render_user,        { unicode="" } )
 flexprompt.add_module( "vpn",       render_vpn,         { unicode="" } )
+
+if clink.onaftercommand then
+flexprompt.add_module( "keymap",    render_keymap,      { unicode="" } )
+end
 
 if rl.insertmode then
 flexprompt.add_module( "overtype",  render_overtype                     )
