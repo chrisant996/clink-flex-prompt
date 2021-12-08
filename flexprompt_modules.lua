@@ -15,7 +15,7 @@ local mod_brightcyan = { fg="96", bg="106", extfg="38;5;44", extbg="48;5;44" }
 local mod_cyan = { fg="36", bg="46", extfg="38;5;6", extbg="48;5;6", lean=mod_brightcyan, classic=mod_brightcyan }
 flexprompt.add_color("mod_cyan", mod_cyan)
 
-local keymap_bright = { fg="94", bg="104", extfg="38;5;69", extbg="48;5;69" }
+local keymap_bright = { fg="94", bg="104", extfg="38;5;111", extbg="48;5;111" }
 local keymap_color = { fg="34", bg="44", extfg="38;5;26", extbg="48;5;26", lean=keymap_bright, classic=keymap_bright }
 flexprompt.add_color("keymap", keymap_color)
 
