@@ -82,6 +82,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{git}"` shows git status.
 - `"{hg}"` shows Mercurial status.
 - `"{maven}"` shows package info.
+- `"{modmark}"` shows a modified line indicator when the current line is a history entry and has been modified (only when the `mark-modified-lines` Readline config setting is `on`).
 - `"{npm}"` shows package name and version.
 - `"{overtype}"` shows indicator when overtype mode is on (i.e. when insert mode is off).
 - `"{python}"` shows the virtual environment.
