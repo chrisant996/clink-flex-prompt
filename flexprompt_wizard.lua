@@ -876,11 +876,10 @@ local function config_wizard()
             local left_frame, right_frame = flexprompt.get_frame()
             local style = flexprompt.get_style()
             if left_frame and style ~= "lean" then
-                if preview.left_prompt then
-                    preview.left_prompt = preview.left_prompt:gsub("{exit}", "{exit}{overtype}")
-                end
-                if preview.right_prompt then
-                    preview.right_prompt = preview.right_prompt:gsub("{exit}", "{exit}{overtype}")
+                if preview.left_prompt and preview.left_prompt:match("{exit}") then
+                    preview.left_prompt = preview.left_prompt .. "{overtype}"
+                elseif preview.right_prompt then
+                    preview.right_prompt = preview.right_prompt:gsub("{exit}", "{overtype}{exit}")
                 end
             end
 
