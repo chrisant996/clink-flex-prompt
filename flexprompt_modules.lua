@@ -1082,6 +1082,9 @@ local function render_user(args)
     end
 
     local text = user..computer
+    if text and #text > 0 then
+        text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
+    end
     return text, color, altcolor
 end
 
