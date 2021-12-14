@@ -629,6 +629,39 @@ local function render_hg(args)
 end
 
 --------------------------------------------------------------------------------
+-- HISTLABEL MODULE:  {histlabel:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--
+-- This shows the name of the current alternative history, if any.
+-- Clink can store multiple separate histories by setting CLINK_HISTORY_LABEL.
+
+local function render_histlabel(args)
+    local text = os.getenv("clink_history_label")
+    if not text or #text <= 0 then
+        return
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    if flexprompt.get_style() == "rainbow" then
+        color = flexprompt.use_best_color("magenta", "38;5;90")
+        altcolor = "realblack"
+    else
+        color = flexprompt.use_best_color("darkyellow", "38;5;133")
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    local symbol = flexprompt.get_module_symbol()
+    if symbol and #symbol > 0 then
+        text = flexprompt.append_text(symbol, text)
+    elseif flexprompt.get_flow() == "fluent" then
+        text = flexprompt.make_fluent_text("[") .. text .. flexprompt.make_fluent_text("]")
+    end
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- KEYMAP MODULE:  {keymap:color=color_name,alt_color_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1213,6 +1246,7 @@ flexprompt.add_module( "duration",  render_duration,    { unicode="" } )
 flexprompt.add_module( "exit",      render_exit                         )
 flexprompt.add_module( "git",       render_git,         { unicode="" } )
 flexprompt.add_module( "hg",        render_hg                           )
+flexprompt.add_module( "histlabel", render_histlabel,   { unicode="" } )
 flexprompt.add_module( "maven",     render_maven                        )
 flexprompt.add_module( "npm",       render_npm                          )
 flexprompt.add_module( "python",    render_python,      { unicode="" } )
