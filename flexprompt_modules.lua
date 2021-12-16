@@ -240,10 +240,11 @@ local function render_cwd(args)
 end
 
 --------------------------------------------------------------------------------
--- DURATION MODULE:  {duration:format=format_name:color=color_name,alt_color_name}
+-- DURATION MODULE:  {duration:format=format_name:tenths:color=color_name,alt_color_name}
 --  - format_name is the format to use:
 --      - "colons" is "H:M:S" format.
 --      - "letters" is "Hh Mm Ss" format (the default).
+--  - tenths includes tenths of seconds.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
@@ -261,7 +262,7 @@ local function duration_onbeginedit()
         local beginedit_time = duration_clock()
         local elapsed = beginedit_time - endedit_time
         if elapsed >= 0 then
-            last_duration = math.floor(elapsed)
+            last_duration = elapsed
         end
     end
 end
@@ -286,6 +287,8 @@ local function render_duration(args)
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
     local h, m, s
+    local t = math.floor(duration * 10) % 10
+    duration = math.floor(duration)
     s = (duration % 60)
     duration = math.floor(duration / 60)
     if duration > 0 then
@@ -297,6 +300,7 @@ local function render_duration(args)
     end
 
     local text
+    local tenths = flexprompt.parse_arg_token(args, "t", "tenths")
     local format = flexprompt.parse_arg_token(args, "f", "format")
     if format and format == "colons" then
         if h then
@@ -304,7 +308,13 @@ local function render_duration(args)
         else
             text = string.format("%u:%02u", (m or 0), s)
         end
+        if tenths then
+            text = text .. "." .. t
+        end
     else
+        if tenths then
+            s = s .. "." .. t
+        end
         text = s .. "s"
         if m then
             text = flexprompt.append_text(m .. "m", text)
