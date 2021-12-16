@@ -300,7 +300,7 @@ local function render_duration(args)
     end
 
     local text
-    local tenths = flexprompt.parse_arg_token(args, "t", "tenths")
+    local tenths = flexprompt.parse_arg_keyword(args, "t", "tenths")
     local format = flexprompt.parse_arg_token(args, "f", "format")
     if format and format == "colons" then
         if h then
