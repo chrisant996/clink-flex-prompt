@@ -247,9 +247,24 @@ end
 --  - tenths includes tenths of seconds.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
+--
+-- Use the "luafunc:flexprompt_toggle_tenths" command to toggle displaying
+-- tenths of seconds.  By default it is bound to Ctrl+Alt+T.
 
 local endedit_time
 local last_duration
+local invert_tenths
+
+if rl.setbinding and not rl.getbinding([["\e\C-T"]]) then
+    rl.setbinding([["\e\C-T"]], [["luafunc:flexprompt_toggle_tenths"]])
+end
+
+function flexprompt_toggle_tenths(rl_buffer)
+    if flexprompt.is_module_in_prompt("duration") then
+        invert_tenths = not invert_tenths
+        clink.refilterprompt()
+    end
+end
 
 -- Clink v1.2.30 has a fix for Lua's os.clock() implementation failing after the
 -- program has been running more than 24 days.  Without that fix, os.time() must
@@ -299,8 +314,12 @@ local function render_duration(args)
         end
     end
 
-    local text
     local tenths = flexprompt.parse_arg_keyword(args, "t", "tenths")
+    if invert_tenths then
+        tenths = not tenths
+    end
+
+    local text
     local format = flexprompt.parse_arg_token(args, "f", "format")
     if format and format == "colons" then
         if h then
