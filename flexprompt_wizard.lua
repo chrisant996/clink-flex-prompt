@@ -167,10 +167,9 @@ local function display_centered(s)
     clink.print(s)
 end
 
-local function replace_modules(s)
+local function apply_time_format(s)
     if not s then return end
 
-    s = s:gsub("{battery[^}]*}", "")
     if _striptime then
         s = s:gsub("{time[^}]*}", "")
     elseif _timeformat then
@@ -191,6 +190,14 @@ local function replace_modules(s)
             s = s:gsub("{time}", "")
         end
     end
+    return s
+end
+
+local function replace_modules(s)
+    if not s then return end
+
+    s = s:gsub("{battery[^}]*}", "")
+    s = apply_time_format(s)
     return s
 end
 
@@ -323,11 +330,11 @@ local function choose_sides(settings, title)
     elseif s == "q" then
     else
         if s == "1" then
-            settings.left_prompt = replace_modules(prompts.left[1])
-            settings.right_prompt = replace_modules(prompts.left[2])
+            settings.left_prompt = apply_time_format(prompts.left[1])
+            settings.right_prompt = apply_time_format(prompts.left[2])
         else
-            settings.left_prompt = replace_modules(prompts.both[1])
-            settings.right_prompt = replace_modules(prompts.both[2])
+            settings.left_prompt = apply_time_format(prompts.both[1])
+            settings.right_prompt = apply_time_format(prompts.both[2])
         end
         _timeformat = nil
     end
