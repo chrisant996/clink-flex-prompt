@@ -501,6 +501,7 @@ local function render_git(args)
     local git_dir
     local branch, detached
     local info
+    local refreshing
     local wizard = flexprompt.get_wizard_state()
 
     if wizard then
@@ -527,6 +528,7 @@ local function render_git(args)
         -- Use cached info until coroutine is finished.
         if not info then
             info = cached_info.git_info or {}
+            refreshing = true
         else
             cached_info.git_info = info
         end
@@ -557,7 +559,7 @@ local function render_git(args)
         icon_name = "unpublished"
         colors = git_colors.unpublished
     end
-    text = flexprompt.format_branch_name(branch, icon_name)
+    text = flexprompt.format_branch_name(branch, icon_name, refreshing)
     if gitConflict then
         colors = git_colors.conflict
         text = flexprompt.append_text(text, flexprompt.get_symbol("conflict"))
@@ -1205,6 +1207,7 @@ end
 
 local function render_vpn(args)
     local info
+    local refreshing
     local wizard = flexprompt.get_wizard_state()
 
     if wizard then
@@ -1216,6 +1219,7 @@ local function render_vpn(args)
         -- Use cached info until coroutine is finished.
         if not info then
             info = vpn_cached_info or {}
+            refreshing = true
         else
             vpn_cached_info = info
         end
@@ -1241,7 +1245,7 @@ local function render_vpn(args)
     if flexprompt.get_flow() == "fluent" then
         text = flexprompt.append_text(flexprompt.make_fluent_text("over"), text)
     end
-    text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
+    text = flexprompt.append_text(flexprompt.get_module_symbol(refreshing), text)
 
     return text, color, altcolor
 end

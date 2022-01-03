@@ -273,6 +273,8 @@ local symbols =
 
     prompt          = { ">" },
     overtype_prompt = { "►" },
+
+    refresh         = {         unicode="" },  --   
 }
 
 --------------------------------------------------------------------------------
@@ -1437,11 +1439,17 @@ flexprompt.get_symbol = get_symbol
 
 -- Function to get customizable symbol for current module (only gets the symbol
 -- if flexprompt.settings.use_icons is true).
-function flexprompt.get_module_symbol()
+function flexprompt.get_module_symbol(refreshing)
     local s = ""
     if segmenter and segmenter._current_module then
         local name = segmenter._current_module .. "_module"
         s = flexprompt.get_icon(name)
+    end
+    if refreshing and s and s ~= "" then
+        local ref_sym = flexprompt.get_icon("refresh")
+        if ref_sym and ref_sym ~= "" then
+            s = ref_sym
+        end
     end
     return s
 end
@@ -1487,7 +1495,7 @@ end
 --  - The branch_symbol is present when not lean and not fluent, or when using
 --    icons (the icon_name argument is optional, and defaults to "branch").
 --  - The branch name is always present.
-function flexprompt.format_branch_name(branch, icon_name)
+function flexprompt.format_branch_name(branch, icon_name, refreshing)
     local style = get_style()
     local flow = get_flow()
 
@@ -1499,7 +1507,7 @@ function flexprompt.format_branch_name(branch, icon_name)
         text = append_text(flexprompt.get_symbol(icon_name or "branch"), branch)
     end
 
-    text = append_text(flexprompt.get_module_symbol(), text)
+    text = append_text(flexprompt.get_module_symbol(refreshing), text)
 
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
