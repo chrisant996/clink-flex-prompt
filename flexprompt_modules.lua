@@ -828,14 +828,15 @@ end
 local _modmark
 local _modifiedline
 
-local function modmark_onbeginedit()
-    _modmark = nil
-    _modifiedline = nil
+if rl.ismodifiedline then
+    _modmark = rl.isvariabletrue("mark-modified-lines")
+    rl.setvariable("mark-modified-lines", "off")
+end
 
+local function modmark_onbeginedit()
+    _modifiedline = nil
     if rl.ismodifiedline then
-        _modmark = rl.isvariabletrue("mark-modified-lines")
         _modifiedline = rl.ismodifiedline()
-        rl.setvariable("mark-modified-lines", "off")
     end
 end
 
