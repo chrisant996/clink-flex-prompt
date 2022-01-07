@@ -1042,16 +1042,16 @@ local function render_modules(prompt, side, frame_color, anchors)
     return out
 end
 
-local function render_prompts(settings, need_anchors)
+local function render_prompts(render_settings, need_anchors)
     reset_render_state()
 
     local old_settings = flexprompt.settings
-    if settings then
-        flexprompt.settings = settings
-        if settings.wizard then
+    if render_settings then
+        flexprompt.settings = render_settings
+        if render_settings.wizard then
             local width = console.getwidth()
             reset_render_state()
-            _wizard = settings.wizard
+            _wizard = render_settings.wizard
             _wizard.width = _wizard.width or (width - 8)
             _wizard.prefix = ""
             if _wizard.width < width then
@@ -1118,6 +1118,12 @@ local function render_prompts(settings, need_anchors)
             end
             rightframe1 = rightframe1 .. right_frame[1]
         end
+
+        if rl.ismodifiedline and lines == 1 and not is_module_in_prompt("modmark") then
+            if rl.ismodifiedline() then
+                left1 = sgr("0;" .. (settings.get("color.modmark") or "")) .. "*" .. left1
+            end
+        end
     end
 
     -- Line 2 ----------------------------------------------------------------
@@ -1129,6 +1135,13 @@ local function render_prompts(settings, need_anchors)
         if left_frame then
             left2 = left2 .. sgr_frame_color .. left_frame[2]
         end
+
+        if rl.ismodifiedline and not is_module_in_prompt("modmark") then
+            if rl.ismodifiedline() then
+                left2 = left2 .. sgr("0;" .. (settings.get("color.modmark") or "")) .. "*"
+            end
+        end
+
         if not left_frame or style == "lean" then
             left2 = left2 .. get_prompt_symbol_color() .. get_prompt_symbol()
         end
@@ -1170,7 +1183,7 @@ local function render_prompts(settings, need_anchors)
         prompt = sgr() .. "\r\n" .. prompt
     end
 
-    if settings then flexprompt.settings = old_settings end
+    if render_settings then flexprompt.settings = old_settings end
 
     if need_anchors then
         local left_frame_len = left_frame and console.cellcount(left_frame[1]) or 0

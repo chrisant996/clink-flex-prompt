@@ -820,8 +820,8 @@ end
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 --
--- If present, the 'text=' option must be last (so that it is able to can
--- contain colons in case that's desired).
+-- If present, the 'text=' option must be last (so that it can contain colons in
+-- case that's desired).
 --
 -- Requires Clink v1.2.51 or higher.
 
@@ -833,11 +833,9 @@ local function modmark_onbeginedit()
     _modifiedline = nil
 
     if rl.ismodifiedline then
-        if flexprompt.is_module_in_prompt("modmark") then
-            _modmark = rl.isvariabletrue("mark-modified-lines")
-            _modifiedline = rl.ismodifiedline()
-            rl.setvariable("mark-modified-lines", "off")
-        end
+        _modmark = rl.isvariabletrue("mark-modified-lines")
+        _modifiedline = rl.ismodifiedline()
+        rl.setvariable("mark-modified-lines", "off")
     end
 end
 
