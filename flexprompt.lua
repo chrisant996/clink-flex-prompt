@@ -597,8 +597,25 @@ end
 
 local function is_module_in_prompt(name)
     local pattern = "{" .. name .. "[:}]"
-    return ((flexprompt.settings.left_prompt and flexprompt.settings.left_prompt:match(pattern)) or
-            (flexprompt.settings.right_prompt and flexprompt.settings.right_prompt:match(pattern)))
+    local left_prompt = flexprompt.settings.left_prompt
+    local right_prompt = flexprompt.settings.right_prompt
+    if not left_prompt and not right_prompt then
+        local style = get_style()
+        local prompts = flexprompt.choices.prompts[style]["both"]
+        left_prompt = prompts[1]
+        right_prompt = prompts[2]
+    end
+
+    local is = 0
+    if left_prompt and left_prompt:match(pattern) then
+        is = is + 1
+    end
+    if right_prompt and right_prompt:match(pattern) then
+        is = is + 2
+    end
+    if is > 0 then
+        return is
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -1430,6 +1447,7 @@ flexprompt.make_fluent_text = make_fluent_text
 flexprompt.append_text = append_text
 
 -- Function that returns whether the prompt settings include the name module.
+-- Returns 1 if in left, 2 if in right, or 3 if in both.
 flexprompt.is_module_in_prompt = is_module_in_prompt
 
 -- Function that flags the named module to be re-filtered.  If no modules are

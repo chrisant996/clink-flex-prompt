@@ -262,6 +262,7 @@ end
 function flexprompt_toggle_tenths(rl_buffer)
     if flexprompt.is_module_in_prompt("duration") then
         invert_tenths = not invert_tenths
+        flexprompt.refilter_module("duration")
         clink.refilterprompt()
     end
 end
