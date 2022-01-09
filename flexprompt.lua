@@ -714,7 +714,20 @@ local function init_segmenter(side, frame_color)
         separators = flexprompt.settings.lean_separators or "space"
 
         if type(separators) ~= "table" then
-            separators = available_separators[separators] or separators
+            if available_separators[separators] then
+                local pad = separators ~= "none" and separators ~= "space" and separators ~= "spaces"
+                separators = available_separators[separators]
+                if pad then
+                    local pad = {}
+                    if separators[1] then
+                        pad[1] = " " .. separators[1] .. " "
+                    end
+                    if separators[2] then
+                        pad[2] = " " .. separators[2] .. " "
+                    end
+                    separators = pad
+                end
+            end
             if separators.lean then
                 separators = separators.lean
             end
