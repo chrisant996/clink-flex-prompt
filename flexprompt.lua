@@ -687,14 +687,14 @@ local function init_segmenter(side, frame_color)
         if charset == "ascii" then
             open_caps = flexprompt.choices.caps["flat"]
         else
-            open_caps = flexprompt.choices.caps[open_caps]
+            open_caps = flexprompt.choices.caps[open_caps] or flexprompt.choices.caps["flat"]
         end
     end
     if type(close_caps) ~= "table" then
         if charset == "ascii" then
             close_caps = flexprompt.choices.caps["flat"]
         else
-            close_caps = flexprompt.choices.caps[close_caps]
+            close_caps = flexprompt.choices.caps[close_caps] or flexprompt.choices.caps["flat"]
         end
     end
 
