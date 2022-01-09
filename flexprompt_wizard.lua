@@ -935,11 +935,89 @@ local function config_wizard()
     end
 end
 
+local function run_demo()
+    local wizard =
+    {
+        cwd = "c:\\directory",
+        duration = 0,
+        exit = 0,
+        width = console.getwidth(),
+    }
+
+    local preview =
+    {
+        wizard = wizard,
+        unicode = true,
+    }
+
+    print()
+    display_preview(preview, "program1", false)
+
+    print()
+    wizard.duration = 4.5
+    preview.lines = "two"
+    preview.connection = "solid"
+    preview.lean_separators = "updiagonal"
+    preview.use_icons = true
+    display_preview(preview, "\\repos\\project\\", false)
+
+    print()
+    wizard.cwd = "c:\\repos\\project"
+    wizard.duration = 0
+    wizard.git_dir = "c:\\repos\\project\\.git"
+    wizard.git = {
+        status = {
+            working = {
+                modify = 3,
+            },
+        },
+    }
+    preview.style = "classic"
+    preview.frame_color = "light"
+    preview.lines = "two"
+    preview.heads = "blurred"
+    preview.separators = "vertical"
+    preview.left_frame = "round"
+    preview.right_frame = "round"
+    preview.connection = nil
+    display_preview(preview, "missssing_program", false)
+
+    print()
+    wizard.exit = 9009
+    wizard.battery = { level = 82 }
+    preview.heads = "slant"
+    preview.separators = nil
+    preview.left_frame = nil
+    preview.right_frame = nil
+    preview.connection = "dotted"
+    preview.flow = "fluent"
+    preview.use_icons = false
+    display_preview(preview, "git checkout main", false)
+
+    print()
+    wizard.git = {}
+    wizard.duration = 3.6
+    wizard.duration_tenths = true
+    wizard.exit = 0
+    wizard.battery = { level = 78 }
+    preview.style = "rainbow"
+    preview.frame_color = "dark"
+    preview.heads = "pointed"
+    preview.lines = "one"
+    preview.flow = "concise"
+    display_preview(preview, "")
+
+    print()
+end
+
 local function onfilterinput(text)
     text = " " .. text .. " "
     text = text:gsub("%s+", " ")
     if text == " flexprompt configure " then
         config_wizard()
+        return "", false
+    elseif text == " flexprompt demo " then
+        run_demo()
         return "", false
     elseif text:match("^ flexprompt ") then
         clink.print("Clink flex prompt (https://github.com/chrisant996/clink-flex-prompt)")

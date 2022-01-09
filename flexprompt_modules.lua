@@ -55,9 +55,10 @@ local rainbow_battery_colors =
 
 local function get_battery_status()
     local level, acpower, charging
+    local wizard = flexprompt.get_wizard_state()
     local batt_symbol = flexprompt.get_symbol("battery")
 
-    local status = os.getbatterystatus()
+    local status = wizard and wizard.battery or os.getbatterystatus()
     level = status.level
     acpower = status.acpower
     charging = status.charging
@@ -187,20 +188,20 @@ local function render_cwd(args)
 
     local wizard = flexprompt.get_wizard_state()
     local cwd = wizard and wizard.cwd or os.getcwd()
-    local git_dir
+    local git_dir = wizard and (wizard.git_dir or false)
 
     local sym
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
-    if wizard then
-        -- Disable cwd/git integration in the configuration wizard.
-    elseif type == "folder" then
+    if type == "folder" then
         cwd = get_folder_name(cwd)
     else
         repeat
             if flexprompt.settings.use_home_tilde then
                 local home = os.getenv("HOME")
                 if home and string.find(string.lower(cwd), string.lower(home)) == 1 then
-                    git_dir = flexprompt.get_git_dir(cwd) or false
+                    if not git_dir then
+                        git_dir = flexprompt.get_git_dir(cwd) or false
+                    end
                     if not git_dir then
                         cwd = "~" .. string.sub(cwd, #home + 1)
                         break
@@ -316,7 +317,9 @@ local function render_duration(args)
     end
 
     local tenths = flexprompt.parse_arg_keyword(args, "t", "tenths")
-    if invert_tenths then
+    if wizard then
+        tenths = wizard.duration_tenths
+    elseif invert_tenths then
         tenths = not tenths
     end
 
@@ -428,24 +431,29 @@ local fetched_repos = {}
 --
 -- Synchronous call.
 local function add_details(text, details)
+    local add = details.add or 0
+    local modify = details.modify or 0
+    local delete = details.delete or 0
+    local rename = details.rename or 0
+    local untracked = details.untracked or 0
     if git.status_details then
-        if details.add > 0 then
-            text = flexprompt.append_text(text, flexprompt.get_symbol("addcount") .. details.add)
+        if add > 0 then
+            text = flexprompt.append_text(text, flexprompt.get_symbol("addcount") .. add)
         end
-        if details.modify > 0 then
-            text = flexprompt.append_text(text, flexprompt.get_symbol("modifycount") .. details.modify)
+        if modify > 0 then
+            text = flexprompt.append_text(text, flexprompt.get_symbol("modifycount") .. modify)
         end
-        if details.delete > 0 then
-            text = flexprompt.append_text(text, flexprompt.get_symbol("deletecount") .. details.delete)
+        if delete > 0 then
+            text = flexprompt.append_text(text, flexprompt.get_symbol("deletecount") .. delete)
         end
-        if (details.rename or 0) > 0 then
-            text = flexprompt.append_text(text, flexprompt.get_symbol("renamecount") .. details.rename)
+        if rename > 0 then
+            text = flexprompt.append_text(text, flexprompt.get_symbol("renamecount") .. rename)
         end
     else
-        text = flexprompt.append_text(text, flexprompt.get_symbol("summarycount") .. (details.add + details.modify + details.delete + (details.rename or 0)))
+        text = flexprompt.append_text(text, flexprompt.get_symbol("summarycount") .. (add + modify + delete + rename))
     end
-    if (details.untracked or 0) > 0 then
-        text = flexprompt.append_text(text, flexprompt.get_symbol("untrackedcount") .. details.untracked)
+    if untracked > 0 then
+        text = flexprompt.append_text(text, flexprompt.get_symbol("untrackedcount") .. untracked)
     end
     return text
 end
@@ -508,7 +516,15 @@ local function render_git(args)
     if wizard then
         git_dir = true
         branch = wizard.branch or "main"
-        info = { finished=true }
+        -- Copy values so .finished can be added without altering the contents
+        -- of the wizard table.
+        info = {}
+        if wizard.git then
+            for key, value in pairs(wizard.git) do
+                info[key] = value
+            end
+        end
+        info.finished = true
     else
         git_dir = flexprompt.get_git_dir()
         if not git_dir then return end
