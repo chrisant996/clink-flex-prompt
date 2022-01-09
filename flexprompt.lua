@@ -1213,7 +1213,9 @@ local function render_prompts(render_settings, need_anchors)
         prompt = sgr() .. "\r\n" .. prompt
     end
 
-    if render_settings then flexprompt.settings = old_settings end
+    if render_settings then
+        flexprompt.settings = old_settings
+    end
 
     if need_anchors then
         local left_frame_len = left_frame and console.cellcount(left_frame[1]) or 0
@@ -1243,6 +1245,7 @@ function flexprompt.render_wizard(settings, need_anchors)
     else
         col = #_wizard.prefix + (_wizard.width - console.cellcount(right)) + 1
     end
+    _wizard = nil
     return left, right, col, anchors
 end
 
