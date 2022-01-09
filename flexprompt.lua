@@ -446,7 +446,8 @@ local function get_frame_color()
 end
 
 local function get_symbol(name, fallback)
-    local symbol = flexprompt.settings.symbols[name] or symbols[name] or fallback or ""
+    local settings_symbols = flexprompt.settings.symbols
+    local symbol = settings_symbols and settings_symbols[name] or symbols[name] or fallback or ""
     if type(symbol) == "table" then
         local term = clink.getansihost and clink.getansihost() or nil
         if term and symbol[term] then
