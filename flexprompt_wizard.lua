@@ -230,13 +230,13 @@ local function display_preview(settings, command, show_cursor, callout)
     end
 end
 
-local function display_yes(choices)
-    clink.print("(y)  Yes.\n")
+local function display_yes(choices, extra)
+    clink.print("(y)  Yes.  " .. (extra or "") .. "\n")
     return choices .. "y"
 end
 
-local function display_no(choices)
-    clink.print("(n)  No.\n")
+local function display_no(choices, extra)
+    clink.print("(n)  No.  " .. (extra or "") .. "\n")
     return choices .. "n"
 end
 
@@ -598,11 +598,21 @@ local function wizard_can_use_extended_colors(settings)
     return can
 end
 
+local function make_icon_list(icons)
+    local out = "X"
+    local colors = { "\x1b[31m", "\x1b[32m", "\x1b[33m", "\x1b[34m", "\x1b[35m", "\x1b[36m" }
+    for i = 1, #icons, 1 do
+        out = out .. colors[((i - 1) % #colors) + 1] .. icons[i] .. normal .. "X"
+    end
+    return out
+end
+
 local function config_wizard()
     local s
     local settings_filename = get_settings_filename()
     local errors
 
+    local hasicons
     local eight_bit_color_test = make_8bit_color_test()
     local four_bit_color
     local callout
@@ -631,6 +641,7 @@ local function config_wizard()
         _striptime = true
         _timeformat = nil
 
+        hasicons = nil
         four_bit_color = false
 
         -- Find out about the font being used.
@@ -685,6 +696,23 @@ local function config_wizard()
                     end
                 end
             end
+        end
+
+        if preview.charset ~= "ascii" then
+            clink.print("\x1b[4H\x1b[J", NONL)
+            display_centered("Are these icons and do they fit between the crosses?")
+            clink.print("\n")
+            display_centered("-->  " .. make_icon_list({"","","","","","","","",""}) .. "  <--")
+            clink.print("\n")
+            choices = ""
+            choices = display_yes(choices, "They are icons and they fit closely, but with no overlap.")
+            choices = display_no(choices, "They are not icons, or some overlap neighboring crosses.")
+            choices = display_restart(choices)
+            choices = display_quit(choices)
+            s = readchoice(choices)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+            hasicons = (s == "y") and true or false
         end
 
         if preview.charset == "ascii" then
@@ -860,7 +888,7 @@ local function config_wizard()
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
-        if preview.charset == "unicode" then
+        if hasicons and preview.charset == "unicode" then
             s = choose_icons(preview, "Icons")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
