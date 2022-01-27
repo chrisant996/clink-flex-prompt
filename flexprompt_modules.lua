@@ -147,7 +147,7 @@ local function render_battery(args)
 end
 
 --------------------------------------------------------------------------------
--- CWD MODULE:  {cwd:color=color_name,alt_color_name:rootcolor=rootcolor_name:type=type_name}
+-- CWD MODULE:  {cwd:color=color_name,alt_color_name:rootcolor=rootcolor_name:type=type_name:shorten}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 --  - rootcolor_name overrides the repo parent color when using "rootsmart".
@@ -156,6 +156,8 @@ end
 --      - "folder" is just the folder name.
 --      - "smart" is the git repo\subdir, or the full path.
 --      - "rootsmart" is the full path, with parent of git repo not colored.
+--
+-- The 'shorten' option abbreviates parent directories to only the first letter.
 --
 -- The default type is "rootsmart" if not specified.
 
@@ -173,6 +175,16 @@ local function get_folder_name(dir)
     return dir
 end
 
+local function abbreviate_parents(dir, ref)
+    local tmp, suffix = path.toparent(dir)
+    tmp = tmp:gsub("^([!-.0-%][-~])[^:/\\]*", "%1")
+    tmp = tmp:gsub("([/\\][!-.0-%][-~])[^/\\]*", "%1")
+    if suffix ~= "" then
+        tmp = path.join(tmp, suffix)
+    end
+    return tmp
+end
+
 local function render_cwd(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -185,6 +197,7 @@ local function render_cwd(args)
         color = flexprompt.use_best_color("blue", "38;5;33")
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+    local shorten = flexprompt.parse_arg_keyword(args, "s", "shorten")
 
     local wizard = flexprompt.get_wizard_state()
     local cwd = wizard and wizard.cwd or os.getcwd()
@@ -203,7 +216,11 @@ local function render_cwd(args)
                         git_dir = flexprompt.get_git_dir(cwd) or false
                     end
                     if not git_dir then
-                        cwd = "~" .. string.sub(cwd, #home + 1)
+                        cwd = string.sub(cwd, #home + 1)
+                        if shorten then
+                            cwd = abbreviate_parents(cwd)
+                        end
+                        cwd = "~" .. cwd
                         break
                     end
                 end
@@ -222,6 +239,11 @@ local function render_cwd(args)
                     local smart_dir = get_folder_name(git_root_dir) .. appended_dir
                     if type == "rootsmart" then
                         local rootcolor = flexprompt.parse_arg_token(args, "rc", "rootcolor")
+                        if shorten then
+                            cwd = abbreviate_parents(cwd)
+                            smart_dir = abbreviate_parents(smart_dir)
+                            shorten = nil
+                        end
                         local parent = cwd:sub(1, #cwd - #smart_dir)
                         cwd = flexprompt.make_fluent_text(parent, rootcolor or true) .. smart_dir
                     else
@@ -232,6 +254,10 @@ local function render_cwd(args)
                 end
             end
         until true
+    end
+
+    if shorten then
+        cwd = abbreviate_parents(cwd)
     end
 
     cwd = flexprompt.append_text(flexprompt.get_dir_stack_depth(), cwd)
