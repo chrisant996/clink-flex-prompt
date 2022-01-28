@@ -712,6 +712,10 @@ end
 
 local function render_histlabel(args)
     local text = os.getenv("clink_history_label")
+    if text then
+        text = text:match("^ *([^ ].*)$")
+        text = text:match("^(.*[^ ]) *$")
+    end
     if not text or #text <= 0 then
         return
     end
