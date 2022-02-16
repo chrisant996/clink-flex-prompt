@@ -201,7 +201,8 @@ local function render_cwd(args)
 
     local wizard = flexprompt.get_wizard_state()
     local cwd = wizard and wizard.cwd or os.getcwd()
-    local git_dir = wizard and (wizard.git_dir or false)
+    local git_wks = wizard and (wizard.git_dir or false)
+    local real_git_dir -- for clarify; value is not used
 
     local sym
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
@@ -212,10 +213,10 @@ local function render_cwd(args)
             if flexprompt.settings.use_home_tilde then
                 local home = os.getenv("HOME")
                 if home and string.find(string.lower(cwd), string.lower(home)) == 1 then
-                    if not git_dir then
-                        git_dir = flexprompt.get_git_dir(cwd) or false
+                    if not git_wks then
+                        real_git_dir, git_wks = flexprompt.get_git_dir(cwd) or false
                     end
-                    if not git_dir then
+                    if not git_wks then
                         cwd = string.sub(cwd, #home + 1)
                         if shorten then
                             cwd = abbreviate_parents(cwd)
@@ -227,16 +228,16 @@ local function render_cwd(args)
             end
 
             if type == "smart" or type == "rootsmart" then
-                if git_dir == nil then -- Don't double-hunt for it!
-                    git_dir = flexprompt.get_git_dir()
+                if git_wks == nil then -- Don't double-hunt for it!
+                    real_git_dir, git_wks = flexprompt.get_git_dir()
                 end
-                if git_dir then
-                    -- Get the root git folder name and reappend any part of the
-                    -- directory that comes after.
+                if git_wks then
+                    -- Get the git workspace folder name and reappend any part
+                    -- of the directory that comes after.
                     -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
-                    local git_root_dir = path.toparent(git_dir) -- Don't use get_parent() here!
-                    local appended_dir = string.sub(cwd, string.len(git_root_dir) + 1)
-                    local smart_dir = get_folder_name(git_root_dir) .. appended_dir
+                    local git_wks_parent = path.toparent(git_wks) -- Don't use get_parent() here!
+                    local appended_dir = string.sub(cwd, string.len(git_wks_parent) + 1)
+                    local smart_dir = get_folder_name(git_wks_parent) .. appended_dir
                     if type == "rootsmart" then
                         local rootcolor = flexprompt.parse_arg_token(args, "rc", "rootcolor")
                         if shorten then
@@ -533,7 +534,7 @@ local git_colors =
 }
 
 local function render_git(args)
-    local git_dir
+    local git_dir, wks
     local branch, detached
     local info
     local refreshing
@@ -552,7 +553,7 @@ local function render_git(args)
         end
         info.finished = true
     else
-        git_dir = flexprompt.get_git_dir()
+        git_dir, wks = flexprompt.get_git_dir()
         if not git_dir then return end
 
         branch, detached = flexprompt.get_git_branch(git_dir)

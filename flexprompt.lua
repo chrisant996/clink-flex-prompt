@@ -1527,8 +1527,8 @@ function flexprompt.scan_upwards(dir, scan_func)
 
     repeat
         -- Call the supplied function.
-        local result = scan_func(dir)
-        if result ~= nil then return result end
+        local result = table.pack(scan_func(dir))
+        if result ~= nil and result[1] ~= nil then return table.unpack(result, 1, result.n) end
 
         -- Walk up to parent path.
         local parent = get_parent(dir)
@@ -1632,7 +1632,7 @@ flexprompt.get_errorlevel = get_errorlevel
 -- Public API; git functions.
 
 -- Test whether dir is part of a git repo.
--- @return  nil for not in a git repo, or the name of a git dir or file.
+-- @return  nil for not in a git repo; or git dir, workspace dir.
 --
 -- Synchronous call.
 function flexprompt.get_git_dir(dir)
@@ -1663,7 +1663,23 @@ function flexprompt.get_git_dir(dir)
 
     return flexprompt.scan_upwards(dir, function (dir)
         -- Return if it's a git dir.
-        return has_dir(dir, ".git") or has_git_file(dir)
+        local wks = has_dir(dir, ".git")
+        if wks then
+            return wks, wks
+        end
+        -- Check if it has a .git file.
+        local gitdir = has_git_file(dir)
+        if not gitdir then
+            return nil
+        end
+        local gitdir_file = path.join(gitdir, "gitdir")
+        local file = io.open(gitdir_file)
+        if not file then
+            return nil
+        end
+        wks = file:read("*l")
+        file:close()
+        return gitdir, wks
     end)
 end
 
