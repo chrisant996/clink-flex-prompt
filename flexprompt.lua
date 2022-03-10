@@ -1378,6 +1378,9 @@ flexprompt.get_style = get_style
 -- Function to get the prompt flow.
 flexprompt.get_flow = get_flow
 
+-- Function to get the prompt spacing.
+flexprompt.get_spacing = get_spacing
+
 -- Get an SGR string to apply the named color as either a foreground or
 -- background color, depending on the style (rainbow style applies colors as
 -- background colors).
