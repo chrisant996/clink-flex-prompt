@@ -39,12 +39,21 @@ local function clear_screen()
 end
 
 local function get_settings_filename()
+    local name
     local info = debug.getinfo(1, 'S')
-    if not info.source or info.source:sub(1, 1) ~= "@" then
-        error("Unable to write settings; file location unknown.")
+    if info.source and info.source:sub(1, 1) == "@" then
+        name = path.join(path.toparent(info.source:sub(2)), "flexprompt_autoconfig.lua")
+        if not os.isfile(name) then
+            name = nil
+        end
     end
-
-    local name = path.join(path.toparent(info.source:sub(2)), "flexprompt_autoconfig.lua")
+    if not name then
+        local dir = os.getenv("=clink.profile")
+        if not os.isdir(dir) then
+            error("Unable to write settings; file location unknown.")
+        end
+        name = path.join(dir, "flexprompt_autoconfig.lua")
+    end
     return name
 end
 
