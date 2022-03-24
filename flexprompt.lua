@@ -132,9 +132,9 @@ flexprompt.choices.sides =
 -- Default prompt strings based on styles and sides.
 flexprompt.choices.prompts =
 {
-    lean        = { left = { "{battery}{cwd}{git}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
-    classic     = { left = { "{battery}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{cwd}{git}", "{exit}{duration}{time}" } },
-    rainbow     = { left = { "{battery:breakright}{cwd}{git}{exit}{duration}{time:dim}" }, both = { "{battery:breakright}{cwd}{git}", "{exit}{duration}{time}" } },
+    lean        = { left = { "{battery}{histlabel}{cwd}{git}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
+    classic     = { left = { "{battery}{histlabel}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
+    rainbow     = { left = { "{battery:breakright}{histlabel}{cwd}{git}{exit}{duration}{time:dim}" }, both = { "{battery:breakright}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
 }
 
 -- Only if style != lean.
