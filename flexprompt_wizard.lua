@@ -39,7 +39,7 @@ local function clear_screen()
 end
 
 local function get_settings_filename()
-    local info = debug.getinfo(get_settings_filename, 'S')
+    local info = debug.getinfo(1, 'S')
     if not info.source or info.source:sub(1, 1) ~= "@" then
         error("Unable to write settings; file location unknown.")
     end
