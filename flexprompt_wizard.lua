@@ -130,7 +130,11 @@ local function write_settings(settings)
     file:write("-- If you want to make changes, consider copying the file to\n")
     file:write("-- 'flexprompt_config.lua' and editing that file instead.\n\n")
 
-    local line = { 5 }
+    -- Avoid errors if flexprompt isn't present or hasn't been initialized yet.
+    file:write("flexprompt = flexprompt or {}\n")
+    file:write("flexprompt.settings = flexprompt.settings or {}\n")
+
+    local line = { 8 }
 
     local errors
     for n,v in pairs(settings) do
