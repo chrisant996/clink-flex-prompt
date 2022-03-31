@@ -727,7 +727,7 @@ local function render_histlabel(args)
         color = flexprompt.use_best_color("magenta", "38;5;90")
         altcolor = "realblack"
     else
-        color = flexprompt.use_best_color("darkyellow", "38;5;133")
+        color = flexprompt.use_best_color("darkyellow", "38;5;134")
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
