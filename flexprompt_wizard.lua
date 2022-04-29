@@ -991,20 +991,26 @@ local function run_demo()
         unicode = true,
     }
 
-    print()
-    display_preview(preview, "program1", false)
+    local function print_between()
+        print()
+        print()
+    end
 
-    print()
+    print_between()
+    display_preview(preview, "", false)
+
+    print_between()
     wizard.duration = 4.5
     preview.lines = "two"
     preview.connection = "solid"
     preview.lean_separators = "updiagonal"
     preview.use_icons = true
-    display_preview(preview, "\\repos\\project\\", false)
+    display_preview(preview, "", false)
 
-    print()
+    print_between()
     wizard.cwd = "c:\\repos\\project"
     wizard.duration = 0
+    wizard.exit = 9009
     wizard.git_dir = "c:\\repos\\project\\.git"
     wizard.git = {
         status = {
@@ -1017,25 +1023,28 @@ local function run_demo()
     preview.frame_color = "light"
     preview.lines = "two"
     preview.heads = "blurred"
-    preview.separators = "vertical"
+    preview.separators = "none"
     preview.left_frame = "round"
     preview.right_frame = "round"
     preview.connection = nil
-    display_preview(preview, "missssing_program", false)
+    preview.flow = "fluent"
+    display_preview(preview, "", false)
 
-    print()
-    wizard.exit = 9009
+    print_between()
+    wizard.duration = 0
+    wizard.exit = 0
     wizard.battery = { level = 82 }
+    preview.frame_color = "dark"
     preview.heads = "slant"
     preview.separators = nil
     preview.left_frame = nil
     preview.right_frame = nil
     preview.connection = "dotted"
-    preview.flow = "fluent"
+    preview.flow = nil
     preview.use_icons = false
-    display_preview(preview, "git checkout main", false)
+    display_preview(preview, "", false)
 
-    print()
+    print_between()
     wizard.git = {}
     wizard.duration = 3.6
     wizard.duration_tenths = true
@@ -1044,11 +1053,29 @@ local function run_demo()
     preview.style = "rainbow"
     preview.frame_color = "dark"
     preview.heads = "pointed"
+    preview.separators = nil
     preview.lines = "one"
     preview.flow = "concise"
     display_preview(preview, "")
 
-    print()
+    print_between()
+    wizard.duration = 23.6
+    wizard.exit = 4
+    wizard.histlabel = "ProjectHistory"
+    wizard.battery = { level = 35 }
+    preview.style = "classic"
+    preview.frame_color = "light"
+    preview.lines = "two"
+    preview.heads = "none"
+    preview.separators = "connector"
+    preview.left_frame = nil
+    preview.right_frame = nil
+    preview.connection = "solid"
+    preview.flow = "fluent"
+    preview.use_icons = true
+    display_preview(preview, "", false)
+
+    print_between()
 end
 
 local function onfilterinput(text)

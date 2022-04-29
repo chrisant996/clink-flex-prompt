@@ -726,7 +726,11 @@ end
 -- Clink can store multiple separate histories by setting CLINK_HISTORY_LABEL.
 
 local function render_histlabel(args)
+    local wizard = flexprompt.get_wizard_state()
     local text = os.getenv("clink_history_label")
+    if wizard and wizard.histlabel then
+        text = wizard.histlabel
+    end
     if text then
         text = text:match("^ *([^ ].*)$")
         text = text:match("^(.*[^ ]) *$")
