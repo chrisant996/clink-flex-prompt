@@ -979,8 +979,8 @@ end
 local function run_demo()
     local wizard =
     {
-        cwd = "c:\\directory",
-        duration = 0,
+        cwd = "~\\src",
+        duration = 5,
         exit = 0,
         width = console.getwidth(),
     }
@@ -988,94 +988,98 @@ local function run_demo()
     local preview =
     {
         wizard = wizard,
+        left_prompt = "{cwd}{git}",
         unicode = true,
     }
 
-    local function print_between()
-        print()
-        print()
-    end
-
-    print_between()
-    display_preview(preview, "", false)
-
-    print_between()
-    wizard.duration = 4.5
-    preview.lines = "two"
-    preview.connection = "solid"
-    preview.lean_separators = "updiagonal"
-    preview.use_icons = true
-    display_preview(preview, "", false)
-
-    print_between()
-    wizard.cwd = "c:\\repos\\project"
-    wizard.duration = 0
-    wizard.exit = 9009
-    wizard.git_dir = "c:\\repos\\project\\.git"
-    wizard.git = {
-        status = {
-            working = {
-                modify = 3,
-            },
-        },
-    }
-    preview.style = "classic"
-    preview.frame_color = "light"
-    preview.lines = "two"
-    preview.heads = "blurred"
-    preview.separators = "none"
-    preview.left_frame = "round"
-    preview.right_frame = "round"
+    print()
+    display_centered("\x1b[1mLean Style\x1b[m ")
+    preview.style = "lean"
     preview.connection = nil
-    preview.flow = "fluent"
-    display_preview(preview, "", false)
-
-    print_between()
-    wizard.duration = 0
-    wizard.exit = 0
-    wizard.battery = { level = 82 }
-    preview.frame_color = "dark"
-    preview.heads = "slant"
+    preview.heads = nil
+    preview.tails = nil
     preview.separators = nil
-    preview.left_frame = nil
-    preview.right_frame = nil
-    preview.connection = "dotted"
+
+    print()
+    preview.lines = nil
+    preview.right_prompt = "{duration}"
     preview.flow = nil
     preview.use_icons = false
-    display_preview(preview, "", false)
+    preview.powerline_font = false
+    display_preview(preview)
 
-    print_between()
-    wizard.git = {}
-    wizard.duration = 3.6
-    wizard.duration_tenths = true
-    wizard.exit = 0
-    wizard.battery = { level = 78 }
-    preview.style = "rainbow"
-    preview.frame_color = "dark"
-    preview.heads = "pointed"
-    preview.separators = nil
-    preview.lines = "one"
-    preview.flow = "concise"
-    display_preview(preview, "")
-
-    print_between()
-    wizard.duration = 23.6
-    wizard.exit = 4
-    wizard.histlabel = "ProjectHistory"
-    wizard.battery = { level = 35 }
-    preview.style = "classic"
-    preview.frame_color = "light"
+    print()
     preview.lines = "two"
-    preview.heads = "none"
-    preview.separators = "connector"
-    preview.left_frame = nil
-    preview.right_frame = nil
-    preview.connection = "solid"
+    preview.right_prompt = "{duration}{time}"
     preview.flow = "fluent"
     preview.use_icons = true
-    display_preview(preview, "", false)
+    preview.powerline_font = true
+    display_preview(preview)
 
-    print_between()
+    print()
+    display_centered("\x1b[1mClassic Style\x1b[m")
+    preview.style = "classic"
+    preview.frame_color = "dark"
+    preview.connection = nil
+    preview.heads = nil
+    preview.tails = nil
+    preview.separators = nil
+
+    print()
+    preview.lines = nil
+    preview.right_prompt = "{duration}"
+    preview.flow = nil
+    preview.use_icons = false
+    preview.powerline_font = false
+    preview.heads = "pointed"
+    display_preview(preview)
+
+    print()
+    preview.lines = "two"
+    preview.right_prompt = "{duration}{time}"
+    preview.flow = "fluent"
+    preview.use_icons = true
+    preview.powerline_font = true
+    preview.heads = "blurred"
+    preview.tails = "blurred"
+    preview.separators = "slant"
+    preview.left_frame = "round"
+    preview.right_frame = "round"
+    preview.connection = "dotted"
+    display_preview(preview)
+
+    print()
+    display_centered("\x1b[1mRainbow Style\x1b[m")
+    preview.style = "rainbow"
+    preview.connection = nil
+    preview.heads = nil
+    preview.tails = nil
+    preview.separators = nil
+
+    print()
+    preview.lines = nil
+    preview.right_prompt = "{duration}"
+    preview.flow = nil
+    preview.use_icons = false
+    preview.powerline_font = false
+    preview.heads = "pointed"
+    display_preview(preview)
+
+    print()
+    preview.lines = "two"
+    preview.right_prompt = "{duration}{time}"
+    preview.flow = "fluent"
+    preview.use_icons = true
+    preview.powerline_font = true
+    preview.heads = "slant"
+    preview.tails = "slant"
+    preview.separators = nil
+    preview.left_frame = "none"
+    preview.right_frame = "round"
+    preview.connection = "solid"
+    display_preview(preview)
+
+    print()
 end
 
 local function onfilterinput(text)
