@@ -8,7 +8,8 @@ The style of the prompt can be customized in many ways as well.
 Flex prompt for Clink was inspired by the zsh [powerlevel10k](https://github.com/romkatv/powerlevel10k) theme by Roman Perepelitsa.<br/>
 Some of the prompt modules are based on [cmder-powerline-prompt](https://github.com/chrisant996/cmder-powerline-prompt).
 
-- [ ] _TBD: screen shot._
+![clink-flex-prompt](
+https://raw.githubusercontent.com/chrisant996/clink-flex-prompt/master/demo.png)
 
 # Installation
 
