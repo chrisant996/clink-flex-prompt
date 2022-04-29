@@ -990,6 +990,9 @@ local function run_demo()
         wizard = wizard,
         left_prompt = "{cwd}{git}",
         unicode = true,
+        symbols = {
+            prompt = { ">", winterminal="❯" },
+        },
     }
 
     print()
