@@ -1574,6 +1574,34 @@ flexprompt.promptcoroutine = promptcoroutine
 -- Function to use io.popenyield when available, otherwise io.popen.
 flexprompt.popenyield = io.popenyield or io.popen
 
+-- Function to simplify caching async prompt info.
+function flexprompt.prompt_info(cache_container, root, branch, collect_func)
+    if not cache_container.cached_info then
+        cache_container.cached_info = {}
+    end
+
+    -- Discard cached info if from a different root or branch.
+    if (cache_container.cached_info.root ~= root) or (cache_container.cached_info.branch ~= branch) then
+        cache_container.cached_info = {}
+        cache_container.cached_info.root = root
+        cache_container.cached_info.branch = branch
+    end
+
+    -- Use coroutine to collect status info asynchronously.
+    local info = flexprompt.promptcoroutine(collect_func)
+    local refreshing
+
+    -- Use cached info until coroutine is finished.
+    if not info then
+        info = cache_container.cached_info.info or {}
+        refreshing = true
+    else
+        cache_container.cached_info.info = info
+    end
+
+    return info, refreshing
+end
+
 --------------------------------------------------------------------------------
 -- Internal helpers.
 
