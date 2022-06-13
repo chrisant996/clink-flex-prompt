@@ -193,6 +193,24 @@ local function abbreviate_parents(dir, all)
     return tmp
 end
 
+local function maybe_apply_tilde(dir)
+    if flexprompt.settings.use_home_tilde then
+        local home = os.getenv("HOME")
+        if home and string.find(string.lower(dir), string.lower(home)) == 1 then
+            if not git_wks then
+                real_git_dir, git_wks = flexprompt.get_git_dir(dir)
+            end
+            dir = string.sub(dir, #home + 1)
+            if shorten then
+                dir = abbreviate_parents(dir)
+            end
+            dir = "~" ..dir
+            return dir, true
+        end
+    end
+    return dir
+end
+
 local function render_cwd(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -222,18 +240,11 @@ local function render_cwd(args)
         cwd = get_folder_name(cwd)
     else
         repeat
-            if flexprompt.settings.use_home_tilde then
-                local home = os.getenv("HOME")
-                if home and string.find(string.lower(cwd), string.lower(home)) == 1 then
-                    if not git_wks then
-                        real_git_dir, git_wks = flexprompt.get_git_dir(cwd)
-                    end
-                    cwd = string.sub(cwd, #home + 1)
-                    if shorten then
-                        cwd = abbreviate_parents(cwd)
-                    end
-                    cwd = "~" .. cwd
-                end
+            local tilde
+            local orig_cwd = cwd
+            cwd, tilde = maybe_apply_tilde(cwd)
+            if tilde and not git_wks then
+                real_git_dir, git_wks = flexprompt.get_git_dir(orig_cwd)
             end
 
             if type == "smart" or type == "rootsmart" then
@@ -245,6 +256,7 @@ local function render_cwd(args)
                     -- of the directory that comes after.
                     -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
                     local git_wks_parent = path.toparent(git_wks) -- Don't use get_parent() here!
+                    git_wks_parent = maybe_apply_tilde(git_wks_parent)
                     local appended_dir = string.sub(cwd, string.len(git_wks_parent) + 1)
                     local smart_dir = get_folder_name(git_wks_parent) .. appended_dir
                     if type == "rootsmart" then
