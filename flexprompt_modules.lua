@@ -226,16 +226,13 @@ local function render_cwd(args)
                 local home = os.getenv("HOME")
                 if home and string.find(string.lower(cwd), string.lower(home)) == 1 then
                     if not git_wks then
-                        real_git_dir, git_wks = flexprompt.get_git_dir(cwd) or false
+                        real_git_dir, git_wks = flexprompt.get_git_dir(cwd)
                     end
-                    if not git_wks then
-                        cwd = string.sub(cwd, #home + 1)
-                        if shorten then
-                            cwd = abbreviate_parents(cwd)
-                        end
-                        cwd = "~" .. cwd
-                        break
+                    cwd = string.sub(cwd, #home + 1)
+                    if shorten then
+                        cwd = abbreviate_parents(cwd)
                     end
+                    cwd = "~" .. cwd
                 end
             end
 
