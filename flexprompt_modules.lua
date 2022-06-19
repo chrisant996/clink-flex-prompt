@@ -1371,3 +1371,5 @@ end
 if rl.ismodifiedline then
 flexprompt.add_module( "modmark",   render_modmark                      )
 end
+
+_flexprompt_test_process_cwd_string = process_cwd_string
