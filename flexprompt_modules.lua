@@ -181,7 +181,19 @@ local function abbreviate_parents(dir)
     return path.join(parent:gsub(ABBREV_PATTERN, "%1"), child)
 end
 
-local function process_cwd_string(cwd, git_wks, args)
+local function render_cwd(args)
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        color = flexprompt.use_best_color("blue", "38;5;19")
+    elseif style == "classic" then
+        color = flexprompt.use_best_color("cyan", "38;5;39")
+    else
+        color = flexprompt.use_best_color("blue", "38;5;33")
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
     local shorten = flexprompt.parse_arg_keyword(args, "s", "shorten") and "all"
     if not shorten then
         shorten = flexprompt.parse_arg_token(args, "s", "shorten")
@@ -190,6 +202,7 @@ local function process_cwd_string(cwd, git_wks, args)
     local wizard = flexprompt.get_wizard_state()
     local cwd = wizard and wizard.cwd or os.getcwd()
     local git_wks = wizard and (wizard.git_dir or false)
+    local sym
     local _
 
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
@@ -234,35 +247,14 @@ local function process_cwd_string(cwd, git_wks, args)
             else
                 cwd = cwd:gsub([[%?]], cwd_suffix, 1)
             end
+            if type == "smart" or type == "rootsmart" then
+                sym = flexprompt.get_icon("cwd_git_symbol")
+            end
         end
     end
 
-    return cwd, sym
-end
-
-local function render_cwd(args)
-    local colors = flexprompt.parse_arg_token(args, "c", "color")
-    local color, altcolor
-    local style = flexprompt.get_style()
-    if style == "rainbow" then
-        color = flexprompt.use_best_color("blue", "38;5;19")
-    elseif style == "classic" then
-        color = flexprompt.use_best_color("cyan", "38;5;39")
-    else
-        color = flexprompt.use_best_color("blue", "38;5;33")
-    end
-    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
-
-    local wizard = flexprompt.get_wizard_state()
-    local cwd = wizard and wizard.cwd or os.getcwd()
-    local git_wks = wizard and (wizard.git_dir or false)
-
-    local sym
-    cwd, sym = process_cwd_string(cwd, git_wks, args)
-
     cwd = flexprompt.append_text(flexprompt.get_dir_stack_depth(), cwd)
-    local git_icon = flexprompt.get_icon("cwd_git_symbol")
-    cwd = flexprompt.append_text((git_icon ~= "") and git_icon or flexprompt.get_module_symbol(), cwd)
+    cwd = flexprompt.append_text((sym ~= "") and sym or flexprompt.get_module_symbol(), cwd)
 
     return cwd, color, altcolor
 end
@@ -1355,5 +1347,3 @@ end
 if rl.ismodifiedline then
 flexprompt.add_module( "modmark",   render_modmark                      )
 end
-
-_flexprompt_test_process_cwd_string = process_cwd_string
