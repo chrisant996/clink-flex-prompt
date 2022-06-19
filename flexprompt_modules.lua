@@ -174,7 +174,7 @@ local function get_folder_name(dir)
     return child == "" and parent or child
 end
 
-local ABBREV_PATTERN = "([/\\][\0-\x7F\xC2-\xF4][\x80-\xBF]*)[^/\\]+"
+local ABBREV_PATTERN = "([/\\][\0-\x7F\xC2-\xF4][\x80-\xBF]*)[^/\\]*"
 
 local function abbreviate_parents(dir)
     local parent, child = path.toparent(dir)
