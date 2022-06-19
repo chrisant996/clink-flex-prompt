@@ -170,12 +170,8 @@ end
 --  - For \\server\share\subdir it yields subdir
 --  - For \\server\share it yields \\server\share
 local function get_folder_name(dir)
-    local parent,child = path.toparent(dir)
-    dir = child
-    if #dir == 0 then
-        dir = parent
-    end
-    return dir
+    local parent, child = path.toparent(dir)
+    return child == "" and parent or child
 end
 
 local function abbreviate_parents(dir, all)
@@ -185,8 +181,8 @@ local function abbreviate_parents(dir, all)
     else
         tmp, suffix = path.toparent(dir)
     end
-    tmp = tmp:gsub("^([!-.0-%][-~])[^:/\\]*", "%1")
-    tmp = tmp:gsub("([/\\][!-.0-%][-~])[^/\\]*", "%1")
+    tmp = tmp:gsub("^([!-.0-[%]^-~])[^:/\\]*", "%1")
+    tmp = tmp:gsub("([/\\][!-.0-[%]^-~])[^/\\]*", "%1")
     if suffix and suffix ~= "" then
         tmp = path.join(tmp, suffix)
     end
@@ -196,19 +192,69 @@ end
 local function maybe_apply_tilde(dir)
     if flexprompt.settings.use_home_tilde then
         local home = os.getenv("HOME")
-        if home and string.find(string.lower(dir), string.lower(home)) == 1 then
-            if not git_wks then
-                real_git_dir, git_wks = flexprompt.get_git_dir(dir)
-            end
-            dir = string.sub(dir, #home + 1)
-            if shorten then
-                dir = abbreviate_parents(dir)
-            end
-            dir = "~" ..dir
+        if home and string.find(string.lower(dir), string.lower(home), 1, true--[[plain]]) == 1 then
+            dir = "~" .. string.sub(dir, #home + 1)
             return dir, true
         end
     end
     return dir
+end
+
+local function process_cwd_string(cwd, git_wks, args)
+    local shorten = flexprompt.parse_arg_keyword(args, "s", "shorten") and "all"
+    if not shorten then
+        shorten = flexprompt.parse_arg_token(args, "s", "shorten")
+    end
+
+    local real_git_dir -- for clarity; value is not used
+
+    local sym
+    local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
+    if type == "folder" then
+        return get_folder_name(cwd)
+    end
+
+    local tilde
+    local orig_cwd = cwd
+    cwd, tilde = maybe_apply_tilde(cwd)
+
+    if type == "smart" or type == "rootsmart" then
+        if git_wks == nil then -- Don't double-hunt for it!
+            real_git_dir, git_wks = flexprompt.get_git_dir(orig_cwd)
+        end
+
+        if git_wks then
+            -- Get the git workspace folder name and reappend any part
+            -- of the directory that comes after.
+            -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
+            git_wks = maybe_apply_tilde(git_wks)
+            local git_wks_parent = path.toparent(git_wks) -- Don't use get_parent() here!
+            local appended_dir = string.sub(cwd, string.len(git_wks_parent) + 1)
+            local smart_dir = get_folder_name(git_wks_parent) .. appended_dir
+            if type == "rootsmart" then
+                local rootcolor = flexprompt.parse_arg_token(args, "rc", "rootcolor")
+                local parent = cwd:sub(1, #cwd - #smart_dir)
+                if shorten then
+                    parent = abbreviate_parents(parent, true--[[all]])
+                    if shorten ~= "smartroot" and shorten ~= "rootsmart" then
+                        smart_dir = abbreviate_parents(smart_dir)
+                    end
+                    shorten = nil
+                end
+                cwd = flexprompt.make_fluent_text(parent, rootcolor or true) .. smart_dir
+            else
+                cwd = smart_dir
+            end
+            local tmp = flexprompt.get_icon("cwd_git_symbol")
+            sym = (tmp ~= "") and tmp or nil
+        end
+    end
+
+    if shorten then
+        cwd = abbreviate_parents(cwd)
+    end
+
+    return cwd, sym
 end
 
 local function render_cwd(args)
@@ -224,65 +270,12 @@ local function render_cwd(args)
     end
     color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
 
-    local shorten = flexprompt.parse_arg_keyword(args, "s", "shorten") and "all"
-    if not shorten then
-        shorten = flexprompt.parse_arg_token(args, "s", "shorten")
-    end
-
     local wizard = flexprompt.get_wizard_state()
     local cwd = wizard and wizard.cwd or os.getcwd()
     local git_wks = wizard and (wizard.git_dir or false)
-    local real_git_dir -- for clarify; value is not used
 
     local sym
-    local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
-    if type == "folder" then
-        cwd = get_folder_name(cwd)
-    else
-        repeat
-            local tilde
-            local orig_cwd = cwd
-            cwd, tilde = maybe_apply_tilde(cwd)
-            if tilde and not git_wks then
-                real_git_dir, git_wks = flexprompt.get_git_dir(orig_cwd)
-            end
-
-            if type == "smart" or type == "rootsmart" then
-                if git_wks == nil then -- Don't double-hunt for it!
-                    real_git_dir, git_wks = flexprompt.get_git_dir()
-                end
-                if git_wks then
-                    -- Get the git workspace folder name and reappend any part
-                    -- of the directory that comes after.
-                    -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
-                    local git_wks_parent = path.toparent(git_wks) -- Don't use get_parent() here!
-                    git_wks_parent = maybe_apply_tilde(git_wks_parent)
-                    local appended_dir = string.sub(cwd, string.len(git_wks_parent) + 1)
-                    local smart_dir = get_folder_name(git_wks_parent) .. appended_dir
-                    if type == "rootsmart" then
-                        local rootcolor = flexprompt.parse_arg_token(args, "rc", "rootcolor")
-                        local parent = cwd:sub(1, #cwd - #smart_dir)
-                        if shorten then
-                            parent = abbreviate_parents(parent, true--[[all]])
-                            if shorten ~= "smartroot" then
-                                smart_dir = abbreviate_parents(smart_dir)
-                            end
-                            shorten = nil
-                        end
-                        cwd = flexprompt.make_fluent_text(parent, rootcolor or true) .. smart_dir
-                    else
-                        cwd = smart_dir
-                    end
-                    local tmp = flexprompt.get_icon("cwd_git_symbol")
-                    sym = (tmp ~= "") and tmp or nil
-                end
-            end
-        until true
-    end
-
-    if shorten then
-        cwd = abbreviate_parents(cwd)
-    end
+    cwd, sym = process_cwd_string(cwd, git_wks, args)
 
     cwd = flexprompt.append_text(flexprompt.get_dir_stack_depth(), cwd)
     cwd = flexprompt.append_text(sym or flexprompt.get_module_symbol(), cwd)
