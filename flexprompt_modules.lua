@@ -199,7 +199,7 @@ function abbreviate_parents(dir, all)
     if unicode.iter then
         tmp = unicode.normalize(3, tmp)
         local i = 1
-        local s,e = tmp:find("^[^:/\\]+", i)
+        local s,e = tmp:find("^[^ :/\\]+", i)
         if s then
             tmp = abbreviate_range(tmp, s, e)
             i = s + 1
@@ -214,7 +214,7 @@ function abbreviate_parents(dir, all)
         end
     else
         tmp = tmp:gsub("^([!-.0-[%]^-~])[^:/\\]+", "%1")
-        tmp = tmp:gsub("([/\\][!-.0-[%]^-~])[^/\\]+", "%1")
+        tmp = tmp:gsub("([/\\][ -.0-[%]^-~])[^/\\]+", "%1")
     end
     if suffix and suffix ~= "" then
         tmp = path.join(tmp, suffix)
