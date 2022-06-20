@@ -174,15 +174,48 @@ local function get_folder_name(dir)
     return child == "" and parent or child
 end
 
-local function abbreviate_parents(dir, all)
+local function abbreviate_range(text, s, e)
+    -- This handles combining marks, but does not yet handle ZWJ (0x200d) such
+    -- as in emoji sequences.
+    local abbr = ""
+    for codepoint, value, combining in unicode.iter(text:sub(s, e)) do
+        if value == 0x200d then
+            break
+        elseif not combining and #abbr > 0 then
+            break
+        end
+        abbr = abbr .. codepoint
+    end
+    return text:sub(1, s - 1) .. abbr .. text:sub(e + 1)
+end
+
+function abbreviate_parents(dir, all)
     local tmp, suffix
     if all then
         tmp = dir
     else
         tmp, suffix = path.toparent(dir)
     end
-    tmp = tmp:gsub("^([!-.0-[%]^-~])[^:/\\]*", "%1")
-    tmp = tmp:gsub("([/\\][!-.0-[%]^-~])[^/\\]*", "%1")
+    if unicode.iter then
+        tmp = unicode.normalize(3, tmp)
+        local i = 1
+        local s,e = tmp:find("^[^:/\\]+", i)
+        if s then
+            tmp = abbreviate_range(tmp, s, e)
+            i = s + 1
+        end
+        while true do
+            s, e = tmp:find("[/\\][^/\\]+", i)
+            if not s then
+                break
+            end
+            tmp = abbreviate_range(tmp, s + 1, e)
+            i = s + 2
+        end
+    else
+        tmp = tmp:gsub("^([!-.0-[%]^-~])[^:/\\]+", "%1")
+        tmp = tmp:gsub("([/\\][!-.0-[%]^-~])[^/\\]+", "%1")
+    end
     if suffix and suffix ~= "" then
         tmp = path.join(tmp, suffix)
     end
