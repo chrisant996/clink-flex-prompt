@@ -189,7 +189,7 @@ local function abbreviate_range(text, s, e)
     return text:sub(1, s - 1) .. abbr .. text:sub(e + 1)
 end
 
-function abbreviate_parents(dir, all)
+local function abbreviate_parents(dir, all)
     local tmp, suffix
     if all then
         tmp = dir
