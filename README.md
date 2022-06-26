@@ -84,6 +84,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{hg}"` shows Mercurial status.
 - `"{histlabel}"` shows the current %CLINK_HISTORY_LABEL%, if any.
 - `"{keymap}"` shows the current key bindings keymap (emacs mode, vi command mode, or vi insert mode).
+- `"{k8s}"` shows the current kubernetes context and namespace.
 - `"{maven}"` shows package info.
 - `"{modmark}"` shows a modified line indicator when the current line is a history entry and has been modified (only when the `mark-modified-lines` Readline config setting is `on`).
 - `"{npm}"` shows package name and version.
@@ -240,6 +241,18 @@ flexprompt.settings.spacing = "sparse"
 
 ```lua
 flexprompt.settings.flow = "fluent"
+```
+
+## On Commands
+
+You can make certain modules only show up when certain commands are typed.
+
+For example, you might want the `{k8s}` Kubernetes module to only show up when you type `kubectl`<kbd>Space</kbd>.
+
+```lua
+flexprompt.settings.oncommands = "moduleA=command1,moduleA=command2,moduleB=command1,moduleB=command3"
+-- moduleA will only show up when "command1" or "command2" are typed.
+-- moduleB will only show up when "command1" or "command3" are typed.
 ```
 
 ## Miscellaneous Settings
@@ -456,6 +469,111 @@ end
 
 -- This registers the prompt module function with flexprompt.
 flexprompt.add_module("mfm", my_first_module)
+```
+
+## Async Prompt Filtering
+
+Clink supports asynchronous prompt filtering, where the input line editor stays
+responsive even while a prompt filter runs an operation that takes a long time
+to complete (for example `git status` in a large repo).
+
+It's easy to make your custom modules take advantage of async prompt filtering.
+
+### Step 1 -- Collect info to be shown in the prompt
+
+Make a function that collects the info that should appear in the prompt.
+Make the function return a table containing the info.
+
+```lua
+-- This function uses async prompt filtering to count the number of files in the
+-- current directory.
+local function collect_files_info()
+    local num = 0
+
+    -- Run the `dir` command.
+    local f = io.popen("dir /b /a-d *")
+    if f then
+        for line in f:lines() do
+            num = num + 1
+        end
+        f:close()
+    end
+
+    -- Return the collected info in a table.
+    return {
+        count = num
+    }
+end
+```
+
+## Step Two -- Make it collect the info asynchronously
+
+Make a module that calls `flexprompt.prompt_info()`.  We'll discuss the middle
+two parameters later -- they can be empty strings if you don't need them.
+
+```lua
+local files_data = {}
+
+local function files_module(args)
+    -- Use async prompt filtering to call the collect_files_info() function.
+    local info = flexprompt.prompt_info(files_data, "", "", collect_files_info)
+
+    -- Build the prompt text.
+    local text
+    if info.count then
+        text = flexprompt.append_text(info.count, flexprompt.make_fluent_text("file(s)"))
+    else
+        -- When the count isn't known, we can say that it's counting.
+        text = flexprompt.make_fluent_text("(counting files)")
+    end
+
+    return text, "cyan"
+end
+
+flexprompt.add_module("files", files_module)
+```
+
+## Step Three -- [Optional] Maybe reset the cached prompt info
+
+Async prompt filtering shows the previous prompt content until the async
+collection function finishes.
+
+But sometimes you may know in advance that the previous prompt content is no
+longer relevant.  There is a simple way to automatically discard the previous
+cached prompt content.
+
+The `flexprompt.prompt_info()` function takes two parameters which, if either is
+different from the previous prompt, will automatically reset the cached prompt
+content.
+
+For example, the `{git}` module passes the git repo root directory and the
+current git branch.  This is so that if you `cd` to a different repo or
+`git switch` to a different branch, the prompt doesn't mislead by showing info
+from a different repo or branch.
+
+So, since this sample `{files}` module counts the files in the current
+directory, it makes sense to use the current directory for one of those two
+parameters:
+
+```lua
+local function files_module(args)
+    -- Use async prompt filtering to call the collect_foo_info() function.
+    -- Passing os.getcwd() makes the cached prompt info reset upon changing to
+    -- a different current directory, so it doesn't (briefly) show a count from
+    -- the previous prompt.
+    local info = flexprompt.prompt_info(files_data, os.getcwd(), "", collect_files_info)
+
+    -- Build the prompt text.
+    local text
+    if info.count then
+        text = flexprompt.append_text(info.count, flexprompt.make_fluent_text("file(s)"))
+    else
+        -- When the count isn't known, we can say that it's counting.
+        text = flexprompt.make_fluent_text("(counting files)")
+    end
+
+    return text, "cyan"
+end
 ```
 
 ## Customizable Styling
