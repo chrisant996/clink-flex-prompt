@@ -888,8 +888,12 @@ local function collect_k8s_info()
                 break
             end
         end
-        p:close()
 
+        local ok, what, code = p:close()
+        if not ok then
+            -- Only reachable in Clink v1.3.29 and higher.
+            return { text = "kubectl not found" }
+        end
         if not any_lines then
             return { text = "unknown failure" }
         end
