@@ -1016,6 +1016,29 @@ local function render_modules(prompt, side, frame_color, anchors)
 
     init_segmenter(side, frame_color)
 
+    local oncommands
+    if type(flexprompt.settings.oncommands) == "table" then
+        -- Already in table form?  Use it as is.
+        -- Scheme:  oncommands[module] = { cmd1, cmd2, ... }
+        oncommands = flexprompt.settings.oncommands
+    elseif type(flexprompt.settings.oncommands) == "string" then
+        -- Build oncommands table from string.
+        -- Format:  "moduleA=cmd1,moduleA=cmd2,moduleB=cmd3"
+        -- Delimiters are space, comma, or semicolon (all are interchangeable).
+        oncommands = {}
+        for _,s in ipairs(string.explode(flexprompt.settings.oncommands, " ,;")) do
+            local m,c = s:match("^([^ =]+)=(.+)$")
+            if m then
+                m = clink.lower(m)
+                c = clink.lower(c)
+                if not oncommands[m] then
+                    oncommands[m] = {}
+                end
+                table.insert(oncommands[m], c)
+            end
+        end
+    end
+
     while true do
         local s,e,cap = string.find(prompt, "{([^}]*)}", init)
         if not s then
@@ -1030,6 +1053,21 @@ local function render_modules(prompt, side, frame_color, anchors)
             args = string.sub(cap, #name + 2)
         else
             name = cap
+        end
+
+        -- If the module is in the oncommands table then only show it if one of
+        -- the associated commands is entered.
+        if oncommands and oncommands[name:lower()] then
+            local n = name
+            name = nil
+            if _cached_state.command then
+                for _,c in ipairs(oncommands[n:lower()]) do
+                    if string.equalsi(c, _cached_state.command) then
+                        name = n
+                        break
+                    end
+                end
+            end
         end
 
         segmenter._current_module = name
@@ -1918,4 +1956,14 @@ local function onbeginedit()
     end
 end
 
+local function oncommand(line_state, info)
+    if flexprompt.settings.oncommands then
+        _cached_state.command = path.getbasename(info.command):lower()
+        clink.refilterprompt()
+    end
+end
+
 clink.onbeginedit(onbeginedit)
+if clink.oncommand then
+    clink.oncommand(oncommand)
+end
