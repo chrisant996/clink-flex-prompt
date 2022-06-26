@@ -863,6 +863,90 @@ local function render_keymap(args)
 end
 
 --------------------------------------------------------------------------------
+-- K8S MODULE:  {k8s:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+
+local k8s = {}
+
+local function collect_k8s_info()
+    local ns = "default"
+    local context
+    local p
+
+    repeat
+        p = io.popenyield("kubectl.exe config view --minify 2>nul", "rt")
+        if not p then
+            return { text = "unknown failure" }
+        end
+
+        local any_lines
+        for line in p:lines() do
+            any_lines = true
+            ns = line:match(" *namespace: +(.+)$")
+            if ns then
+                break
+            end
+        end
+        p:close()
+
+        if not any_lines then
+            return { text = "unknown failure" }
+        end
+
+        p = io.popenyield("kubectl.exe config current-context 2>nul", "rt")
+        if not p then
+            break
+        end
+
+        for line in p:lines() do
+            context = line:match("(.+)$")
+            if context then
+                break
+            end
+        end
+        p:close()
+    until true
+
+    return { context=context, namespace=ns }
+end
+
+local function render_k8s(args)
+    local info = flexprompt.prompt_info(k8s, "", "", collect_k8s_info)
+    local text
+
+    if info.text then
+        text = info.text
+    elseif not info.namespace and not info.context then
+        text = flexprompt.make_fluent_text("(kubernetes)")
+    else
+        text = info.namespace
+        if info.context and info.context ~= "" then
+            text = context .. flexprompt.make_fluent_text(":") .. text
+        end
+    end
+
+    local sym = flexprompt.get_module_symbol()
+    if not sym and flexprompt.get_flow() == "fluent" then
+        sym = flexprompt.make_fluent_text("k8s")
+    end
+    text = flexprompt.append_text(sym, text)
+
+    local color, altcolor
+    if flexprompt.get_style() == "rainbow" then
+        color = flexprompt.use_best_color("magenta", "38;5;90")
+        altcolor = "realblack"
+    else
+        color = flexprompt.use_best_color("magenta", "38;5;206")
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "color")
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- MAVEN MODULE:  {maven:color=color_name,alt_color_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1385,6 +1469,7 @@ flexprompt.add_module( "exit",      render_exit                         )
 flexprompt.add_module( "git",       render_git,         { unicode="" } )
 flexprompt.add_module( "hg",        render_hg                           )
 flexprompt.add_module( "histlabel", render_histlabel,   { unicode="" } )
+flexprompt.add_module( "k8s",       render_k8s,         { unicode="ﴱ" } )
 flexprompt.add_module( "maven",     render_maven                        )
 flexprompt.add_module( "npm",       render_npm                          )
 flexprompt.add_module( "python",    render_python,      { unicode="" } )
