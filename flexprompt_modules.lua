@@ -698,7 +698,7 @@ local hg_colors =
 local hg = {}
 
 local function collect_hg_info()
-    local pipe = io.popen("hg status -amrd 2>&1")
+    local pipe = flexprompt.popenyield("hg status -amrd 2>&1")
     local output = pipe:read('*all')
     pipe:close()
 
@@ -875,9 +875,9 @@ local function collect_k8s_info()
     local p
 
     repeat
-        p = io.popenyield("kubectl.exe config view --minify 2>nul", "rt")
+        p = flexprompt.popenyield("kubectl.exe config view --minify 2>nul", "rt")
         if not p then
-            return { text = "unknown failure" }
+            return { text = "error running kubectl.exe" }
         end
 
         local any_lines
@@ -888,17 +888,12 @@ local function collect_k8s_info()
                 break
             end
         end
-
-        local ok, what, code = p:close()
-        if not ok then
-            -- Only reachable in Clink v1.3.29 and higher.
-            return { text = "kubectl not found" }
-        end
+        p:close()
         if not any_lines then
-            return { text = "unknown failure" }
+            return { text = "error running kubectl.exe" }
         end
 
-        p = io.popenyield("kubectl.exe config current-context 2>nul", "rt")
+        p = flexprompt.popenyield("kubectl.exe config current-context 2>nul", "rt")
         if not p then
             break
         end
@@ -958,26 +953,26 @@ end
 local mvn = {}
 
 local function collect_mvn_info()
-    local handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
+    local handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
     local package_group = handle:read("*a")
     handle:close()
     if package_group == nil or package_group == "" then
-        local parent_handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
+        local parent_handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
         package_group = parent_handle:read("*a")
         parent_handle:close()
         if not package_group then package_group = "" end
     end
 
-    handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'artifactId\']/text()" pom.xml 2>NUL')
+    handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'artifactId\']/text()" pom.xml 2>NUL')
     local package_artifact = handle:read("*a")
     handle:close()
     if not package_artifact then package_artifact = "" end
 
-    handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
+    handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
     local package_version = handle:read("*a")
     handle:close()
     if package_version == nil or package_version == "" then
-        local parent_handle = io.popen('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
+        local parent_handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
         package_version = parent_handle:read("*a")
         parent_handle:close()
         if not package_version then package_version = "" end
