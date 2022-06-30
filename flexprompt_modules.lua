@@ -1194,15 +1194,19 @@ local function render_python(args)
 end
 
 --------------------------------------------------------------------------------
--- SVN MODULE:  {hg:color_options}
+-- SVN MODULE:  {svn:color_options}
 --  - color_options override status colors as follows:
 --      - clean=color_name,alt_color_name       When status is clean.
 --      - dirty=color_name,alt_color_name       When status is dirty (modified files).
+--      - unknown=color_name,alt_color_name     When status is unknown.
+
+local svn = {}
 
 local svn_colors =
 {
-    clean       = { "c",  "clean",  "vcs_clean" },
-    dirty       = { "d",  "dirty",  "vcs_conflict" },
+    clean       = { "c",  "clean",    "vcs_clean" },
+    dirty       = { "d",  "dirty",    "vcs_conflict" },
+    unknown     = { "u",  "unknown",  "vcs_unknown" },
 }
 
 local function get_svn_dir(dir)
@@ -1226,12 +1230,22 @@ local function get_svn_branch()
 end
 
 local function get_svn_status()
-    local file = io.popen("svn status -q")
+    local file = flexprompt.popenyield("svn status -q")
     for line in file:lines() do
         file:close()
         return true
     end
     file:close()
+end
+
+local function collect_svn_info()
+    local colors = svn_colors.clean
+    local dirty
+    if get_svn_status() then
+        colors = svn_colors.dirty
+        dirty = true
+    end
+    return { colors=colors, dirty=dirty }
 end
 
 local function render_svn(args)
@@ -1244,9 +1258,9 @@ local function render_svn(args)
     local flow = flexprompt.get_flow()
     local text = flexprompt.format_branch_name(branch)
 
-    local colors = svn_colors.clean
-    if get_svn_status() then
-        colors = svn_colors.dirty
+    local info = flexprompt.prompt_info(svn, svn_dir, branch, collect_svn_info)
+    local colors = info.colors or svn_colors.unknown
+    if info.dirty then
         text = flexprompt.append_text(text, flexprompt.get_symbol("modifycount"))
     end
 
