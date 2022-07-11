@@ -629,6 +629,7 @@ local function render_git(args)
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
     local gitUnpublished = not detached and gitStatus and gitStatus.unpublished
+    local gitError = gitStatus and gitStatus.errmsg
     local colors = git_colors.clean
     local color, altcolor
     local icon_name = "branch"
@@ -638,7 +639,10 @@ local function render_git(args)
         colors = git_colors.unpublished
     end
     text = flexprompt.format_branch_name(branch, icon_name, refreshing)
-    if gitConflict then
+    if gitError then
+        colors = git_colors.unknown
+        text = flexprompt.append_text(text, gitError)
+    elseif gitConflict then
         colors = git_colors.conflict
         text = flexprompt.append_text(text, flexprompt.get_symbol("conflict"))
     elseif gitStatus and gitStatus.working then

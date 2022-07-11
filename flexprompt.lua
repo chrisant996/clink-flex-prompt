@@ -1783,6 +1783,10 @@ end
 -- Uses async coroutine call.
 function flexprompt.get_git_status()
     local file = flexprompt.popenyield("git --no-optional-locks status --branch --porcelain 2>nul")
+    if not file then
+        return { errmsg="[error]" }
+    end
+
     local w_add, w_mod, w_del, w_unt = 0, 0, 0, 0
     local s_add, s_mod, s_del, s_ren = 0, 0, 0, 0
     local unpublished
@@ -1864,8 +1868,11 @@ end
 -- Uses async coroutine call.
 function flexprompt.get_git_ahead_behind()
     local file = flexprompt.popenyield("git rev-list --count --left-right @{upstream}...HEAD 2>nul")
-    local ahead, behind = "0", "0"
+    if not file then
+        return
+    end
 
+    local ahead, behind = "0", "0"
     for line in file:lines() do
         ahead, behind = string.match(line, "(%d+)[^%d]+(%d+)")
     end
@@ -1880,6 +1887,9 @@ end
 -- Uses async coroutine call.
 function flexprompt.get_git_conflict()
     local file = flexprompt.popenyield("git diff --name-only --diff-filter=U 2>nul")
+    if not file then
+        return
+    end
 
     for line in file:lines() do
         file:close()
