@@ -35,16 +35,11 @@ local function collect_anyconnect_info()
     -- We may want to let the user provide a command to run
     -- but then how do we parse the output ?
     -- they could give us the pattern to seach for as well
-    local file = flexprompt.popenyield("vpncli state")
+    local file, pclose = flexprompt.popenyield("vpncli state 2>nul")
     local line
     local conns = {}
 
-    -- Read all lines that have some text in them
-    while true do
-        line = file:read("*l")
-        if not line then
-            break
-        end
+    for line in file:lines() do
         -- Strip the lines of any whitespaces
         line = line:match( "^%s*(.-)%s*$" )
         -- If we have something left add it
@@ -52,12 +47,7 @@ local function collect_anyconnect_info()
           table.insert(conns, line)
         end
     end
-
-    -- If the spawned process returned a non-zero exit code, it failed.
-    local ok,what,stat = file:close()
-    if not ok then
-        return {}
-    end
+    file:close()
 
     -- Check all entries for a given string
     -- It's better to search for Disconnected than connected as connected is present in both and we shouldn't rely just on the case :)
