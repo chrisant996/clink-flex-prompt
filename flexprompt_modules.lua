@@ -35,7 +35,7 @@ local function collect_anyconnect_info()
     -- We may want to let the user provide a command to run
     -- but then how do we parse the output ?
     -- they could give us the pattern to seach for as well
-    local file, pclose = flexprompt.popenyield("vpncli state 2>nul")
+    local file = flexprompt.popenyield("vpncli state 2>nul")
     local line
     local conns = {}
 
