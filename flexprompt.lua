@@ -274,6 +274,9 @@ local symbols =
     prompt          = { ">" },
     overtype_prompt = { "►" },
 
+    vpn             = {         powerline="" },
+    no_vpn          = {         powerline="" },
+
     refresh         = {         unicode="" },  --   
 }
 

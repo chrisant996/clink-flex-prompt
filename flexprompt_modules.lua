@@ -147,6 +147,122 @@ local function render_battery(args)
 end
 
 --------------------------------------------------------------------------------
+-- CISCO MODULE:  {}
+-- Module to check if Cisco AnyConnect VPN is currently connected as well as the relationship
+--   to the HTTP_PROXY and HTTPS_PROXY environment variables
+-- The module will provide a VPN icon and a LAN icon, depending on whether VPN is connected or not
+--   and will color the icon depending on whether the proxy env variables should be defined or not
+
+local cisco_cached_info = {}
+
+-- Collects connection info.
+--
+-- Uses async coroutine calls.
+local function collect_cisco_info()
+    -- We may want to let the user provide a command to run
+    -- but then how do we parse the output ?
+    -- they could give us the pattern to seach for as well
+    local file = flexprompt.popenyield("vpncli state")
+    local line
+    local conns = {}
+
+    -- Read all lines that have some text in them
+    while true do
+        line = file:read("*l")
+        if not line then
+            break
+        end
+        -- Strip the lines of any whitespaces
+        line = line:match( "^%s*(.-)%s*$" )
+        -- If we have something left add it
+        if line ~= "" and #line > 0 then
+          table.insert(conns, line)
+        end
+    end
+
+    -- If the spawned process returned a non-zero exit code, it failed.
+    local ok,what,stat = file:close()
+    if not ok then
+        return {}
+    end
+
+    -- Check all entries for a given string
+    -- It's better to search for Disconnected than connected as connected is present in both and we shouldn't rely just on the case :)
+    connected = false
+    for _,candidate in ipairs(conns) do
+        -- VPN messages we care about have state in the string, e.g.:
+        --  >> state: Disconnected
+        --  >> state: Disconnected
+        --  >> state: Disconnected
+        --  >> notice: Ready to connect.
+        if candidate and #candidate > 0 and candidate:find("state") ~= nil then
+            connected = (candidate:find("Disconnected") == nil) -- We're connected if the message doesn't say Disconnected
+        end
+    end
+    local tmp = os.getenv("HTTP_PROXY")
+    local proxy = tmp and #tmp > 0
+    tmp = os.getenv("HTTPS_PROXY")
+    local proxys = tmp and #tmp > 0
+
+    -- Save connection status as well as information about the HTTP_PROXY and HTTPS_PROXY env variables (if defined and filled in or not)
+    return { connection=connected, proxy=proxy, proxys=proxys }
+end
+
+local function render_cisco(args)
+    local info
+    local refreshing
+    local wizard = flexprompt.get_wizard_state()
+
+    if wizard then
+        info = { connection=false, finished=true }
+    else
+        -- Get connection status.
+        info = flexprompt.promptcoroutine(collect_cisco_info)
+
+        -- Use cached info until coroutine is finished.
+        if not info then
+            info = cisco_cached_info or {}
+            refreshing = true
+        else
+            cisco_cached_info = info
+        end
+    end
+    if not info then
+        return
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    -- Decide on the colors based on the VPN connection state and proxy env vars
+    -- One bad state env variable results in yellow, both result in red
+    -- Green for no vpn and no proxy defined, blue for vpn and both proxies defined
+    if info.connection then
+        -- Any of the proxy env vars being defined is okish
+        if info.proxy or info.proxys then
+            -- If one is defined then yellor, if both are defined then we're good
+            color = info.proxy ~= info.proxys and flexprompt.use_best_color("yellow", "38;5;11") or flexprompt.use_best_color("blue", "38;5;12")
+        else
+            color = flexprompt.use_best_color("red", "38;5;9")
+        end
+    else
+        -- Any of the proxy env vars being defined is not okish
+        if info.proxy or info.proxys then
+            -- If just one is defined then yellow, if both then we're red
+            color = info.proxy ~= info.proxys and flexprompt.use_best_color("yellow", "38;5;11") or flexprompt.use_best_color("red", "38;5;9")
+        else
+            color = flexprompt.use_best_color("green", "38;5;2")
+        end
+    end
+
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+
+    local text = info.connection and flexprompt.get_symbol("vpn") or flexprompt.get_symbol("no_vpn")
+    text = flexprompt.append_text(flexprompt.get_module_symbol(refreshing), text)
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- CWD MODULE:  {cwd:color=color_name,alt_color_name:rootcolor=rootcolor_name:type=type_name:shorten}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -161,6 +277,7 @@ end
 -- The 'shorten' option may optionally be followed by "=rootsmart" to abbreviate
 -- only the repo's parent directories when in a git repo (otherwise abbreviate
 -- all the parent directories).
+
 --
 -- The default type is "rootsmart" if not specified.
 
@@ -1484,6 +1601,7 @@ clink.onendedit(builtin_modules_onendedit)
 -- Initialize the built-in modules.
 
 flexprompt.add_module( "battery",   render_battery                      )
+flexprompt.add_module( "cisco",     render_cisco                        )
 flexprompt.add_module( "cwd",       render_cwd,         { unicode="" } )
 flexprompt.add_module( "duration",  render_duration,    { unicode="" } )
 flexprompt.add_module( "exit",      render_exit                         )
