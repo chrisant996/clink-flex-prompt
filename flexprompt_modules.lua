@@ -1573,33 +1573,33 @@ clink.onendedit(builtin_modules_onendedit)
 --------------------------------------------------------------------------------
 -- Initialize the built-in modules.
 
-flexprompt.add_module( "anyconnect", render_anyconnect                   )
-flexprompt.add_module( "battery",    render_battery                      )
-flexprompt.add_module( "cwd",        render_cwd,         { unicode="" } )
-flexprompt.add_module( "duration",   render_duration,    { unicode="" } )
-flexprompt.add_module( "exit",       render_exit                         )
-flexprompt.add_module( "git",        render_git,         { unicode="" } )
-flexprompt.add_module( "hg",         render_hg                           )
-flexprompt.add_module( "histlabel",  render_histlabel,   { unicode="" } )
-flexprompt.add_module( "k8s",        render_k8s,         { unicode="ﴱ" } )
-flexprompt.add_module( "maven",      render_maven                        )
-flexprompt.add_module( "npm",        render_npm                          )
-flexprompt.add_module( "python",     render_python,      { unicode="" } )
-flexprompt.add_module( "svn",        render_svn                          )
-flexprompt.add_module( "time",       render_time,        { unicode="" } )
-flexprompt.add_module( "user",       render_user,        { unicode="" } )
-flexprompt.add_module( "vpn",        render_vpn,         { unicode="" } )
+flexprompt.add_module( "anyconnect",    render_anyconnect                   )
+flexprompt.add_module( "battery",       render_battery                      )
+flexprompt.add_module( "cwd",           render_cwd,         { unicode="" } )
+flexprompt.add_module( "duration",      render_duration,    { unicode="" } )
+flexprompt.add_module( "exit",          render_exit                         )
+flexprompt.add_module( "git",           render_git,         { unicode="" } )
+flexprompt.add_module( "hg",            render_hg                           )
+flexprompt.add_module( "histlabel",     render_histlabel,   { unicode="" } )
+flexprompt.add_module( "k8s",           render_k8s,         { unicode="ﴱ" } )
+flexprompt.add_module( "maven",         render_maven                        )
+flexprompt.add_module( "npm",           render_npm                          )
+flexprompt.add_module( "python",        render_python,      { unicode="" } )
+flexprompt.add_module( "svn",           render_svn                          )
+flexprompt.add_module( "time",          render_time,        { unicode="" } )
+flexprompt.add_module( "user",          render_user,        { unicode="" } )
+flexprompt.add_module( "vpn",           render_vpn,         { unicode="" } )
 
 if clink.onaftercommand then
-flexprompt.add_module( "keymap",     render_keymap,      { unicode="" } )
+flexprompt.add_module( "keymap",        render_keymap,      { unicode="" } )
 end
 
 if rl.insertmode then
-flexprompt.add_module( "overtype",  render_overtype                     )
+flexprompt.add_module( "overtype",      render_overtype                     )
 end
 
 if rl.ismodifiedline then
-flexprompt.add_module( "modmark",   render_modmark                      )
+flexprompt.add_module( "modmark",       render_modmark                      )
 end
 
 _flexprompt_test_process_cwd_string = process_cwd_string
