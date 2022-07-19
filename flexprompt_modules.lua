@@ -826,7 +826,7 @@ local function render_hg(args)
     -- We're inside of hg repo, read branch and status.
     local pipe = io.popen("hg branch 2>&1")
     local output = pipe:read('*all')
-    local rc = { pipe:close() }
+    pipe:close()
 
     -- Strip the trailing newline from the branch name.
     local n = #output
@@ -1490,12 +1490,7 @@ local function collect_vpn_info()
         end
         table.insert(conns, line)
     end
-
-    -- If the spawned process returned a non-zero exit code, it failed.
-    local ok,what,stat = file:close()
-    if not ok then
-        return {}
-    end
+    file:close()
 
     -- Discard the last line, which says the command completed successfully.
     table.remove(conns)
