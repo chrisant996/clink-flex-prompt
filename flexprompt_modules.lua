@@ -80,15 +80,7 @@ local function render_anyconnect(args)
         info = { connection=false, proxy=true, proxys=false, finished=true }
     else
         -- Get connection status.
-        info = flexprompt.promptcoroutine(collect_anyconnect_info)
-
-        -- Use cached info until coroutine is finished.
-        if not info then
-            info = anyconnect_cached_info or {}
-            refreshing = true
-        else
-            anyconnect_cached_info = info
-        end
+        info = flexprompt.promptcoroutine(anyconnect_cached_info, nil, nil, collect_anyconnect_info)
     end
     if not info then
         return
@@ -1530,15 +1522,7 @@ local function render_vpn(args)
         info = { connection="WORKVPN", finished=true }
     else
         -- Get connection status.
-        info = flexprompt.promptcoroutine(collect_vpn_info)
-
-        -- Use cached info until coroutine is finished.
-        if not info then
-            info = vpn_cached_info or {}
-            refreshing = true
-        else
-            vpn_cached_info = info
-        end
+        info, refreshing = flexprompt.prompt_info(vpn_cached_info, nil, nil, collect_vpn_info)
     end
 
     if not info or not info.connection then
