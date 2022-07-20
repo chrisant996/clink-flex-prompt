@@ -20,13 +20,47 @@ local keymap_color = { fg="34", bg="44", extfg="38;5;26", extbg="48;5;26", lean=
 flexprompt.add_color("keymap", keymap_color)
 
 --------------------------------------------------------------------------------
--- ANYCONNECT MODULE:  {}
--- Module to check if Cisco AnyConnect VPN is currently connected as well as the relationship
---   to the HTTP_PROXY and HTTPS_PROXY environment variables
--- The module will provide a VPN icon and a LAN icon, depending on whether VPN is connected or not
---   and will color the icon depending on whether the proxy env variables should be defined or not
+-- ANYCONNECT MODULE:  {anyconnect:novars:forcetext:text=conn,noconn,unknown:color_options}
+--
+-- Shows whether Cisco AnyConnect VPN is currently connected as well as the
+-- relationship to the HTTP_PROXY and HTTPS_PROXY environment variables.
+--
+-- The module shows a VPN connected or disconnected icon.  The color is chosen
+-- depending on the connection status and proxy environment variables (see below
+-- for details).
+--
+--  - 'novars' omits checking the environment variables.
+--  - 'forcetext' forces show connection status text even when icons are
+--    enabled.  The 'text=' argument can override what text is used.
+--  - 'text=conn,noconn,unknown' overrides the text for the connection status,
+--    which is shown when icons are disabled.
+--      - conn = Text to show when connected (default "Connected").
+--      - noconn = Text to show when disconnected (default "Disconnected").
+--      - unknown = Text to show when unknown or error (default "AnyConnect").
+--  - color_options override status colors as follows:
+--      - connected=color_name,alt_color_name       When connected and env vars are set.
+--      - disconnected=color_name,alt_color_name    When disconnected and env vars are not set.
+--      - partial=color_name,alt_color_name         When one env var is set, and one env var is not.
+--      - mismatch=color_name,alt_color_name        When connected but env vars are not set, or disconnected but env vars are set.
+--      - unknown=color_name,alt_color_name         When connection status is unknown yet.
 
 local anyconnect_cached_info = {}
+
+local anyconnect_colors =
+{
+    connected       = { "c",   "connected",     fg="94",    bg="104",   extfg="38;5;12",    extbg="48;5;12",    },
+    disconnected    = { "d",   "disconnected",  fg="92",    bg="102",   extfg="38;5;2",     extbg="48;5;2",     },
+    mismatch        = { "m",   "mismatch",      fg="91",    bg="101",   extfg="38;5;9",     extbg="48;5;9",     },
+    partial         = { "p",   "partial",       fg="93",    bg="103",   extfg="38;5;11",    extbg="48;5;11",    },
+    unknown         = { "u",   "unknown",       fg="37",    bg="47",    extfg="38;5;7",     extbg="48;5;7",     },
+}
+
+local function parse_inline_color(args, colors)
+    local parsed_colors = flexprompt.parse_arg_token(args, colors[1], colors[2])
+    local color = flexprompt.use_best_color(colors.fg, colors.extfg or colors.fg)
+    local altcolor = flexprompt.use_best_color(colors.bg, colors.extbg or colors.bg)
+    return flexprompt.parse_colors(parsed_colors, color, altcolor)
+end
 
 -- Collects connection info.
 --
@@ -35,7 +69,7 @@ local function collect_anyconnect_info()
     -- We may want to let the user provide a command to run
     -- but then how do we parse the output ?
     -- they could give us the pattern to seach for as well
-    local file = flexprompt.popenyield("vpncli state 2>nul")
+    local file, pclose = flexprompt.popenyield("vpncli state 2>nul")
     local line
     local conns = {}
 
@@ -47,28 +81,46 @@ local function collect_anyconnect_info()
           table.insert(conns, line)
         end
     end
-    file:close()
 
-    -- Check all entries for a given string
-    -- It's better to search for Disconnected than connected as connected is present in both and we shouldn't rely just on the case :)
-    connected = false
+    local ok, msg, code
+    if type(pclose) == "function" then
+        ok, msg, code = pclose()
+        ok = ok and #conns > 0
+    else
+        file:close()
+        ok = #conns > 0
+    end
+    if not ok then
+        return { failed=true, finished=true }
+    end
+
+    -- Check all entries for a given string.  It's better to search for
+    -- Disconnected, since connected is present in both.
+    --
+    -- TODO: Apparently Cisco AnyConnect vpncli.exe doesn't have a way to show
+    -- what you are connected to??
+    local connected = false
     for _,candidate in ipairs(conns) do
         -- VPN messages we care about have state in the string, e.g.:
         --  >> state: Disconnected
         --  >> state: Disconnected
         --  >> state: Disconnected
         --  >> notice: Ready to connect.
-        if candidate and #candidate > 0 and candidate:find("state") ~= nil then
-            connected = (candidate:find("Disconnected") == nil) -- We're connected if the message doesn't say Disconnected
+        if candidate and #candidate > 0 and candidate:find("state") and not candidate:find("Disconnected") then
+            -- If at least one "state" line doesn't say "Disconnected", then
+            -- consider it to be connected.
+            connected = true
         end
     end
+
     local tmp = os.getenv("HTTP_PROXY")
     local proxy = tmp and #tmp > 0
     tmp = os.getenv("HTTPS_PROXY")
     local proxys = tmp and #tmp > 0
 
-    -- Save connection status as well as information about the HTTP_PROXY and HTTPS_PROXY env variables (if defined and filled in or not)
-    return { connection=connected, proxy=proxy, proxys=proxys }
+    -- Save connection status as well as information about the HTTP_PROXY and
+    -- HTTPS_PROXY env variables (if defined and filled in or not).
+    return { connection=connected, proxy=proxy, proxys=proxys, finished=true }
 end
 
 local function render_anyconnect(args)
@@ -80,39 +132,64 @@ local function render_anyconnect(args)
         info = { connection=false, proxy=true, proxys=false, finished=true }
     else
         -- Get connection status.
-        info = flexprompt.promptcoroutine(anyconnect_cached_info, nil, nil, collect_anyconnect_info)
+        info, refreshing = flexprompt.prompt_info(anyconnect_cached_info, nil, nil, collect_anyconnect_info)
     end
     if not info then
         return
     end
 
-    local colors = flexprompt.parse_arg_token(args, "c", "color")
-    local color, altcolor
     -- Decide on the colors based on the VPN connection state and proxy env vars
     -- One bad state env variable results in yellow, both result in red
     -- Green for no vpn and no proxy defined, blue for vpn and both proxies defined
-    if info.connection then
-        -- Any of the proxy env vars being defined is okish
-        if info.proxy or info.proxys then
-            -- If one is defined then yellor, if both are defined then we're good
-            color = info.proxy ~= info.proxys and flexprompt.use_best_color("yellow", "38;5;11") or flexprompt.use_best_color("blue", "38;5;12")
+    local color, altcolor
+    local novars = flexprompt.parse_arg_keyword(args, "n", "novars")
+    if not info.finished or info.failed then
+        color, altcolor = parse_inline_color(args, anyconnect_colors.unknown)
+    elseif info.connection then
+        if novars or (info.proxy and info.proxys) then
+            -- Connected and both vars = CONNECTED (blue).
+            color, altcolor = parse_inline_color(args, anyconnect_colors.connected)
+        elseif not info.proxy and not info.proxys then
+            -- Connected and neither vars = MISMATCHED (red).
+            color, altcolor = parse_inline_color(args, anyconnect_colors.mismatch)
         else
-            color = flexprompt.use_best_color("red", "38;5;9")
+            -- Connected and one var = PARTIAL (yellow).
+            color, altcolor = parse_inline_color(args, anyconnect_colors.partial)
         end
     else
-        -- Any of the proxy env vars being defined is not okish
-        if info.proxy or info.proxys then
-            -- If just one is defined then yellow, if both then we're red
-            color = info.proxy ~= info.proxys and flexprompt.use_best_color("yellow", "38;5;11") or flexprompt.use_best_color("red", "38;5;9")
+        if novars or (not info.proxy and not info.proxys) then
+            -- Disconnected and neither vars = DISCONNECTED (green).
+            color, altcolor = parse_inline_color(args, anyconnect_colors.disconnected)
+        elseif info.proxy and info.proxys then
+            -- Disconnected and both vars = MISMATCH (red).
+            color, altcolor = parse_inline_color(args, anyconnect_colors.mismatch)
         else
-            color = flexprompt.use_best_color("green", "38;5;2")
+            -- Disconnected and one var = PARTIAL (yellow).
+            color, altcolor = parse_inline_color(args, anyconnect_colors.partial)
         end
     end
 
-    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+    local icon = refreshing and flexprompt.get_icon("refresh") or nil
+    if not icon then
+        icon = flexprompt.get_icon(info.connection and "vpn" or "no_vpn")
+        if icon == "" then
+            icon = nil
+        end
+    end
 
-    local text = info.connection and flexprompt.get_symbol("vpn") or flexprompt.get_symbol("no_vpn")
-    text = flexprompt.append_text(flexprompt.get_module_symbol(refreshing), text)
+    local text
+    if not icon or flexprompt.parse_arg_keyword(args, "f", "forcetext") then
+        local strings = string.explode(flexprompt.parse_arg_token(args, "t", "text") or "", ",;")
+        if not info.finished or info.failed then
+            text = strings[3] or "AnyConnect"
+        elseif info.connection then
+            text = strings[1] or "Connected"
+        else
+            text = strings[2] or "Disconnected"
+        end
+    end
+
+    text = flexprompt.append_text(icon, text)
 
     return text, color, altcolor
 end
