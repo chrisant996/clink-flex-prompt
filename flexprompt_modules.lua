@@ -397,17 +397,6 @@ local function abbreviate_parents(dir, all)
     return tmp
 end
 
-local function maybe_apply_tilde(dir)
-    if flexprompt.settings.use_home_tilde then
-        local home = os.getenv("HOME")
-        if home and string.find(string.lower(dir), string.lower(home), 1, true--[[plain]]) == 1 then
-            dir = "~" .. string.sub(dir, #home + 1)
-            return dir, true
-        end
-    end
-    return dir
-end
-
 local function process_cwd_string(cwd, git_wks, args)
     local shorten = flexprompt.parse_arg_keyword(args, "s", "shorten") and "all"
     if not shorten then
@@ -424,7 +413,7 @@ local function process_cwd_string(cwd, git_wks, args)
 
     local tilde
     local orig_cwd = cwd
-    cwd, tilde = maybe_apply_tilde(cwd)
+    cwd, tilde = flexprompt.maybe_apply_tilde(cwd)
 
     if type == "smart" or type == "rootsmart" then
         if git_wks == nil then -- Don't double-hunt for it!
@@ -435,7 +424,7 @@ local function process_cwd_string(cwd, git_wks, args)
             -- Get the git workspace folder name and reappend any part
             -- of the directory that comes after.
             -- Ex: C:\Users\username\some-repo\innerdir -> some-repo\innerdir
-            git_wks = maybe_apply_tilde(git_wks)
+            git_wks = flexprompt.maybe_apply_tilde(git_wks)
             local git_wks_parent = path.toparent(git_wks) -- Don't use get_parent() here!
             local appended_dir = string.sub(cwd, string.len(git_wks_parent) + 1)
             local smart_dir = get_folder_name(git_wks_parent) .. appended_dir

@@ -599,6 +599,17 @@ local function append_text(lhs, rhs)
     end
 end
 
+local function maybe_apply_tilde(dir, force)
+    if force or flexprompt.settings.use_home_tilde then
+        local home = os.getenv("HOME")
+        if home and string.find(string.lower(dir), string.lower(home), 1, true--[[plain]]) == 1 then
+            dir = "~" .. string.sub(dir, #home + 1)
+            return dir, true
+        end
+    end
+    return dir
+end
+
 local function is_module_in_prompt(name)
     local pattern = "{" .. name .. "[:}]"
     local left_prompt = flexprompt.settings.left_prompt
@@ -1494,6 +1505,11 @@ function flexprompt.parse_colors(text, default, altdefault)
     end
     return color, altcolor
 end
+
+-- Function that takes (dir, force) and collapses HOME dir prefix into a tilde,
+-- if configured to do so (flexprompt.settings.use_home_tilde) or if force.
+-- Returns the directory and true or false indicating whether tilde was applied.
+flexprompt.maybe_apply_tilde = maybe_apply_tilde
 
 -- Function that takes (text, force) and surrounds it with control codes to
 -- apply fluent coloring to the text.  If force is true, the fluent color is
