@@ -612,9 +612,10 @@ end
 
 local function is_module_in_prompt(name)
     local pattern = "{" .. name .. "[:}]"
+    local top_prompt = flexprompt.settings.top_prompt
     local left_prompt = flexprompt.settings.left_prompt
     local right_prompt = flexprompt.settings.right_prompt
-    if not left_prompt and not right_prompt then
+    if not top_prompt and not left_prompt and not right_prompt then
         local style = get_style()
         local prompts = flexprompt.choices.prompts[style]["both"]
         left_prompt = prompts[1]
@@ -622,6 +623,9 @@ local function is_module_in_prompt(name)
     end
 
     local is = 0
+    if top_prompt and top_prompt:match(pattern) then
+        is = is + 1
+    end
     if left_prompt and left_prompt:match(pattern) then
         is = is + 1
     end
@@ -653,8 +657,6 @@ if clink.onaftercommand then
     local function insertmode_aftercommand()
         if _insertmode ~= rl.insertmode() then
             _insertmode = rl.insertmode()
-            local left_prompt = flexprompt.settings.left_prompt
-            local right_prompt = flexprompt.settings.right_prompt
             if (flexprompt.get_symbol("overtype_prompt") ~= flexprompt.get_symbol("prompt") or
                     is_module_in_prompt("overtype")) then
                 flexprompt.refilter_module("overtype")
@@ -1146,14 +1148,16 @@ local function render_prompts(render_settings, need_anchors)
     local style = get_style()
     local lines = get_lines()
 
+    local top_prompt = flexprompt.settings.top_prompt
     local left_prompt = flexprompt.settings.left_prompt
     local right_prompt = flexprompt.settings.right_prompt
-    if not left_prompt and not right_prompt then
+    if not top_prompt and not left_prompt and not right_prompt then
         local prompts = flexprompt.choices.prompts[style]["both"]
         left_prompt = prompts[1]
         right_prompt = prompts[2]
     end
 
+    local top = ""
     local left1 = ""
     local right1
     local rightframe1
@@ -1170,6 +1174,12 @@ local function render_prompts(render_settings, need_anchors)
 
     -- Padding around left/right segments for lean style.
     local pad_frame = (style == "lean") and " " or ""
+
+    -- Top -------------------------------------------------------------------
+
+    if top_prompt then
+        top = render_modules(top_prompt, 0, frame_color)
+    end
 
     -- Line 1 ----------------------------------------------------------------
 
@@ -1256,6 +1266,13 @@ local function render_prompts(render_settings, need_anchors)
             prompt = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
         end
         prompt = wizard_prefix .. prompt .. sgr() .. "\r\n" .. wizard_prefix .. left2
+    end
+
+    if #top > 0 then
+        prompt = top .. "\n" .. prompt
+        if left_frame then
+            prompt = string.rep(" ", console.cellcount(left_frame .. pad_frame)) .. prompt
+        end
     end
 
     if rprompt and #rprompt > 0 then
