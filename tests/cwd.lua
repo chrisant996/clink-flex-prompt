@@ -1,3 +1,6 @@
+-- luacheck: globals flexprompt flexprompt
+-- luacheck: globals _flexprompt_test_process_cwd_string
+
 local uht = flexprompt.settings.use_home_tilde
 
 local test_cwd          = "c:\\Users\\chrisant\\source\\repos\\win32-darkmode\\win32-darkmode\\x64"

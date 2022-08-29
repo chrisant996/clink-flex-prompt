@@ -15,6 +15,11 @@ end
 --------------------------------------------------------------------------------
 -- Internals.
 
+-- luacheck: no max line length
+-- luacheck: globals console io.popenyield os.geterrorlevel os.isfile string.equalsi _error_handler NONL
+-- luacheck: globals flexprompt
+-- luacheck: globals CMDER_SESSION prompt_includeVersionControl
+
 flexprompt = flexprompt or {}
 flexprompt.settings = flexprompt.settings or {}
 flexprompt.settings.symbols = flexprompt.settings.symbols or {}
@@ -295,10 +300,6 @@ end
 
 local pad_right_edge = " "
 
-local function csi(args, code)
-    return "\x1b["..tostring(args)..code
-end
-
 local function sgr(args)
     if args then
         return "\x1b["..tostring(args).."m"
@@ -535,7 +536,7 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     local gap = width - (lhs_len + rhs_len + frame_len)
     if gap < 0 then
         gap = gap + rhs_len
-        rhs_len = 0
+        rhs_len = 0 -- luacheck: no unused
         rhs = ""
         if gap < 0 then
             frame = ""
@@ -735,14 +736,14 @@ local function init_segmenter(side, frame_color)
                 local pad = separators ~= "none" and separators ~= "space" and separators ~= "spaces"
                 separators = available_separators[separators]
                 if pad then
-                    local pad = {}
+                    local pads = {}
                     if separators[1] then
-                        pad[1] = " " .. separators[1] .. " "
+                        pads[1] = " " .. separators[1] .. " "
                     end
                     if separators[2] then
-                        pad[2] = " " .. separators[2] .. " "
+                        pads[2] = " " .. separators[2] .. " "
                     end
-                    separators = pad
+                    separators = pads
                 end
             end
             if separators.lean then
@@ -790,7 +791,7 @@ local function init_segmenter(side, frame_color)
         end
     end
 
-    local resolve_separator = function(separators, index)
+    local resolve_separator = function(separators, index) -- luacheck: ignore 431
         if not separators then return end
 
         if type(separators) == "table" then
@@ -1158,7 +1159,7 @@ local function render_prompts(render_settings, need_anchors)
     end
 
     local top = ""
-    local left1 = ""
+    local left1 = "" -- luacheck: no unused
     local right1
     local rightframe1
     local left2 = nil
@@ -1341,26 +1342,26 @@ end
 
 local right
 
-function pf:filter(prompt)
+function pf:filter(prompt) -- luacheck: no unused
     prompt, right = render_prompts()
     return prompt
 end
 
-function pf:rightfilter(prompt)
+function pf:rightfilter(prompt) -- luacheck: no unused
     return right or "", continue_filtering
 end
 
-function pf:transientfilter(prompt)
+function pf:transientfilter(prompt) -- luacheck: no unused
     return render_transient_prompt()
 end
 
-function pf:transientrightfilter(prompt)
+function pf:transientrightfilter(prompt) -- luacheck: no unused
     return "", continue_filtering
 end
 
 -- Capture the $+ dir stack depth if present at the beginning of PROMPT.
 local plus_capture = clink.promptfilter(1)
-function plus_capture:filter(prompt)
+function plus_capture:filter(prompt) -- luacheck: no unused
     local plusBegin, plusEnd = prompt:find("^[+]+")
     if plusBegin == nil then
         plusBegin, plusEnd = prompt:find("[\n][+]+")
@@ -1511,7 +1512,7 @@ end
 function flexprompt.parse_colors(text, default, altdefault)
     local color, altcolor = default, altdefault
     if not altdefault then
-        altdefault = color.altcolor
+        altcolor = color.altcolor
     end
     if text then
         if string.find(text, ",") then
@@ -1741,7 +1742,7 @@ flexprompt.get_errorlevel = get_errorlevel
 --
 -- Synchronous call.
 function flexprompt.get_git_dir(dir)
-    local function has_git_file(dir)
+    local function has_git_file(dir) -- luacheck: ignore 432
         local dotgit = path.join(dir, '.git')
         local gitfile
         if os.isfile(dotgit) then
@@ -1766,7 +1767,7 @@ function flexprompt.get_git_dir(dir)
         end
     end
 
-    return flexprompt.scan_upwards(dir, function (dir)
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
         -- Return if it's a git dir.
         local wks = has_dir(dir, ".git")
         if wks then
@@ -1888,7 +1889,7 @@ function flexprompt.get_git_status(no_untracked)
 
     local status
     if working or staged then
-        status = status or {}
+        status = status or {} -- luacheck: ignore 321
         status.working = working
         status.staged = staged
     end
@@ -1928,7 +1929,7 @@ function flexprompt.get_git_conflict()
         return
     end
 
-    for line in file:lines() do
+    for _ in file:lines() do -- luacheck: ignore 512
         file:close()
         return true;
     end
@@ -1984,7 +1985,7 @@ local function onbeginedit()
         local empty = true
         for n,v in pairs(flexprompt.settings) do
             if n == "symbols" then
-                for nn in pairs(v) do
+                for _ in pairs(v) do -- luacheck: ignore 512
                     empty = false
                     break
                 end
@@ -2003,7 +2004,7 @@ local function onbeginedit()
     end
 end
 
-local function oncommand(line_state, info)
+local function oncommand(line_state, info) -- luacheck: no unused
     if flexprompt.settings.oncommands then
         _cached_state.command = path.getbasename(info.command):lower()
         clink.refilterprompt()

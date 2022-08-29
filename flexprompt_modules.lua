@@ -8,6 +8,10 @@ end
 --------------------------------------------------------------------------------
 -- Internals.
 
+-- luacheck: no max line length
+-- luacheck: globals os.getbatterystatus os.geterrorlevel os.isfile
+-- luacheck: globals flexprompt
+
 -- Is reset to {} at each onbeginedit.
 local _cached_state = {}
 
@@ -70,7 +74,6 @@ local function collect_anyconnect_info()
     -- but then how do we parse the output ?
     -- they could give us the pattern to seach for as well
     local file, pclose = flexprompt.popenyield("vpncli state 2>nul")
-    local line
     local conns = {}
 
     for line in file:lines() do
@@ -82,7 +85,7 @@ local function collect_anyconnect_info()
         end
     end
 
-    local ok, msg, code
+    local ok, msg, code -- luacheck: no unused
     if type(pclose) == "function" then
         ok, msg, code = pclose()
         ok = ok and #conns > 0
@@ -265,7 +268,7 @@ local prev_battery_status, prev_battery_level
 local function update_battery_prompt()
     while true do
         local status,level = get_battery_status()
-        if prev_battery_level ~= status or prev_battery_level ~= level then
+        if prev_battery_status ~= status or prev_battery_level ~= level then
             clink.refilterprompt()
         end
         coroutine.yield()
@@ -353,7 +356,7 @@ local function abbreviate_range(text, s, e)
     -- This handles combining marks, but does not yet handle ZWJ (0x200d) such
     -- as in emoji sequences.
     local abbr = ""
-    for codepoint, value, combining in unicode.iter(text:sub(s, e)) do
+    for codepoint, value, combining in unicode.iter(text:sub(s, e)) do -- luacheck: no global
         if value == 0x200d then
             break
         elseif not combining and #abbr > 0 then
@@ -371,8 +374,8 @@ local function abbreviate_parents(dir, all)
     else
         tmp, suffix = path.toparent(dir)
     end
-    if unicode.iter then
-        tmp = unicode.normalize(3, tmp)
+    if unicode.iter then -- luacheck: no global
+        tmp = unicode.normalize(3, tmp) -- luacheck: no global
         local i = 1
         local s,e = tmp:find("^[^ :/\\]+", i)
         if s then
@@ -403,7 +406,7 @@ local function process_cwd_string(cwd, git_wks, args)
         shorten = flexprompt.parse_arg_token(args, "s", "shorten")
     end
 
-    local real_git_dir -- for clarity; value is not used
+    local real_git_dir -- luacheck: no unused
 
     local sym
     local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
@@ -411,7 +414,7 @@ local function process_cwd_string(cwd, git_wks, args)
         return get_folder_name(cwd)
     end
 
-    local tilde
+    local tilde -- luacheck: no unused
     local orig_cwd = cwd
     cwd, tilde = flexprompt.maybe_apply_tilde(cwd)
 
@@ -465,7 +468,7 @@ local function render_cwd(args)
     else
         color = flexprompt.use_best_color("blue", "38;5;33")
     end
-    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
 
     local wizard = flexprompt.get_wizard_state()
     local cwd = wizard and wizard.cwd or os.getcwd()
@@ -500,7 +503,7 @@ if rl.setbinding and not rl.getbinding([["\e\C-T"]]) then
     rl.setbinding([["\e\C-T"]], [["luafunc:flexprompt_toggle_tenths"]])
 end
 
-function flexprompt_toggle_tenths(rl_buffer)
+function flexprompt_toggle_tenths(rl_buffer) -- luacheck: no global, no unused
     if flexprompt.is_module_in_prompt("duration") then
         invert_tenths = not invert_tenths
         flexprompt.refilter_module("duration")
@@ -629,11 +632,10 @@ local function render_exit(args)
         text = value
     end
 
-    local style = flexprompt.get_style()
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     color = value ~= 0 and "exit_nonzero" or "exit_zero"
-    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
 
     local sym = flexprompt.get_module_symbol()
     if sym == "" then
@@ -747,14 +749,14 @@ local git_colors =
 }
 
 local function render_git(args)
-    local git_dir, wks
+    local git_dir, wks -- luacheck: no unused
     local branch, detached
     local info
     local refreshing
     local wizard = flexprompt.get_wizard_state()
 
     if wizard then
-        git_dir = true
+        git_dir = true -- luacheck: no unused
         branch = wizard.branch or "main"
         -- Copy values so .finished can be added without altering the contents
         -- of the wizard table.
@@ -791,8 +793,6 @@ local function render_git(args)
     local segments = {}
 
     -- Local status.
-    local style = flexprompt.get_style()
-    local flow = flexprompt.get_flow()
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
@@ -806,7 +806,7 @@ local function render_git(args)
         icon_name = "unpublished"
         colors = git_colors.unpublished
     end
-    text = flexprompt.format_branch_name(branch, icon_name, refreshing)
+    local text = flexprompt.format_branch_name(branch, icon_name, refreshing)
     if gitError then
         colors = git_colors.unknown
         text = flexprompt.append_text(text, gitError)
@@ -879,7 +879,7 @@ local function collect_hg_info()
 end
 
 local function get_hg_dir(dir)
-    return flexprompt.scan_upwards(dir, function (dir)
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
         -- Return if it's a hg (Mercurial) dir.
         return flexprompt.has_dir(dir, ".hg")
     end)
@@ -905,7 +905,6 @@ local function render_hg(args)
     -- Collect or retrieve cached info.
     local info, refreshing = flexprompt.prompt_info(hg, hg_dir, branch, collect_hg_info)
 
-    local flow = flexprompt.get_flow()
     local text = flexprompt.format_branch_name(branch, "branch", refreshing)
 
     local colors
@@ -1093,7 +1092,7 @@ local function render_k8s(args)
     else
         text = info.namespace
         if info.context and info.context ~= "" then
-            text = context .. flexprompt.make_fluent_text(":") .. text
+            text = info.context .. flexprompt.make_fluent_text(":") .. text
         end
     end
 
@@ -1154,7 +1153,7 @@ local function collect_mvn_info()
 end
 
 local function get_pom_xml_dir(dir)
-    return flexprompt.scan_upwards(dir, function (dir)
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
         local pom_file = path.join(dir, "pom.xml")
         -- More efficient than opening the file.
         if os.isfile(pom_file) then return dir end
@@ -1243,7 +1242,7 @@ end
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
 local function get_package_json_file(dir)
-    return flexprompt.scan_upwards(dir, function (dir)
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
         local file = io.open(path.join(dir, "package.json"))
         if file then return file end
     end)
@@ -1332,8 +1331,8 @@ local function get_virtual_env(env_var)
 
     -- Return the folder name of the current virtual env, or false.
     local function get_virtual_env_var(var)
-        env_path = clink.get_env(var)
-        return env_path and string.match(env_path, "[^\\/:]+$") or false
+        venv_path = clink.get_env(var)
+        return venv_path and string.match(venv_path, "[^\\/:]+$") or false
     end
 
     local venv = (env_var and get_virtual_env_var(env_var)) or
@@ -1343,8 +1342,8 @@ local function get_virtual_env(env_var)
 end
 
 local function has_py_files(dir)
-    return flexprompt.scan_upwards(dir, function (dir)
-        for _ in pairs(os.globfiles(path.join(dir, "*.py"))) do
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
+        for _ in pairs(os.globfiles(path.join(dir, "*.py"))) do -- luacheck: ignore 512
             return true
         end
     end)
@@ -1382,7 +1381,7 @@ local svn_colors =
 }
 
 local function get_svn_dir(dir)
-    return flexprompt.scan_upwards(dir, function (dir)
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
         -- Return if it's a svn (Subversion) dir.
         local has = flexprompt.has_dir(dir, ".svn")
         if has then return has end
@@ -1403,7 +1402,7 @@ end
 
 local function get_svn_status()
     local file = flexprompt.popenyield("svn status -q")
-    for line in file:lines() do
+    for _ in file:lines() do -- luacheck: ignore 512
         file:close()
         return true
     end
@@ -1427,7 +1426,6 @@ local function render_svn(args)
     local branch = get_svn_branch()
     if not branch then return end
 
-    local flow = flexprompt.get_flow()
     local text = flexprompt.format_branch_name(branch)
 
     local info = flexprompt.prompt_info(svn, svn_dir, branch, collect_svn_info)
@@ -1508,7 +1506,7 @@ local function render_user(args)
     else
         color = flexprompt.use_best_color("magenta", "38;5;135")
     end
-    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
 
     local type = flexprompt.parse_arg_token(args, "t", "type") or "both"
     local user = (type ~= "computer") and os.getenv("username") or ""
@@ -1600,7 +1598,7 @@ local function render_vpn(args)
     else
         color = flexprompt.use_best_color("cyan", "38;5;110")
     end
-    color, altcolor = flexprompt.parse_colors(colors, color, altcolor)
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
 
     local text = info.connection
     if flexprompt.get_flow() == "fluent" then
@@ -1663,4 +1661,4 @@ if rl.ismodifiedline then
 flexprompt.add_module( "modmark",       render_modmark                      )
 end
 
-_flexprompt_test_process_cwd_string = process_cwd_string
+_flexprompt_test_process_cwd_string = process_cwd_string -- luacheck: no global

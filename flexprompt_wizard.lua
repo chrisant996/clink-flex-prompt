@@ -1,3 +1,7 @@
+-- luacheck: no max line length
+-- luacheck: globals console os.getalias os.isfile NONL
+-- luacheck: globals flexprompt
+
 local normal = "\x1b[m"
 local bold = "\x1b[1m"
 local brightgreen = "\x1b[92m"
@@ -268,8 +272,7 @@ local function friendly_case(text)
     return text:sub(1, 1):upper() .. text:sub(2)
 end
 
-local function choose_setting(settings, title, choices_name, setting_name, subset, callout)
-    local index
+local function choose_setting(settings, title, choices_name, setting_name, subset, callout) -- luacheck: no unused
     local choices = ""
 
     clear_screen()
@@ -300,8 +303,8 @@ local function choose_setting(settings, title, choices_name, setting_name, subse
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         settings[setting_name] = subset[tonumber(s)]
     end
@@ -309,7 +312,7 @@ local function choose_setting(settings, title, choices_name, setting_name, subse
 end
 
 local function choose_sides(settings, title)
-    local choices = ""
+    local choices = "" -- luacheck: ignore 311
     local prompts = flexprompt.choices.prompts[settings.style]
     local preview
 
@@ -339,8 +342,8 @@ local function choose_sides(settings, title)
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         if s == "1" then
             settings.left_prompt = apply_time_format(prompts.left[1])
@@ -355,7 +358,7 @@ local function choose_sides(settings, title)
 end
 
 local function choose_time(settings, title)
-    local choices = ""
+    local choices = "" -- luacheck: ignore 311
     local preview
 
     clear_screen()
@@ -400,8 +403,8 @@ local function choose_time(settings, title)
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         _timeformat = s
     end
@@ -409,7 +412,7 @@ local function choose_time(settings, title)
 end
 
 local function choose_frames(settings, title)
-    local choices = ""
+    local choices = "" -- luacheck: ignore 311
     local preview
 
     clear_screen()
@@ -452,8 +455,8 @@ local function choose_frames(settings, title)
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         settings.left_frame = (s == "1" or s == "3") and "none" or "round"
         settings.right_frame = (s == "1" or s == "2") and "none" or "round"
@@ -462,8 +465,7 @@ local function choose_frames(settings, title)
 end
 
 local function choose_spacing(settings, title)
-    local choices = ""
-    local preview
+    local choices = "" -- luacheck: ignore 311
 
     clear_screen()
     display_centered(title)
@@ -496,8 +498,8 @@ local function choose_spacing(settings, title)
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         if s == "2" then
             settings.spacing = "compact"
@@ -511,7 +513,7 @@ local function choose_spacing(settings, title)
 end
 
 local function choose_icons(settings, title)
-    local choices = ""
+    local choices = "" -- luacheck: ignore 311
     local preview
 
     clear_screen()
@@ -540,8 +542,8 @@ local function choose_icons(settings, title)
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         settings.use_icons = (s == "2") and true or nil
     end
@@ -549,8 +551,7 @@ local function choose_icons(settings, title)
 end
 
 local function choose_transient(settings, title)
-    local choices = ""
-    local preview
+    local choices = "" -- luacheck: ignore 311
 
     clear_screen()
     display_centered(title)
@@ -581,8 +582,8 @@ local function choose_transient(settings, title)
     local s = readchoice(choices)
     if not s then return end
 
-    if s == "r" then
-    elseif s == "q" then
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
     else
         if s == "y" then
             _transient = "same_dir"
@@ -629,6 +630,7 @@ local function config_wizard()
     local eight_bit_color_test = make_8bit_color_test()
     local four_bit_color
     local callout
+    local choices
     local wrote
 
     print(string.rep("\n", console.getheight()))
@@ -921,7 +923,7 @@ local function config_wizard()
             local old_settings = flexprompt.settings
             flexprompt.settings = preview
 
-            local left_frame, right_frame = flexprompt.get_frame()
+            local left_frame, right_frame = flexprompt.get_frame() -- luacheck: no unused
             local style = flexprompt.get_style()
             if left_frame and style ~= "lean" then
                 if preview.left_prompt and preview.left_prompt:match("{exit}") then
@@ -1107,4 +1109,4 @@ else
     clink.onendedit(onfilterinput)
 end
 
-local argmatcher = clink.argmatcher("flexprompt"):addarg("configure")
+clink.argmatcher("flexprompt"):addarg("configure")
