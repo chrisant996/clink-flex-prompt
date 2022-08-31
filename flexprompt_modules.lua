@@ -499,8 +499,13 @@ local endedit_time
 local last_duration
 local invert_tenths
 
-if rl.setbinding and not rl.getbinding([["\e\C-T"]]) then
-    rl.setbinding([["\e\C-T"]], [["luafunc:flexprompt_toggle_tenths"]])
+if rl.setbinding then
+    if not rl.getbinding([["\e\C-T"]]) then
+        rl.setbinding([["\e\C-T"]], [["luafunc:flexprompt_toggle_tenths"]])
+    end
+    if rl.describemacro then
+        rl.describemacro([["luafunc:flexprompt_toggle_tenths"]], "Toggle displaying tenths of seconds for duration in the prompt")
+    end
 end
 
 function flexprompt_toggle_tenths(rl_buffer) -- luacheck: no global, no unused
