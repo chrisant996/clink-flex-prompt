@@ -569,6 +569,25 @@ end
 --------------------------------------------------------------------------------
 -- Other helpers.
 
+local function spairs(t, order)
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
 local function get_parent(dir)
     local parent = path.toparent(dir)
     if parent and parent ~= "" and parent ~= dir then
@@ -1008,6 +1027,19 @@ end
 --------------------------------------------------------------------------------
 -- Module parsing and rendering.
 
+local _module_costs = {}
+local function log_cost(tick, module)
+    local elapsed = (os.clock() - tick) * 1000
+    local cost = _module_costs[module] or {}
+    cost.milliseconds = elapsed
+    if not cost.peak or cost.peak < elapsed then
+        cost.peak = elapsed
+    end
+    cost.count = (cost.count or 0) + 1
+    cost.total = (cost.total or 0) + elapsed
+    _module_costs[module] = cost
+end
+
 local function render_module(name, args)
     local key = string.lower(name)
 
@@ -1021,7 +1053,9 @@ local function render_module(name, args)
     local func = modules[key]
     if func then
         _module_results = _module_results or {}
+        local tick = os.clock()
         local results = { func(args) }
+        log_cost(tick, key)
         _module_results[key] = results
         return table.unpack(results)
     end
@@ -2014,4 +2048,46 @@ end
 clink.onbeginedit(onbeginedit)
 if clink.oncommand then
     clink.oncommand(oncommand)
+end
+
+local old_diag_custom = clink._diag_custom
+clink._diag_custom = function (arg)
+    if old_diag_custom then
+        old_diag_custom(arg)
+    end
+
+    if not arg or arg < 1 then
+        return
+    end
+
+    local longest = 4
+    for key, cost in pairs(_module_costs) do
+        local len = console.cellcount(key)
+        if longest < len then
+            longest = len
+        end
+    end
+
+    if longest > 0 then
+        clink.print('\x1b[0;1mflexprompt module cost:\x1b[m')
+        clink.print(string.format('  \x1b[36mmodule%s      last      avg       peak\x1b[m', string.rep(' ', longest - 4)))
+        for key, cost in spairs(_module_costs) do
+            local color
+            if cost.peak >= 10 then
+                color = '\x1b[91m'
+            elseif cost.peak >= 4 then
+                color = '\x1b[93m'
+            else
+                color = ''
+            end
+            clink.print(string.format(
+                '  %s{%s}%s  %5u ms  %5u ms  %5u ms\x1b[m',
+                color,
+                key,
+                string.rep(' ', longest - console.cellcount(key)),
+                cost.milliseconds,
+                cost.total / cost.count,
+                cost.peak))
+        end
+    end
 end
