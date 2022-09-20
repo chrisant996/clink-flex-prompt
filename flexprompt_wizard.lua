@@ -823,7 +823,7 @@ local function config_wizard()
                 -- include segment padding.
                 callout[2] = { callout[2], 1}
             end
-            s = choose_setting(preview, "Prompt Separators", "separators", "lean_separators", { "space", "spaces" }, callout)
+            s = choose_setting(preview, "Prompt Separators", "separators", "lean_separators", { "space", "spaces", "dot", "vertical" }, callout)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
