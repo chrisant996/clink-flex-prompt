@@ -244,6 +244,16 @@ flexprompt.settings.spacing = "sparse"
 flexprompt.settings.flow = "fluent"
 ```
 
+## Top Line
+
+You can add an optional top line, above the left/right prompt text.
+
+```lua
+flexprompt.settings.top_prompt = "{histlabel}{user}"
+flexprompt.settings.left_prompt = "{battery}{cwd}{git}{k8s}{npm}"
+flexprompt.settings.right_prompt = "{exit}{duration}{time}"
+```
+
 ## On Commands
 
 You can make certain modules only show up when certain commands are typed.
