@@ -2070,7 +2070,7 @@ clink._diag_custom = function (arg)
 
     if longest > 0 then
         clink.print('\x1b[0;1mflexprompt module cost:\x1b[m')
-        clink.print(string.format('  \x1b[36mmodule%s      last      avg       peak\x1b[m', string.rep(' ', longest - 4)))
+        clink.print(string.format('  \x1b[36mmodule%s     last    avg     peak\x1b[m', string.rep(' ', longest - 4)))
         for key, cost in spairs(_module_costs) do
             local color
             if cost.peak >= 10 then
@@ -2081,7 +2081,7 @@ clink._diag_custom = function (arg)
                 color = ''
             end
             clink.print(string.format(
-                '  %s{%s}%s  %5u ms  %5u ms  %5u ms\x1b[m',
+                '  %s{%s}%s  %4u ms %4u ms %4u ms\x1b[m',
                 color,
                 key,
                 string.rep(' ', longest - console.cellcount(key)),
