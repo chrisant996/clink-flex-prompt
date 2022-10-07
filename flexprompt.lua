@@ -1306,7 +1306,7 @@ local function render_prompts(render_settings, need_anchors)
     if #top > 0 then
         prompt = top .. "\n" .. prompt
         if left_frame then
-            prompt = string.rep(" ", console.cellcount(left_frame .. pad_frame)) .. prompt
+            prompt = string.rep(" ", console.cellcount(left_frame[1] .. pad_frame)) .. prompt
         end
     end
 
