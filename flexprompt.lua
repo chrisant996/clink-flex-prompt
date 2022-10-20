@@ -849,21 +849,40 @@ local function color_segment_transition(color, symbol, close)
         end
     end
 
-    local get_seg_fg = swap and get_best_bg or get_best_fg
-    local get_seg_bg = swap and get_best_fg or get_best_bg
+    local primary = swap and color or segmenter.back_color
+    local secondary = swap and segmenter.back_color or color
+
+    local out
     if segmenter.style == "rainbow" then
         if get_best_bg(segmenter.back_color) == get_best_bg(color) and segmenter.altseparator then
-            return sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
-        else
-            return sgr(get_seg_fg(segmenter.back_color) .. ";" .. get_seg_bg(color)) .. symbol
+            out = sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
+        elseif not symbol:find("^\x1b") then
+            if primary == flexprompt.colors.default then
+                out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary) .. ";7") .. symbol .. sgr("27")
+            end
         end
-    else
-        return sgr(get_seg_bg(segmenter.back_color) .. ";" .. get_seg_fg(color)) .. symbol
     end
+
+    if not out then
+        if segmenter.style == "rainbow" then
+            out = sgr(get_best_fg(primary) .. ";" .. get_best_bg(secondary)) .. symbol
+        else
+            out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary)) .. symbol
+        end
+    end
+
+    if flexprompt.debug_logging then
+        log.info(string.format('transition "%s", close %d, side %d, ', out, close, segmenter.side))
+    end
+    return out
 end
 
-local function next_segment(text, color, rainbow_text_color)
+local function next_segment(text, color, rainbow_text_color, pending_segment)
     local out = ""
+
+    if pending_segment then
+        out = next_segment(pending_segment[1], lookup_color(pending_segment[2]), pending_segment[3])
+    end
 
     if not color then color = flexprompt.colors.red end
 
@@ -892,6 +911,16 @@ local function next_segment(text, color, rainbow_text_color)
         end
     end
 
+    local override_style = segmenter.style
+    if segmenter.override_separator then
+        sep = segmenter.override_separator
+        transition_color = segmenter.frame_color[fc_back]
+        override_style = segmenter.override_style
+        segmenter.override_separator = nil
+        segmenter.override_back_color = nil
+        segmenter.override_style = nil
+    end
+
     local pad = (segmenter.style == "lean" -- Lean has no padding.
                  or text == "") -- Segment with empty string has no padding.
                  and "" or " "
@@ -903,7 +932,28 @@ local function next_segment(text, color, rainbow_text_color)
         return out
     end
 
-    out = out .. color_segment_transition(transition_color, sep)
+    local override_back_color
+    if classic and text == "" then
+        local cap = flexprompt.choices.caps[flexprompt.settings.separators]
+        if cap then
+            sep = cap[2 - segmenter.side]
+            override_style = "rainbow"
+            segmenter.override_separator = sep
+            segmenter.override_back_color = true
+            segmenter.override_style = override_style
+            transition_color = color
+            override_back_color = transition_color
+        end
+    end
+
+    if override_style then
+        local restore_style = segmenter.style
+        segmenter.style = override_style
+        out = out .. color_segment_transition(transition_color, sep)
+        segmenter.style = restore_style
+    else
+        out = out .. color_segment_transition(transition_color, sep)
+    end
     if fore then
         out = out .. sgr(back .. ";" .. fore)
     end
@@ -911,8 +961,11 @@ local function next_segment(text, color, rainbow_text_color)
     -- A module with an empty string is a segment break.  When there's no
     -- separator, force a break by showing one connector character using the
     -- frame color.
-    if text == "" and sep == "" and (rainbow or classic) then
-        text = make_fluent_text(sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. get_connector())
+    if text == "" and sep:gsub(" ", "") == "" then
+        local connector = get_connector()
+        if connector ~= " " then
+            text = make_fluent_text(sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector)
+        end
     end
 
     -- Applying 'color' goes last so that the module can override other colors
@@ -934,9 +987,15 @@ local function next_segment(text, color, rainbow_text_color)
         out = out .. pad
     end
 
-    out = out .. resolve_color_codes(text, base_color) .. pad
+    text = resolve_color_codes(text, base_color) .. pad
+    if flexprompt.debug_logging then
+        log.info(string.format('segment "%s", side %d', text, segmenter.side))
+    end
+    out = out .. text
 
-    if rainbow then
+    if override_back_color then
+        segmenter.back_color = override_back_color
+    elseif rainbow then
         segmenter.back_color = color
     elseif classic then
         segmenter.back_color = segmenter.frame_color[fc_back]
@@ -1090,6 +1149,11 @@ local function render_modules(prompt, side, frame_color, anchors)
         end
     end
 
+    if flexprompt.debug_logging then
+        log.info('BEGIN render_modules')
+    end
+
+    local pending_segment
     while true do
         local s,e,cap = string.find(prompt, "{([^}]*)}", init)
         if not s then
@@ -1144,7 +1208,14 @@ local function render_modules(prompt, side, frame_color, anchors)
                 end
                 for _,segment in pairs(segments) do
                     if segment then
-                        out = out .. next_segment(segment[1], lookup_color(segment[2]), segment[3])
+                        if segment.isbreak then
+                            if out ~= "" then
+                                pending_segment = segment
+                            end
+                        else
+                            out = out .. next_segment(segment[1], lookup_color(segment[2]), segment[3], pending_segment)
+                            pending_segment = nil
+                        end
                     end
                 end
             end
@@ -1153,10 +1224,14 @@ local function render_modules(prompt, side, frame_color, anchors)
         segmenter._current_module = nil
     end
 
-    out = out .. next_segment(nil, flexprompt.colors.default)
+    out = out .. next_segment(nil, flexprompt.colors.default, nil, pending_segment)
 
     if anchors then
         anchors[2] = console.cellcount(out)
+    end
+
+    if flexprompt.debug_logging then
+        log.info('END render_modules')
     end
 
     return out

@@ -78,6 +78,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 
 - `"{anyconnect}"` shows the current Cisco AnyConnect VPN connection.
 - `"{battery}"` shows the battery level and whether the battery is charging.
+- `"{break}"` shows a break between two modules; is automatically discarded if adjacent to only one visible module.
 - `"{cwd}"` shows the current working directory.
 - `"{duration}"` shows the duration of the previous command.
 - `"{exit}"` shows the exit code of the previous command.

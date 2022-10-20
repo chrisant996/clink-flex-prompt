@@ -325,6 +325,20 @@ local function render_battery(args)
 end
 
 --------------------------------------------------------------------------------
+-- BREAK MODULE:  {break:color=color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--
+-- Inserts a break between segments.  If there is no visible segment to the left
+-- or right of the break, then the break is discarded.
+
+local function render_break(args)
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color = flexprompt.colors.default
+    color = flexprompt.parse_colors(colors, color)
+    return { "", color, isbreak=true }
+end
+
+--------------------------------------------------------------------------------
 -- CWD MODULE:  {cwd:color=color_name,alt_color_name:rootcolor=rootcolor_name:type=type_name:shorten}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1639,6 +1653,7 @@ clink.onendedit(builtin_modules_onendedit)
 
 flexprompt.add_module( "anyconnect",    render_anyconnect                   )
 flexprompt.add_module( "battery",       render_battery                      )
+flexprompt.add_module( "break",         render_break                        )
 flexprompt.add_module( "cwd",           render_cwd,         { unicode="" } )
 flexprompt.add_module( "duration",      render_duration,    { unicode="" } )
 flexprompt.add_module( "exit",          render_exit                         )
