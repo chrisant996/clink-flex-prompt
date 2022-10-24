@@ -141,6 +141,7 @@ flexprompt.choices.prompts =
     lean        = { left = { "{battery}{histlabel}{cwd}{git}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
     classic     = { left = { "{battery}{histlabel}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
     rainbow     = { left = { "{battery:breakright}{histlabel}{cwd}{git}{exit}{duration}{time:dim}" }, both = { "{battery:breakright}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
+    breaks      = { left = { "{battery:breakright}{histlabel}{cwd}{break}{git}{break}{exit}{duration}{break}{time:dim}" }, both = { "{battery}{break}{histlabel}{cwd}{break}{git}", "{exit}{duration}{break}{time}" } },
 }
 
 -- Only if style != lean.

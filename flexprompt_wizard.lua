@@ -164,7 +164,11 @@ end
 local function copy_table(settings)
     local copy = {}
     for n,v in pairs(settings) do
-        copy[n] = v
+        if type(v) == "table" then
+            copy[n] = copy_table(v)
+        else
+            copy[n] = v
+        end
     end
     return copy
 end
@@ -314,13 +318,14 @@ end
 local function choose_sides(settings, title)
     local choices = "" -- luacheck: ignore 311
     local prompts = flexprompt.choices.prompts[settings.style]
+    local withbreaks = flexprompt.choices.prompts["breaks"]
     local preview
 
     clear_screen()
     display_centered(title)
     clink.print()
 
-    choices = "12"
+    choices = (settings.style == "rainbow") and "1234" or "12"
 
     clink.print("(1)  Left.\n")
     preview = copy_table(settings)
@@ -336,6 +341,26 @@ local function choose_sides(settings, title)
     display_preview(preview)
     clink.print()
 
+    if settings.style == "rainbow" then
+        clink.print("(3)  Left with breaks between groups of related segments.\n")
+        preview = copy_table(settings)
+        preview.wizard.exit = 1
+        preview.wizard.git = { status={ staged={ modify=3 } } }
+        preview.left_prompt = withbreaks.left[1]
+        preview.right_prompt = withbreaks.left[2]
+        display_preview(preview)
+        clink.print()
+
+        clink.print("(4)  Both with breaks between groups of related segments.\n")
+        preview = copy_table(settings)
+        preview.wizard.exit = 1
+        preview.wizard.git = { status={ staged={ modify=3 } } }
+        preview.left_prompt = withbreaks.both[1]
+        preview.right_prompt = withbreaks.both[2]
+        display_preview(preview)
+        clink.print()
+    end
+
     choices = display_restart(choices)
     choices = display_quit(choices)
 
@@ -348,9 +373,15 @@ local function choose_sides(settings, title)
         if s == "1" then
             settings.left_prompt = apply_time_format(prompts.left[1])
             settings.right_prompt = apply_time_format(prompts.left[2])
-        else
+        elseif s == "2" then
             settings.left_prompt = apply_time_format(prompts.both[1])
             settings.right_prompt = apply_time_format(prompts.both[2])
+        elseif s == "3" then
+            settings.left_prompt = apply_time_format(withbreaks.left[1])
+            settings.right_prompt = apply_time_format(withbreaks.left[2])
+        elseif s == "4" then
+            settings.left_prompt = apply_time_format(withbreaks.both[1])
+            settings.right_prompt = apply_time_format(withbreaks.both[2])
         end
         _timeformat = nil
     end
