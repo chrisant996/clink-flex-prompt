@@ -307,6 +307,12 @@ flexprompt.settings.git_fetch_interval = 60
 
 -- Don't show duration unless a command takes at least this many seconds:
 flexprompt.settings.duration_threshold = 10
+
+-- Provide default arguments for a module:
+flexprompt.defaultargs["module_name"] = "color=magenta"
+
+-- Provide default arguments for a module, for a specific style (lean, classic, or rainbow):
+flexprompt.defaultargs["module_name|rainbow"] = "color=blue,brightcyan"
 ```
 
 # Writing Custom Prompt Modules
