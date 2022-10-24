@@ -23,6 +23,7 @@ end
 flexprompt = flexprompt or {}
 flexprompt.settings = flexprompt.settings or {}
 flexprompt.settings.symbols = flexprompt.settings.symbols or {}
+flexprompt.defaultargs = flexprompt.defaultargs or {}
 local modules = {}
 
 -- Is reset to {} at each onbeginedit.
@@ -1580,18 +1581,44 @@ end
 
 -- Parse arg "abc:def=mno:xyz" for token "def" returns value "mno".
 function flexprompt.parse_arg_token(args, name, altname, include_colon)
-    if not args then
+    if not name then
         return
     end
 
-    args = ":" .. args .. (include_colon and "" or ":")
+    local defargs
+    if segmenter and flexprompt.defaultargs and segmenter._current_module then
+        -- First check for style-specific default args.
+        if segmenter.style then
+            defargs = flexprompt.defaultargs[segmenter._current_module.."|"..segmenter.style]
+        end
+        -- If not found, check for general default args.
+        if not defargs then
+            defargs = flexprompt.defaultargs[segmenter._current_module]
+        end
+    end
+
+    if not defargs and not args then
+        return
+    end
 
     local value
-    if name then
-        local pat = include_colon and "=(.*)" or "=([^:]*):"
+    local pat = include_colon and "=(.*)" or "=([^:]*):"
+
+    -- First try args specified in the prompt string.
+    if args then
+        args = ":" .. args .. (include_colon and "" or ":")
         value = string.match(args, ":" .. name .. pat)
         if not value and altname then
             value = string.match(args, ":" .. altname .. pat)
+        end
+    end
+
+    -- If not found try default args.
+    if not value and defargs then
+        defargs = ":" .. defargs .. (include_colon and "" or ":")
+        value = string.match(defargs, ":" .. name .. pat)
+        if not value and altname then
+            value = string.match(defargs, ":" .. altname .. pat)
         end
     end
 
@@ -1600,17 +1627,43 @@ end
 
 -- Parsing arg "abc:def=mno:xyz" for a keyword like "abc" or "xyz" returns true.
 function flexprompt.parse_arg_keyword(args, name, altname)
-    if not args then
+    if not name then
         return
     end
 
-    args = ":" .. args .. ":"
+    local defargs
+    if segmenter and flexprompt.defaultargs and segmenter._current_module then
+        -- First check for style-specific default args.
+        if segmenter.style then
+            defargs = flexprompt.defaultargs[segmenter._current_module.."|"..segmenter.style]
+        end
+        -- If not found, check for general default args.
+        if not defargs then
+            defargs = flexprompt.defaultargs[segmenter._current_module]
+        end
+    end
+
+    if not defargs and not args then
+        return
+    end
 
     local value
-    if name then
+
+    -- First try args specified in the prompt string.
+    if args then
+        args = ":" .. args .. ":"
         value = string.match(args, ":" .. name .. ":")
         if not value and altname then
             value = string.match(args, ":" .. altname .. ":")
+        end
+    end
+
+    -- If not found try default args.
+    if not value and defargs then
+        defargs = ":" .. defargs .. ":"
+        value = string.match(defargs, ":" .. name .. ":")
+        if not value and altname then
+            value = string.match(defargs, ":" .. altname .. ":")
         end
     end
 
