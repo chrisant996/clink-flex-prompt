@@ -1290,7 +1290,10 @@ local function render_prompts(render_settings, need_anchors)
     -- Top -------------------------------------------------------------------
 
     if top_prompt then
+        local orig_style = flexprompt.settings.style
+        flexprompt.settings.style = flexprompt.settings.top_style or flexprompt.settings.style
         top = render_modules(top_prompt, 0, frame_color)
+        flexprompt.settings.style = orig_style
     end
 
     -- Line 1 ----------------------------------------------------------------

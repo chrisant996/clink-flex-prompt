@@ -255,6 +255,18 @@ flexprompt.settings.left_prompt = "{battery}{cwd}{git}{k8s}{npm}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
+The top line can optionally use a different style, as well.
+
+```lua
+flexprompt.settings.top_style = "lean"
+flexprompt.settings.top_prompt = "{histlabel}{user}"
+flexprompt.settings.style = "rainbow"
+flexprompt.settings.left_prompt = "{battery}{cwd}{git}{k8s}{npm}"
+flexprompt.settings.right_prompt = "{exit}{duration}{time}"
+```
+
+> **Note:**  If the top prompt uses a different style and a module appears in both the top prompt and the left or right prompts, then the module's colors in the top prompt will be used for the module in the left or right prompt.  This happens because flexprompt only runs module's render function once, for efficiency, and the render function specifies the colors to use.  It's very unusual for a module to show up more than once, so generally it shouldn't be a problem.
+
 ## On Commands
 
 You can make certain modules only show up when certain commands are typed.
