@@ -155,6 +155,7 @@ flexprompt.choices.ascii_caps =
 flexprompt.choices.caps =
 {
                 --  Open    Close
+    none        = { "",     ""      },
     flat        = { "",     ""      },
     vertical    = { "",     ""      },  -- A separator when style == rainbow.
     pointed     = { "",    ""     },
