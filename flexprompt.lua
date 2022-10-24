@@ -2189,7 +2189,7 @@ clink._diag_custom = function (arg)
     end
 
     local longest = 4
-    for key, cost in pairs(_module_costs) do
+    for key, _ in pairs(_module_costs) do
         local len = console.cellcount(key)
         if longest < len then
             longest = len
