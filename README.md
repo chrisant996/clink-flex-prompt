@@ -102,7 +102,7 @@ flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt.lua` to find the available options for each module (including colors)._
+- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt_modules.lua` to find the available options for each module (including colors)._
 
 ## Style
 - `"lean"` shows prompt modules using only colored text.
@@ -608,15 +608,15 @@ end
 
 ## Customizable Styling
 
-_TBD_
+- [ ] _TBD: there is a lot of styling available, but it's poorly documented, sorry.  You can reverse engineer details from reading `flexprompt.lua` and the configuration option tables near the beginning of it._
 
 ## Running Actions
 
-_TBD_
+- [ ] _TBD_
 
 # Flexprompt API Reference
 
-_TBD_
+- [ ] _TBD_
 
 # License
 
