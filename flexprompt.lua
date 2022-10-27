@@ -1904,6 +1904,36 @@ flexprompt.get_errorlevel = get_errorlevel
 --------------------------------------------------------------------------------
 -- Public API; git functions.
 
+-- Return a command line string to run the specified git command.  It will
+-- include relevant global flags such as "--no-optional-locks", and also "2>nul"
+-- to suppress stderr.
+--
+-- Currently it is just "git", but this function makes it possible in the future
+-- to specify "git.exe" (bypass any git.bat or git.cmd scripts) and/or add a
+-- fully qualified path.
+local function git_command(command, dont_suppress_stderr)
+    command = command or ""
+
+    if not flexprompt.settings.take_optional_locks then
+        command = "--no-optional-locks " .. command
+    elseif type(flexprompt.take_optional_locks) == "table" then
+        local words = string.explode(command)
+        if not flexprompt.settings.take_optional_locks[words[1]] then
+            command = "--no-optional-locks " .. command
+        end
+    end
+
+    command = "git " .. command
+
+    if not dont_suppress_stderr then
+        command = "2>nul " .. command
+    end
+
+    return command
+end
+
+flexprompt.git_command = git_command
+
 -- Test whether dir is part of a git repo.
 -- @return  nil for not in a git repo; or git dir, workspace dir.
 --
@@ -1987,7 +2017,7 @@ end
 -- Uses async coroutine call.
 function flexprompt.get_git_status(no_untracked)
     local uflag = no_untracked and "-uno" or ""
-    local file = flexprompt.popenyield("git --no-optional-locks status " .. uflag .. " --branch --porcelain 2>nul")
+    local file = flexprompt.popenyield(git_command("status " .. uflag .. " --branch --porcelain"))
     if not file then
         return { errmsg="[error]" }
     end
@@ -2072,7 +2102,7 @@ end
 --
 -- Uses async coroutine call.
 function flexprompt.get_git_ahead_behind()
-    local file = flexprompt.popenyield("git rev-list --count --left-right @{upstream}...HEAD 2>nul")
+    local file = flexprompt.popenyield(git_command("rev-list --count --left-right @{upstream}...HEAD"))
     if not file then
         return
     end
@@ -2091,7 +2121,7 @@ end
 --
 -- Uses async coroutine call.
 function flexprompt.get_git_conflict()
-    local file = flexprompt.popenyield("git diff --name-only --diff-filter=U 2>nul")
+    local file = flexprompt.popenyield(git_command("diff --name-only --diff-filter=U"))
     if not file then
         return
     end
