@@ -23,6 +23,7 @@ end
 flexprompt = flexprompt or {}
 flexprompt.settings = flexprompt.settings or {}
 flexprompt.settings.symbols = flexprompt.settings.symbols or {}
+flexprompt.defaultargs = flexprompt.defaultargs or {}
 local modules = {}
 
 -- Is reset to {} at each onbeginedit.
@@ -158,6 +159,7 @@ flexprompt.choices.prompts =
     lean        = { left = { "{battery}{histlabel}{cwd}{git}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
     classic     = { left = { "{battery}{histlabel}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
     rainbow     = { left = { "{battery:breakright}{histlabel}{cwd}{git}{exit}{duration}{time:dim}" }, both = { "{battery:breakright}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
+    breaks      = { left = { "{battery:breakright}{histlabel}{cwd}{break}{git}{break}{exit}{duration}{break}{time:dim}" }, both = { "{battery}{break}{histlabel}{cwd}{break}{git}", "{exit}{duration}{break}{time}" } },
     combi       = { left = { "{histlabel}{cwd}{git}{duration}" }, both = { "{histlabel}{cwd}{git}{duration}" } },
 }
 
@@ -172,6 +174,7 @@ flexprompt.choices.ascii_caps =
 flexprompt.choices.caps =
 {
                 --  Open    Close
+    none        = { "",     ""      },
     flat        = { "",     ""      },
     vertical    = { "",     ""      },  -- A separator when style == rainbow.
     pointed     = { "",    ""     },
@@ -1319,7 +1322,10 @@ local function render_prompts(render_settings, need_anchors)
     -- Top -------------------------------------------------------------------
 
     if top_prompt then
+        local orig_style = flexprompt.settings.style
+        flexprompt.settings.style = flexprompt.settings.top_style or flexprompt.settings.style
         top = render_modules(top_prompt, 0, frame_color)
+        flexprompt.settings.style = orig_style
     end
 
     -- Line 1 ----------------------------------------------------------------
@@ -1616,18 +1622,44 @@ end
 
 -- Parse arg "abc:def=mno:xyz" for token "def" returns value "mno".
 function flexprompt.parse_arg_token(args, name, altname, include_colon)
-    if not args then
+    if not name then
         return
     end
 
-    args = ":" .. args .. (include_colon and "" or ":")
+    local defargs
+    if segmenter and flexprompt.defaultargs and segmenter._current_module then
+        -- First check for style-specific default args.
+        if segmenter.style then
+            defargs = flexprompt.defaultargs[segmenter._current_module.."|"..segmenter.style]
+        end
+        -- If not found, check for general default args.
+        if not defargs then
+            defargs = flexprompt.defaultargs[segmenter._current_module]
+        end
+    end
+
+    if not defargs and not args then
+        return
+    end
 
     local value
-    if name then
-        local pat = include_colon and "=(.*)" or "=([^:]*):"
+    local pat = include_colon and "=(.*)" or "=([^:]*):"
+
+    -- First try args specified in the prompt string.
+    if args then
+        args = ":" .. args .. (include_colon and "" or ":")
         value = string.match(args, ":" .. name .. pat)
         if not value and altname then
             value = string.match(args, ":" .. altname .. pat)
+        end
+    end
+
+    -- If not found try default args.
+    if not value and defargs then
+        defargs = ":" .. defargs .. (include_colon and "" or ":")
+        value = string.match(defargs, ":" .. name .. pat)
+        if not value and altname then
+            value = string.match(defargs, ":" .. altname .. pat)
         end
     end
 
@@ -1636,17 +1668,43 @@ end
 
 -- Parsing arg "abc:def=mno:xyz" for a keyword like "abc" or "xyz" returns true.
 function flexprompt.parse_arg_keyword(args, name, altname)
-    if not args then
+    if not name then
         return
     end
 
-    args = ":" .. args .. ":"
+    local defargs
+    if segmenter and flexprompt.defaultargs and segmenter._current_module then
+        -- First check for style-specific default args.
+        if segmenter.style then
+            defargs = flexprompt.defaultargs[segmenter._current_module.."|"..segmenter.style]
+        end
+        -- If not found, check for general default args.
+        if not defargs then
+            defargs = flexprompt.defaultargs[segmenter._current_module]
+        end
+    end
+
+    if not defargs and not args then
+        return
+    end
 
     local value
-    if name then
+
+    -- First try args specified in the prompt string.
+    if args then
+        args = ":" .. args .. ":"
         value = string.match(args, ":" .. name .. ":")
         if not value and altname then
             value = string.match(args, ":" .. altname .. ":")
+        end
+    end
+
+    -- If not found try default args.
+    if not value and defargs then
+        defargs = ":" .. defargs .. ":"
+        value = string.match(defargs, ":" .. name .. ":")
+        if not value and altname then
+            value = string.match(defargs, ":" .. altname .. ":")
         end
     end
 
@@ -1882,6 +1940,36 @@ flexprompt.get_errorlevel = get_errorlevel
 --------------------------------------------------------------------------------
 -- Public API; git functions.
 
+-- Return a command line string to run the specified git command.  It will
+-- include relevant global flags such as "--no-optional-locks", and also "2>nul"
+-- to suppress stderr.
+--
+-- Currently it is just "git", but this function makes it possible in the future
+-- to specify "git.exe" (bypass any git.bat or git.cmd scripts) and/or add a
+-- fully qualified path.
+local function git_command(command, dont_suppress_stderr)
+    command = command or ""
+
+    if not flexprompt.settings.take_optional_locks then
+        command = "--no-optional-locks " .. command
+    elseif type(flexprompt.take_optional_locks) == "table" then
+        local words = string.explode(command)
+        if not flexprompt.settings.take_optional_locks[words[1]] then
+            command = "--no-optional-locks " .. command
+        end
+    end
+
+    command = "git " .. command
+
+    if not dont_suppress_stderr then
+        command = "2>nul " .. command
+    end
+
+    return command
+end
+
+flexprompt.git_command = git_command
+
 -- Test whether dir is part of a git repo.
 -- @return  nil for not in a git repo; or git dir, workspace dir.
 --
@@ -1965,7 +2053,7 @@ end
 -- Uses async coroutine call.
 function flexprompt.get_git_status(no_untracked)
     local uflag = no_untracked and "-uno" or ""
-    local file = flexprompt.popenyield("git --no-optional-locks status " .. uflag .. " --branch --porcelain 2>nul")
+    local file = flexprompt.popenyield(git_command("status " .. uflag .. " --branch --porcelain"))
     if not file then
         return { errmsg="[error]" }
     end
@@ -1976,7 +2064,7 @@ function flexprompt.get_git_status(no_untracked)
     local line
 
     line = file:read("*l")
-    if line then
+    if line and not flexprompt.settings.dont_check_unpublished then
         unpublished = not line:find("^## (.+)%.%.%.")
     end
 
@@ -2050,7 +2138,7 @@ end
 --
 -- Uses async coroutine call.
 function flexprompt.get_git_ahead_behind()
-    local file = flexprompt.popenyield("git rev-list --count --left-right @{upstream}...HEAD 2>nul")
+    local file = flexprompt.popenyield(git_command("rev-list --count --left-right @{upstream}...HEAD"))
     if not file then
         return
     end
@@ -2069,7 +2157,7 @@ end
 --
 -- Uses async coroutine call.
 function flexprompt.get_git_conflict()
-    local file = flexprompt.popenyield("git diff --name-only --diff-filter=U 2>nul")
+    local file = flexprompt.popenyield(git_command("diff --name-only --diff-filter=U"))
     if not file then
         return
     end
@@ -2172,7 +2260,7 @@ clink._diag_custom = function (arg)
     end
 
     local longest = 4
-    for key, cost in pairs(_module_costs) do
+    for key, _ in pairs(_module_costs) do
         local len = console.cellcount(key)
         if longest < len then
             longest = len

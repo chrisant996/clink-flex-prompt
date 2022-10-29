@@ -102,7 +102,7 @@ flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt.lua` to find the available options for each module (including colors)._
+- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt_modules.lua` to find the available options for each module (including colors)._
 
 ## Style
 - `"lean"` shows prompt modules using only colored text.
@@ -256,6 +256,18 @@ flexprompt.settings.left_prompt = "{battery}{cwd}{git}{k8s}{npm}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
+The top line can optionally use a different style, as well.
+
+```lua
+flexprompt.settings.top_style = "lean"
+flexprompt.settings.top_prompt = "{histlabel}{user}"
+flexprompt.settings.style = "rainbow"
+flexprompt.settings.left_prompt = "{battery}{cwd}{git}{k8s}{npm}"
+flexprompt.settings.right_prompt = "{exit}{duration}{time}"
+```
+
+> **Note:**  If the top prompt uses a different style and a module appears in both the top prompt and the left or right prompts, then the module's colors in the top prompt will be used for the module in the left or right prompt.  This happens because flexprompt only runs module's render function once, for efficiency, and the render function specifies the colors to use.  It's very unusual for a module to show up more than once, so generally it shouldn't be a problem.
+
 ## On Commands
 
 You can make certain modules only show up when certain commands are typed.
@@ -308,6 +320,18 @@ flexprompt.settings.git_fetch_interval = 60
 
 -- Don't show duration unless a command takes at least this many seconds:
 flexprompt.settings.duration_threshold = 10
+
+-- Provide default arguments for a module:
+flexprompt.defaultargs["module_name"] = "color=magenta"
+
+-- Provide default arguments for a module, for a specific style (lean, classic, or rainbow):
+flexprompt.defaultargs["module_name|rainbow"] = "color=blue,brightcyan"
+
+-- Force flexprompt to tell git to take optional locks (not recommended):
+flexprompt.settings.take_optional_locks = true
+
+-- Disable detection of unpublished branches:
+flexprompt.settings.dont_check_unpublished = true
 ```
 
 # Writing Custom Prompt Modules
@@ -591,15 +615,15 @@ end
 
 ## Customizable Styling
 
-_TBD_
+- [ ] _TBD: there is a lot of styling available, but it's poorly documented, sorry.  You can reverse engineer details from reading `flexprompt.lua` and the configuration option tables near the beginning of it._
 
 ## Running Actions
 
-_TBD_
+- [ ] _TBD_
 
 # Flexprompt API Reference
 
-_TBD_
+- [ ] _TBD_
 
 # License
 
