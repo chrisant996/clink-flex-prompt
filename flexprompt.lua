@@ -34,6 +34,7 @@ local _cached_state = {}
 local realblack = { fg="30", bg="40", extfg="38;5;0", extbg="48;5;0" }
 local realwhite = { fg="37", bg="47", extfg="38;5;7", extbg="48;5;7", altcolor=realblack }
 local nearlywhite = { fg="37", bg="47", extfg="38;5;252", extbg="48;5;252" }
+local lightgreen = { fg="32", bg="42", extfg="38;5;46", extbg="48;5;46" }
 
 flexprompt.colors =
 {
@@ -91,6 +92,7 @@ flexprompt.colors =
 
     -- Default text color in rainbow style.
     rainbow_text    = nearlywhite,
+    combi_text      = lightgreen,
 
     -- Version control colors.
     vcs_blacktext   = realblack,
@@ -104,11 +106,26 @@ flexprompt.colors =
     vcs_remote      = { fg="96",    bg="106",   extfg="38;5;44",    extbg="48;5;44",    rainbow={ fg="36", bg="46", extfg="38;5;6", extbg="48;5;6", altcolor=realblack } },
     vcs_unknown     = realwhite,
 
+    -- Cwd code colors.
+    cwd_text = {
+        rainbow = { bg="34", extbg="48;5;4" },
+        classic = { bg="36", extbg="48;5;6" },
+        combi = realblack,
+    },
+
     -- Exit code colors.
     exit_zero       = { fg="32",    bg="42",    extfg="38;5;2",     extbg="48;5;2",     rainbow={ fg="30", bg="40", extfg="38;5;0", extbg="48;5;0", altcolor={ fg="32", bg="42", extfg="38;5;34", extbg="48;5;34" } } },
     exit_nonzero    = { fg="91",    bg="101",   extfg="38;5;160",   extbg="48;5;160",   rainbow={ fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor={ fg="93", bg="103", extfg="38;5;11", extbg="48;5;11" } },
                                                                                         classic={ fg="91", bg="101", extfg="38;5;196", extbg="48;5;196" } },
 }
+
+flexprompt.colors.vcs_conflict.combi    = { fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor=nearlywhite }
+flexprompt.colors.vcs_unresolved.combi  = { fg="31", bg="41", extfg="38;5;1", extbg="48;5;1", altcolor=realblack }
+flexprompt.colors.vcs_clean.combi       = { fg="37", bg="47", extfg="38;5;2", extbg="48;5;2", altcolor=realblack }
+flexprompt.colors.vcs_dirty.combi       = { fg="30", bg="40", extfg="38;5;8", extbg="48;5;8", altcolor=realblack }
+flexprompt.colors.vcs_staged.combi      = { fg="35", bg="45", extfg="38;5;5", extbg="48;5;5", altcolor=realblack }
+flexprompt.colors.vcs_unpublished.combi = { fg="35", bg="45", extfg="38;5;99", extbg="48;5;99", altcolor=realblack }
+flexprompt.colors.vcs_remote.combi      = { fg="36", bg="46", extfg="38;5;6", extbg="48;5;6", altcolor=realblack }
 
 --------------------------------------------------------------------------------
 -- Configuration.
@@ -126,6 +143,7 @@ flexprompt.choices.styles =
     lean        = "lean",
     classic     = "classic",
     rainbow     = "rainbow",
+    combi       = "combi",
 }
 
 flexprompt.choices.sides =
@@ -140,6 +158,7 @@ flexprompt.choices.prompts =
     lean        = { left = { "{battery}{histlabel}{cwd}{git}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
     classic     = { left = { "{battery}{histlabel}{cwd}{git}{exit}{duration}{time}" }, both = { "{battery}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
     rainbow     = { left = { "{battery:breakright}{histlabel}{cwd}{git}{exit}{duration}{time:dim}" }, both = { "{battery:breakright}{histlabel}{cwd}{git}", "{exit}{duration}{time}" } },
+    combi       = { left = { "{histlabel}{cwd}{git}{duration}" }, both = { "{histlabel}{cwd}{git}{duration}" } },
 }
 
 -- Only if style != lean.
@@ -168,7 +187,7 @@ flexprompt.choices.separators =
     none        = { "",     ""      },
     space       = { " ",    " ",    lean=" " },     -- Also when style == lean.
     spaces      = { "  ",   "  ",   lean="  " },    -- Also when style == lean.
-    vertical    = { "│",    "│",    rainbow="" },
+    vertical    = { "│",    "│",    rainbow="", combi="|" },
     pointed     = { "",    ""     },
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
@@ -264,7 +283,7 @@ local symbols =
     deletecount     = { "-" },
     renamecount     = { "" },   -- Empty string counts renames as modified.
     summarycount    = { "*",    unicode="±" },
-    untrackedcount  = { "?" },
+    untrackedcount  = { "?:"},
     aheadbehind     = { "" },   -- Optional symbol preceding ahead/behind counts.
     aheadcount      = { ">>",   unicode="↓" },
     behindcount     = { "<<",   unicode="↑" },
@@ -408,7 +427,7 @@ local function lookup_color(args)
 
     -- Use the color even though it's not understood.  But not in rainbow style,
     -- because that can garble segment transitions.
-    if get_style() ~= "rainbow" then
+    if get_style() ~= ("rainbow" and "combi") then
         return { fg = args, bg = args }
     end
 end
@@ -510,7 +529,7 @@ local function get_flow()
 end
 
 local function make_fluent_text(text, force)
-    if not force and get_style() == "rainbow" then
+    if not force and get_style() == ("rainbow" or "combi") then
         return text
     else
         local t = type(force)
@@ -772,6 +791,13 @@ local function init_segmenter(side, frame_color)
 
         segmenter.open_cap = ""
         segmenter.close_cap = ""
+    elseif segmenter.style == "combi" then
+        separators = sgr(flexprompt.colors.default.bg .. ";" .. flexprompt.colors.default.fg) .. flexprompt.choices.separators["vertical"].combi
+        separators = resolve_color_codes(separators, "")
+        if not separators then separators = "|" end
+        altseparators = ""
+        segmenter.open_cap = ""
+        segmenter.close_cap = ""
     else
         -- If separators missing, default to heads.  If heads missing, default
         -- to "flat".  Note that "flat" end cap redirects to "bar" or "vertical"
@@ -842,7 +868,7 @@ local function color_segment_transition(color, symbol, close)
     local swap
     if segmenter.style == "classic" then
         swap = close
-    elseif segmenter.style == "rainbow" then
+    elseif segmenter.style == ("rainbow" or "combi") then
         swap = not close
         if not segmenter.open_cap and not close and segmenter.side == 0 then
             swap = false
@@ -853,7 +879,7 @@ local function color_segment_transition(color, symbol, close)
     local secondary = swap and segmenter.back_color or color
 
     local out
-    if segmenter.style == "rainbow" then
+    if segmenter.style == ("rainbow" or "combi") then
         if get_best_bg(segmenter.back_color) == get_best_bg(color) and segmenter.altseparator then
             out = sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
         elseif not symbol:find("^\x1b") then
@@ -884,8 +910,11 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
         out = next_segment(pending_segment[1], lookup_color(pending_segment[2]), pending_segment[3])
     end
 
+    if segmenter.style == "combi" then
+        if not color then color = flexprompt.colors.black end
+        if not rainbow_text_color then rainbow_text_color = lookup_color("combi_text") end
+    end
     if not color then color = flexprompt.colors.red end
-
     if rainbow_text_color then rainbow_text_color = lookup_color(rainbow_text_color) end
     if not rainbow_text_color then rainbow_text_color = color.altcolor end
     if not rainbow_text_color then rainbow_text_color = lookup_color("rainbow_text") end
@@ -896,17 +925,18 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
     local back, fore
     local classic = segmenter.style == "classic"
     local rainbow = segmenter.style == "rainbow"
+    local combi = segmenter.style == "combi"
 
     if segmenter.open_cap then
         sep = segmenter.open_cap
-        if not rainbow then
+        if not (rainbow and combi) then
             transition_color = segmenter.frame_color[fc_back]
             back = get_best_bg(segmenter.frame_color[fc_back])
             fore = get_best_fg(segmenter.frame_color[fc_fore])
         end
     else
         sep = segmenter.separator
-        if not rainbow then
+        if not (rainbow and combi) then
             transition_color = segmenter.frame_color[fc_sep]
         end
     end
@@ -922,6 +952,7 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
     end
 
     local pad = (segmenter.style == "lean" -- Lean has no padding.
+                 or segmenter.style == "combi"
                  or text == "") -- Segment with empty string has no padding.
                  and "" or " "
 
@@ -974,7 +1005,7 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
     -- styles.  But doing that in the rainbow style will garble segment
     -- transition colors.
     local base_color
-    if rainbow then
+    if (rainbow  or combi) then
         base_color = sgr(get_best_fg(rainbow_text_color) .. ";" .. get_best_bg(color))
     elseif classic then
         base_color = sgr(get_best_bg(segmenter.frame_color[fc_back]) .. ";" .. get_best_fg(color))
@@ -995,7 +1026,7 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
 
     if override_back_color then
         segmenter.back_color = override_back_color
-    elseif rainbow then
+    elseif (rainbow or combi) then
         segmenter.back_color = color
     elseif classic then
         segmenter.back_color = segmenter.frame_color[fc_back]
@@ -1304,9 +1335,13 @@ local function render_prompts(render_settings, need_anchors)
         end
 
         if lines == 1 then
-            left1 = left1 .. sgr() .. " "
-            if style == "lean" then
-                left1 = left1 .. get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+            if style == "combi" then
+                left1 = left1 .. sgr () .. get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+            else
+                left1 = left1 .. sgr() .. " "
+                if style == "lean" then
+                    left1 = left1 .. get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+                end
             end
         end
 
@@ -1347,10 +1382,11 @@ local function render_prompts(render_settings, need_anchors)
 
         if not left_frame or style == "lean" then
             left2 = left2 .. get_prompt_symbol_color() .. get_prompt_symbol()
+        elseif style == "combi" then
+            left2 = left2 .. sgr () .. get_prompt_symbol_color() .. get_prompt_symbol() .. sgr() .. " "
+        else
+            left2 = left2 .. sgr() .. " "
         end
-
-        left2 = left2 .. sgr() .. " "
-
         if right_frame then
             right2 = right2 .. sgr_frame_color .. right_frame[2]
         end
@@ -1381,7 +1417,7 @@ local function render_prompts(render_settings, need_anchors)
     if #top > 0 then
         prompt = top .. "\n" .. prompt
         if left_frame then
-            prompt = string.rep(" ", console.cellcount(left_frame[1] .. pad_frame)) .. prompt
+            prompt = string.rep(" ", console.cellcount(left_frame .. pad_frame)) .. prompt
         end
     end
 
@@ -1566,7 +1602,7 @@ flexprompt.get_spacing = get_spacing
 function flexprompt.get_styled_sgr(name)
     local color = lookup_color(name)
     if color then
-        if get_style() == "rainbow" then
+        if get_style() == ("rainbow" or "combi") then
             color = get_best_bg(color)
         else
             color = get_best_fg(color)
@@ -2145,7 +2181,7 @@ clink._diag_custom = function (arg)
 
     if longest > 0 then
         clink.print('\x1b[0;1mflexprompt module cost:\x1b[m')
-        clink.print(string.format('  \x1b[36mmodule%s     last    avg     peak\x1b[m', string.rep(' ', longest - 4)))
+        clink.print(string.format('  \x1b[36mmodule%s      last      avg       peak\x1b[m', string.rep(' ', longest - 4)))
         for key, cost in spairs(_module_costs) do
             local color
             if cost.peak >= 10 then
@@ -2156,7 +2192,7 @@ clink._diag_custom = function (arg)
                 color = ''
             end
             clink.print(string.format(
-                '  %s{%s}%s  %4u ms %4u ms %4u ms\x1b[m',
+                '  %s{%s}%s  %5u ms  %5u ms  %5u ms\x1b[m',
                 color,
                 key,
                 string.rep(' ', longest - console.cellcount(key)),

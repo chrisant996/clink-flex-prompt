@@ -475,10 +475,10 @@ local function render_cwd(args)
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
     local style = flexprompt.get_style()
-    if style == "rainbow" then
-        color = flexprompt.use_best_color("blue", "38;5;19")
-    elseif style == "classic" then
-        color = flexprompt.use_best_color("cyan", "38;5;39")
+    local colortable = flexprompt["colors"].cwd_text[style]
+    color = "0"
+    if colortable then
+        color = flexprompt.use_best_color(colortable.bg, colortable.extbg)
     else
         color = flexprompt.use_best_color("blue", "38;5;33")
     end
@@ -559,6 +559,9 @@ local function render_duration(args)
     local color, altcolor
     if flexprompt.get_style() == "rainbow" then
         color = flexprompt.use_best_color("yellow", "38;5;136")
+        altcolor = "realblack"
+    elseif flexprompt.get_style() == "combi" then
+        color = flexprompt.use_best_color("brown", "38;5;130")
         altcolor = "realblack"
     else
         color = flexprompt.use_best_color("darkyellow", "38;5;214")
@@ -962,7 +965,7 @@ local function render_histlabel(args)
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
-    if flexprompt.get_style() == "rainbow" then
+    if flexprompt.get_style() == ("rainbow" or "combi") then
         color = flexprompt.use_best_color("magenta", "38;5;90")
         altcolor = "realblack"
     else
@@ -1657,7 +1660,7 @@ flexprompt.add_module( "break",         render_break                        )
 flexprompt.add_module( "cwd",           render_cwd,         { unicode="" } )
 flexprompt.add_module( "duration",      render_duration,    { unicode="" } )
 flexprompt.add_module( "exit",          render_exit                         )
-flexprompt.add_module( "git",           render_git,         { unicode="" } )
+flexprompt.add_module( "git",           render_git,         { unicode=(flexprompt.get_style() == "combi") and " " or "" } )
 flexprompt.add_module( "hg",            render_hg                           )
 flexprompt.add_module( "histlabel",     render_histlabel,   { unicode="" } )
 flexprompt.add_module( "k8s",           render_k8s,         { unicode="ﴱ" } )

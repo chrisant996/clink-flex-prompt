@@ -10,11 +10,14 @@ local static_cursor = "\x1b[7m " .. normal
 
 local _transient
 local _striptime
+
 local _timeformat
 
 local function readinput()
     if console.readinput then
         local key = console.readinput()
+        -- TODO: <ENTER> for default choice ('n', '1')
+        -- if key  == string.char(13) then return "n" end
         return key
     else
         clink.print("\x1b[s", NONL)
@@ -671,6 +674,8 @@ local function config_wizard()
         clink.print("\n")
         choices = ""
         choices = display_yes(choices)
+        -- TODO: add default text
+        -- choices = display_no(choices, "(default: press <ENTER>)")
         choices = display_no(choices)
         clink.print("     Visit "..brightgreen.."https://nerdfonts.com"..normal.." to find fonts that support the")
         clink.print("     powerline symbols flexprompt uses for its fancy text-mode graphics.")
@@ -791,7 +796,7 @@ local function config_wizard()
 
         -- Configuration.
 
-        s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow" })
+        s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow", "combi" })
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
@@ -828,12 +833,14 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
-        _striptime = nil
-        s = choose_time(preview, "Show current time?")
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
+        if preview.style ~= "combi" then
+            _striptime = nil
+            s = choose_time(preview, "Show current time?")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
 
-        if preview.style ~= "lean" then
+        if preview.style ~= ("lean" and "combi") then
             local seps
             if preview.style == "rainbow" then
                 if preview.powerline_font then
@@ -855,7 +862,7 @@ local function config_wizard()
             end
         end
 
-        if preview.charset ~= "ascii" and preview.style ~= "lean" then
+        if preview.charset ~= "ascii" and preview.style ~= ("lean" and "combi") then
             local caps = preview.powerline_font and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
 
             callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
@@ -871,9 +878,11 @@ local function config_wizard()
 
         -- Choose sides after choosing tails, so there's a good anchor for
         -- the tails callout.
-        s = choose_sides(preview, "Prompt Sides")
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
+        if preview.style ~= "combi" then
+            s = choose_sides(preview, "Prompt Sides")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
 
         s = choose_setting(preview, "Prompt Height", "lines", "lines", { "one", "two" })
         if not s or s == "q" then break end
@@ -891,11 +900,13 @@ local function config_wizard()
                 if s == "r" then goto continue end
             end
 
-            if not preview.frame_color and not four_bit_color and
-                    (preview.left_frame ~= "none" or preview.right_frame ~= "none" or preview.connection ~= "disconnected") then
-                s = choose_setting(preview, "Prompt Frame Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
-                if not s or s == "q" then break end
-                if s == "r" then goto continue end
+            if preview.style ~= "combi" then
+                if not preview.frame_color and not four_bit_color and
+                        (preview.left_frame ~= "none" or preview.right_frame ~= "none" or preview.connection ~= "disconnected") then
+                    s = choose_setting(preview, "Prompt Frame Color", "frame_colors", "frame_color", { "lightest", "light", "dark", "darkest" })
+                    if not s or s == "q" then break end
+                    if s == "r" then goto continue end
+                end
             end
         end
 
@@ -1080,6 +1091,37 @@ local function run_demo()
     preview.tails = "slant"
     preview.separators = nil
     preview.left_frame = "none"
+    preview.right_frame = "round"
+    preview.connection = "solid"
+    display_preview(preview)
+
+    print()
+    display_centered("\x1b[1mCombi Style\x1b[m")
+    preview.style = "combi"
+    preview.connection = nil
+    preview.heads = nil
+    preview.tails = nil
+    preview.separators = nil
+
+    print()
+    preview.lines = nil
+    preview.right_prompt = "{duration}"
+    preview.flow = nil
+    preview.use_icons = false
+    preview.powerline_font = false
+    preview.heads = "pointed"
+    display_preview(preview)
+
+    print()
+    preview.lines = "two"
+    preview.right_prompt = "{duration}"
+    preview.flow = "concise"
+    preview.use_icons = true
+    preview.powerline_font = true
+    preview.heads = nil
+    preview.tails = nil
+    preview.separators = nil
+    preview.left_frame = "round"
     preview.right_frame = "round"
     preview.connection = "solid"
     display_preview(preview)

@@ -108,6 +108,7 @@ flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 - `"lean"` shows prompt modules using only colored text.
 - `"classic"` shows prompt modules using colored text on a gray background.
 - `"rainbow"` shows prompt modules using text on colored backgrounds.
+- `"combi"` shows prompt modules combining the styles above in a minimal way.
 
 ```lua
 flexprompt.settings.style = "classic"
