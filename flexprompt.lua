@@ -2028,7 +2028,7 @@ function flexprompt.get_git_status(no_untracked)
     local line
 
     line = file:read("*l")
-    if line then
+    if line and not flexprompt.settings.dont_check_unpublished then
         unpublished = not line:find("^## (.+)%.%.%.")
     end
 

@@ -325,6 +325,12 @@ flexprompt.defaultargs["module_name"] = "color=magenta"
 
 -- Provide default arguments for a module, for a specific style (lean, classic, or rainbow):
 flexprompt.defaultargs["module_name|rainbow"] = "color=blue,brightcyan"
+
+-- Force flexprompt to tell git to take optional locks (not recommended):
+flexprompt.settings.take_optional_locks = true
+
+-- Disable detection of unpublished branches:
+flexprompt.settings.dont_check_unpublished = true
 ```
 
 # Writing Custom Prompt Modules
