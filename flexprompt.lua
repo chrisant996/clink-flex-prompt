@@ -469,9 +469,21 @@ local function get_symbol(name, fallback)
     return symbol
 end
 
+local function icon_enabled(name)
+  if flexprompt.settings.use_icons and type(flexprompt.settings.use_icons) == "table" then
+    for _, value in pairs(flexprompt.settings.use_icons) do
+        if value == name then
+            return true
+        end
+    end
+  end
+
+  return false
+end
+
 local function get_icon(name)
     if not flexprompt.settings.use_icons then return "" end
-    if type(flexprompt.settings.use_icons) == "table" and not flexprompt.settings.use_icons[name] then return "" end
+    if type(flexprompt.settings.use_icons) == "table" and not icon_enabled(name) then return "" end
 
     return get_symbol(name)
 end
