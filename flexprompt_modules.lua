@@ -349,10 +349,17 @@ end
 --      - "smart" is the git repo\subdir, or the full path.
 --      - "rootsmart" is the full path, with parent of git repo not colored.
 --
--- The 'shorten' option abbreviates parent directories to only the first letter.
+-- The 'shorten' option can abbreviate parent directories to the shortest string
+-- that uniquely identifies the directory.  The first and last directories in
+-- the string are never abbreviated, and git repo or workspace directories are
+-- never abbreviated.  Abbreviation occurs when the cwd string is longer than 80
+-- columns (2 line style) or longer than half the terminal width (1 line style),
+-- or when the terminal width is not wide enough for the left and right prompts
+-- to fit on a single line.
 -- The 'shorten' option may optionally be followed by "=rootsmart" to abbreviate
 -- only the repo's parent directories when in a git repo (otherwise abbreviate
--- all the parent directories).
+-- all the parent directories), or by "=32" or other number to only use
+-- abbreviation when the path is longer than the specified number of columns.
 --
 -- The default type is "rootsmart" if not specified.
 
@@ -366,65 +373,32 @@ local function get_folder_name(dir)
     return child == "" and parent or child
 end
 
-local function abbreviate_range(text, s, e)
-    -- This handles combining marks, but does not yet handle ZWJ (0x200d) such
-    -- as in emoji sequences.
-    local abbr = ""
-    for codepoint, value, combining in unicode.iter(text:sub(s, e)) do -- luacheck: no global
-        if value == 0x200d then
-            break
-        elseif not combining and #abbr > 0 then
-            break
-        end
-        abbr = abbr .. codepoint
-    end
-    return text:sub(1, s - 1) .. abbr .. text:sub(e + 1)
-end
-
 local function abbreviate_parents(dir, all)
-    local tmp, suffix
-    if all then
-        tmp = dir
-    else
-        tmp, suffix = path.toparent(dir)
-    end
-    if unicode.iter then -- luacheck: no global
-        tmp = unicode.normalize(3, tmp) -- luacheck: no global
-        local i = 1
-        local s,e = tmp:find("^[^ :/\\]+", i)
-        if s then
-            tmp = abbreviate_range(tmp, s, e)
-            i = s + 1
-        end
-        while true do
-            s, e = tmp:find("[/\\][^/\\]+", i)
-            if not s then
-                break
-            end
-            tmp = abbreviate_range(tmp, s + 1, e)
-            i = s + 2
-        end
-    else
-        tmp = tmp:gsub("^([!-.0-[%]^-~])[^:/\\]+", "%1")
-        tmp = tmp:gsub("([/\\][ -.0-[%]^-~])[^/\\]+", "%1")
-    end
-    if suffix and suffix ~= "" then
-        tmp = path.join(tmp, suffix)
-    end
-    return tmp
+    return flexprompt.abbrev_path(dir, true, all)
 end
 
 local function process_cwd_string(cwd, git_wks, args)
     local shorten = flexprompt.parse_arg_keyword(args, "s", "shorten") and "all"
     if not shorten then
         shorten = flexprompt.parse_arg_token(args, "s", "shorten")
+        local threshold = tonumber(shorten)
+        if threshold and threshold > 0 then
+            shorten = threshold
+        end
+    end
+    if not shorten then
+        if flexprompt.get_lines() == 1 then
+            shorten = console.getwidth() / 2
+        else
+            shorten = 80
+        end
     end
 
     local real_git_dir -- luacheck: no unused
 
     local sym
-    local type = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
-    if type == "folder" then
+    local ptype = flexprompt.parse_arg_token(args, "t", "type") or "rootsmart"
+    if ptype == "folder" then
         return get_folder_name(cwd)
     end
 
@@ -432,7 +406,7 @@ local function process_cwd_string(cwd, git_wks, args)
     local orig_cwd = cwd
     cwd, tilde = flexprompt.maybe_apply_tilde(cwd)
 
-    if type == "smart" or type == "rootsmart" then
+    if ptype == "smart" or ptype == "rootsmart" then
         if git_wks == nil then -- Don't double-hunt for it!
             real_git_dir, git_wks = flexprompt.get_git_dir(orig_cwd)
         end
@@ -445,10 +419,10 @@ local function process_cwd_string(cwd, git_wks, args)
             local git_wks_parent = path.toparent(git_wks) -- Don't use get_parent() here!
             local appended_dir = string.sub(cwd, string.len(git_wks_parent) + 1)
             local smart_dir = get_folder_name(git_wks_parent) .. appended_dir
-            if type == "rootsmart" then
+            if ptype == "rootsmart" then
                 local rootcolor = flexprompt.parse_arg_token(args, "rc", "rootcolor")
                 local parent = cwd:sub(1, #cwd - #smart_dir)
-                if shorten then
+                if shorten and (type(shorten) ~= "number" or console.cellcount(cwd) > shorten) then
                     parent = abbreviate_parents(parent, true--[[all]])
                     if shorten ~= "smartroot" and shorten ~= "rootsmart" then
                         smart_dir = abbreviate_parents(smart_dir)
@@ -464,11 +438,12 @@ local function process_cwd_string(cwd, git_wks, args)
         end
     end
 
-    if shorten then
+    if shorten and (type(shorten) ~= "number" or console.cellcount(cwd) > shorten) then
         cwd = abbreviate_parents(cwd)
+        shorten = nil
     end
 
-    return cwd, sym
+    return cwd, sym, not shorten
 end
 
 local function render_cwd(args)
@@ -488,13 +463,28 @@ local function render_cwd(args)
     local cwd = wizard and wizard.cwd or os.getcwd()
     local git_wks = wizard and (wizard.git_dir or false)
 
-    local sym
-    cwd, sym = process_cwd_string(cwd, git_wks, args)
+    local text, sym, shortened = process_cwd_string(cwd, git_wks, args)
 
-    cwd = flexprompt.append_text(flexprompt.get_dir_stack_depth(), cwd)
-    cwd = flexprompt.append_text(sym or flexprompt.get_module_symbol(), cwd)
+    text = flexprompt.append_text(flexprompt.get_dir_stack_depth(), text)
+    text = flexprompt.append_text(sym or flexprompt.get_module_symbol(), text)
 
-    return cwd, color, altcolor
+    local results = {
+        text=text,
+        color=color,
+        altcolor=altcolor,
+    }
+
+    if not shortened then
+        results.condense_callback = function ()
+            return {
+                text=flexprompt.abbrev_path(cwd, true),
+                color=color,
+                altcolor=altcolor,
+            }
+        end
+    end
+
+    return results
 end
 
 --------------------------------------------------------------------------------
@@ -685,6 +675,10 @@ end
 --      - unknown=color_name,alt_color_name         When status is unknown.
 --      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
 
+-- luacheck: globals flexprompt_git
+flexprompt_git = flexprompt_git or {}
+--  .postprocess_branch = function(string), returns string, can modify the branch name string.
+
 local git = {}
 local fetched_repos = {}
 
@@ -792,6 +786,13 @@ local function render_git(args)
 
         branch, detached = flexprompt.get_git_branch(git_dir)
         if not branch then return end
+
+        if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
+            local modified = flexprompt_git.postprocess_branch(branch)
+            if modified then
+                branch = modified
+            end
+        end
 
         -- Collect or retrieve cached info.
         local noUntracked = flexprompt.parse_arg_keyword(args, "nu", "nountracked")

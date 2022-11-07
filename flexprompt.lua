@@ -16,7 +16,7 @@ end
 -- Internals.
 
 -- luacheck: no max line length
--- luacheck: globals console io.popenyield os.geterrorlevel os.isfile string.equalsi _error_handler NONL
+-- luacheck: globals console io.popenyield os.geterrorlevel os.isfile string.equalsi unicode _error_handler NONL
 -- luacheck: globals flexprompt
 -- luacheck: globals CMDER_SESSION prompt_includeVersionControl
 
@@ -537,6 +537,7 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     local frame_len = console.cellcount(frame)
     local width = get_screen_width() - #pad_right_edge
     local gap = width - (lhs_len + rhs_len + frame_len)
+    local dropped
     if gap < 0 then
         gap = gap + rhs_len
         rhs_len = 0 -- luacheck: no unused
@@ -544,6 +545,7 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
         if gap < 0 then
             frame = ""
         end
+        dropped = true
     end
     if gap > 0 then
         if not sgr_frame_color then
@@ -551,22 +553,24 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
         end
         lhs = lhs .. sgr_frame_color .. string.rep(get_connector(), gap)
     end
-    return lhs..rhs..frame
+    return lhs..rhs..frame, dropped
 end
 
 local _refilter_modules
-local _module_results
+local _module_results = {}
 local function refilter_module(module)
     _refilter_modules = _refilter_modules or {}
     _refilter_modules[module] = true
 end
 
-local function reset_render_state()
+local function reset_render_state(keep_results)
     _can_use_extended_colors = nil
     _charset = nil
     _wizard = nil
     _refilter_modules = nil
-    _module_results = nil
+    if not keep_results then
+        _module_results = {}
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -658,6 +662,121 @@ local function is_module_in_prompt(name)
     if is > 0 then
         return is
     end
+end
+
+local function first_letter(s)
+    if unicode.iter then
+        -- This handles combining marks, but does not yet handle ZWJ (0x200d)
+        -- such as in emoji sequences.
+        local letter = ""
+        for codepoint, value, combining in unicode.iter(s) do
+            if value == 0x200d then
+                break
+            elseif not combining and #letter > 0 then
+                break
+            end
+            letter = letter .. codepoint
+        end
+        return letter
+    else
+        return s:sub(1, 1)
+    end
+end
+
+local function abbrev_child(parent, child)
+    local letter = first_letter(child)
+    if not letter or letter == "" then
+        return dir, false
+    end
+
+    local lcd = -1
+    local dirs = os.globdirs(path.join(parent, letter .. "*"))
+    for _, x in ipairs(dirs) do
+        local m = string.matchlen(child, x)
+        if m >= 0 and (lcd < 0 or lcd > m) then
+            lcd = m
+        end
+    end
+    lcd = (lcd >= 0) and lcd or 0
+
+    local abbr = child:sub(1, lcd) .. first_letter(child:sub(lcd + 1))
+    return abbr, abbr ~= child
+end
+
+local function abbrev_path(dir, fluent, all, relative)
+    -- Removeable drives could be floppy disks or CD-ROMs, which are slow.
+    -- Network drives are slow.  Invalid drives are unknown.  If the drive
+    -- type might be slow then don't abbreviate.
+    local tilde = dir:find("^~[/\\]")
+    local s, parent
+
+    local drivetype, parse
+    if relative then
+        relative = os.getfullpathname(relative)
+        drivetype = os.getdrivetype(path.getdrive(relative))
+        s = ""
+        parent = relative
+        parse = dir
+    else
+        local drive = path.getdrive(dir) or ""
+        if tilde then
+            drivetype = os.getdrivetype(path.getdrive(os.getenv("HOME")))
+        elseif drive then
+            drivetype = os.getdrivetype(drive)
+        else
+            drivetype = os.getdrivetype(os.getcwd())
+        end
+        if drive ~= "" then
+            drive = drive .. "\\"
+        end
+        s = drive
+        parent = drive
+        parse = dir:sub(#drive + 1)
+    end
+
+    if drivetype ~= "fixed" and drivetype ~= "ramdisk" then
+        return dir
+    end
+
+    local components = {}
+    while true do
+        local up, child = path.toparent(parse)
+        if #child > 0 then
+            table.insert(components, child .. "\\")
+        else
+            if #up > 0 then
+                table.insert(components, up)
+            end
+            break
+        end
+        parse = up
+    end
+
+    local first = #components
+    if tilde then
+        s = "~"
+        parent = os.getenv("HOME")
+        first = first - 1
+    end
+
+    for i = first, 1, -1 do
+        local child = components[i]
+        local this_dir = path.join(parent, child)
+        local special = not all and (i == 1 or i == #components or flexprompt.is_git_dir(this_dir))
+        if special then
+            s = path.join(s, child)
+        else
+            local text, abbreviated = abbrev_child(parent, child)
+            if abbreviated and fluent then
+                s = path.join(s, make_fluent_text(text, fluent))
+            else
+                s = path.join(s, text)
+            end
+        end
+        parent = this_dir
+    end
+
+    return s:gsub("[/\\]+$", "")
 end
 
 --------------------------------------------------------------------------------
@@ -884,7 +1003,7 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
     local out = ""
 
     if pending_segment then
-        out = next_segment(pending_segment[1], lookup_color(pending_segment[2]), pending_segment[3])
+        out = next_segment(pending_segment.text, lookup_color(pending_segment.color), pending_segment.altcolor)
     end
 
     if not color then color = flexprompt.colors.red end
@@ -1102,28 +1221,80 @@ local function log_cost(tick, module)
     _module_costs[module] = cost
 end
 
-local function render_module(name, args)
+local function normalize_segment_table(t)
+    if t[1] then
+        return { text=t[1], color=t[2], altcolor=t[3] }
+    elseif t.text then
+        return t
+    end
+end
+
+local function render_module(name, args, try_condense)
     local key = string.lower(name)
+    local results = _module_results[key]
+
+    if try_condense then
+        if results then
+            -- Don't modify the existing table; it needs to stay
+            -- unmodified so resizing the terminal wider can uncondense.
+            local ret = {}
+            for _, segment in ipairs(results) do
+                if segment.condense_callback then
+                    local s = segment.condense_callback()
+                    table.insert(ret, {
+                        text = a or s.text,
+                        color = b or s.color,
+                        altcolor = c or s.altcolor,
+                    })
+                else
+                    table.insert(ret, segment)
+                end
+            end
+            results = ret
+        end
+        return results
+    end
 
     if _refilter_modules and not _refilter_modules[key] then
-        local results = _module_results[key]
         if results then
-            return table.unpack(results)
+            return results
         end
     end
 
     local func = modules[key]
     if func then
-        _module_results = _module_results or {}
         local tick = os.clock()
-        local results = { func(args) }
+        local a, b, c = func(args)
         log_cost(tick, key)
+        if a == nil then
+            results = nil
+        elseif type(a) ~= "table" then
+            -- Not a table means func() returned up to 3 strings.
+            results = { { text=a, color=b, altcolor=c } }
+        elseif type(a[1]) ~= "table" then
+            -- A table with no nested tables means func() returned one segment,
+            -- but it could be in either of two different formats.
+            results = normalize_segment_table(a)
+            if results then
+                results = { results }
+            end
+        else
+            -- A table of tables means func() returned one or more segments,
+            -- but each could be in either of two different formats.
+            results = {}
+            for _, t in ipairs(a) do
+                table.insert(results, normalize_segment_table(t))
+            end
+            if #results == 0 then
+                results = nil
+            end
+        end
         _module_results[key] = results
-        return table.unpack(results)
+        return results
     end
 end
 
-local function render_modules(prompt, side, frame_color, anchors)
+local function render_modules(prompt, side, frame_color, condense, anchors)
     local out = ""
     local init = 1
 
@@ -1156,6 +1327,7 @@ local function render_modules(prompt, side, frame_color, anchors)
         log.info('BEGIN render_modules')
     end
 
+    local any_condense_callbacks
     local pending_segment
     while true do
         local s,e,cap = string.find(prompt, "{([^}]*)}", init)
@@ -1191,33 +1363,25 @@ local function render_modules(prompt, side, frame_color, anchors)
         segmenter._current_module = name
 
         if name and #name > 0 then
-            local text,color,rainbow_text_color = render_module(name, args)
-            if text then
+            local results = render_module(name, args, condense)
+            if results then
                 if anchors then
                     -- Add 1 because the separator isn't added yet.
                     anchors[1] = console.cellcount(out) + 1
                 end
 
-                local segments
-                if type(text) ~= "table" then
-                    -- No table provided.
-                    segments = { { text, color, rainbow_text_color } }
-                elseif type(text[1]) ~= "table" then
-                    -- Table of non-tables provided.
-                    segments = { text }
-                else
-                    -- Table of tables provided.
-                    segments = text
-                end
-                for _,segment in pairs(segments) do
+                for _,segment in pairs(results) do
                     if segment then
                         if segment.isbreak then
                             if out ~= "" then
                                 pending_segment = segment
                             end
                         else
-                            out = out .. next_segment(segment[1], lookup_color(segment[2]), segment[3], pending_segment)
+                            out = out .. next_segment(segment.text, lookup_color(segment.color), segment.altcolor, pending_segment)
                             pending_segment = nil
+                        end
+                        if segment.condense_callback then
+                            any_condense_callbacks = true
                         end
                     end
                 end
@@ -1237,18 +1401,18 @@ local function render_modules(prompt, side, frame_color, anchors)
         log.info('END render_modules')
     end
 
-    return out
+    return out, any_condense_callbacks
 end
 
-local function render_prompts(render_settings, need_anchors)
-    reset_render_state()
+local function render_prompts(render_settings, need_anchors, condense)
+    reset_render_state(condense)
 
     local old_settings = flexprompt.settings
     if render_settings then
         flexprompt.settings = render_settings
         if render_settings.wizard then
             local width = console.getwidth()
-            reset_render_state()
+            reset_render_state(condense)
             _wizard = render_settings.wizard
             _wizard.width = _wizard.width or (width - 8)
             _wizard.prefix = ""
@@ -1269,6 +1433,9 @@ local function render_prompts(render_settings, need_anchors)
         left_prompt = prompts[1]
         right_prompt = prompts[2]
     end
+
+    local can_condense
+    local any_condense_callbacks
 
     local top = ""
     local left1 = "" -- luacheck: no unused
@@ -1293,14 +1460,16 @@ local function render_prompts(render_settings, need_anchors)
     if top_prompt then
         local orig_style = flexprompt.settings.style
         flexprompt.settings.style = flexprompt.settings.top_style or flexprompt.settings.style
-        top = render_modules(top_prompt, 0, frame_color)
+        top, any_condense_callbacks = render_modules(top_prompt, 0, frame_color, condense)
+        can_condense = can_condense or any_condense_callbacks
         flexprompt.settings.style = orig_style
     end
 
     -- Line 1 ----------------------------------------------------------------
 
     if true then
-        left1 = render_modules(left_prompt or "", 0, frame_color, anchors)
+        left1, any_condense_callbacks = render_modules(left_prompt or "", 0, frame_color, condense, anchors)
+        can_condense = can_condense or any_condense_callbacks
 
         if left_frame then
             if left1 ~= "" then
@@ -1317,7 +1486,8 @@ local function render_prompts(render_settings, need_anchors)
         end
 
         if right_prompt then
-            right1 = render_modules(right_prompt, 1, frame_color)
+            right1, any_condense_callbacks = render_modules(right_prompt, 1, frame_color, condense)
+            can_condense = can_condense or any_condense_callbacks
         end
 
         if right_frame then
@@ -1365,12 +1535,17 @@ local function render_prompts(render_settings, need_anchors)
     -- Combine segments ------------------------------------------------------
 
     local prompt = left1
+    local try_condense
     local rprompt
     local wizard_prefix = _wizard and _wizard.prefix or ""
+    local screen_width = get_screen_width()
 
     if lines == 1 then
         prompt = wizard_prefix .. prompt
         rprompt = right1
+        if console.cellcount(prompt) + console.cellcount(rprompt) + 10 > screen_width then
+            try_condense = true
+        end
     else
         rprompt = right2
         if right1 or right_frame then
@@ -1379,16 +1554,23 @@ local function render_prompts(render_settings, need_anchors)
                 if left1 and #left1 > 0 then left1 = left1 .. " " end
                 if right1 and #right1 > 0 then right1 = " " .. right1 end
             end
-            prompt = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
+            prompt, try_condense = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
         end
-        prompt = wizard_prefix .. prompt .. sgr() .. "\r\n" .. wizard_prefix .. left2
+        prompt = wizard_prefix .. prompt .. sgr()
+        if console.cellcount(prompt) > screen_width then
+            try_condense = true
+        end
+        prompt = prompt .. "\r\n" .. wizard_prefix .. left2
     end
 
     if #top > 0 then
-        prompt = top .. "\n" .. prompt
         if left_frame then
-            prompt = string.rep(" ", console.cellcount(left_frame[1] .. pad_frame)) .. prompt
+            top = string.rep(" ", console.cellcount(left_frame[1] .. pad_frame)) .. top
         end
+        if console.cellcount(top) > screen_width then
+            try_condense = true
+        end
+        prompt = top .. "\n" .. prompt
     end
 
     if rprompt and #rprompt > 0 then
@@ -1416,6 +1598,9 @@ local function render_prompts(render_settings, need_anchors)
         end
     end
 
+    if try_condense and can_condense and not condense then
+        prompt, rprompt, anchors = render_prompts(render_settings, need_anchors, true--[[condense]])
+    end
     return prompt, rprompt, anchors
 end
 
@@ -1560,6 +1745,9 @@ flexprompt.get_frame = get_frame
 -- Function to get the prompt style.
 flexprompt.get_style = get_style
 
+-- Function to get the prompt line count.
+flexprompt.get_lines = get_lines
+
 -- Function to get the prompt flow.
 flexprompt.get_flow = get_flow
 
@@ -1699,9 +1887,20 @@ flexprompt.maybe_apply_tilde = maybe_apply_tilde
 -- Function that takes (text, force) and surrounds it with control codes to
 -- apply fluent coloring to the text.  If force is true, the fluent color is
 -- applied even when using the rainbow style.  If force is a string it's a named
--- color to use instead of the fluent color, and if force is a table and its fg
+-- color to use instead of the fluent color, and if force is a table its fg
 -- field is used instead of the fluent color.
 flexprompt.make_fluent_text = make_fluent_text
+
+-- Function that takes (dir, fluent) to abbreviate the path specified by the
+-- dir parameter.  Each directory name is abbreviated to the shortest string
+-- that uniquely distinguishes it from its sibling directories.  The first and
+-- last directory names in the path are never abbreviated.  And git repo root
+-- directories or workspace directories are never abbreviated.  If fluent is
+-- true, then abbreviated directory names are surrounded with control codes to
+-- apply fluent coloring (even when using the rainbow style).  If fluent is a
+-- string it's a named color to use instead of the fluent color, and if force
+-- is a table its fg field is used instead of the fluent color.
+flexprompt.abbrev_path = abbrev_path
 
 -- Function that takes (lhs, rhs) and appends them together with a space in
 -- between.  If either string is empty or nil, the other string is returned
@@ -1934,11 +2133,11 @@ end
 
 flexprompt.git_command = git_command
 
--- Test whether dir is part of a git repo.
--- @return  nil for not in a git repo; or git dir, workspace dir.
+-- Test whether dir is a git repo root, or workspace dir.
+-- @return  nil if not; otherwise git dir, workspace dir.
 --
 -- Synchronous call.
-function flexprompt.get_git_dir(dir)
+function flexprompt.is_git_dir(dir)
     local function has_git_file(dir) -- luacheck: ignore 432
         local dotgit = path.join(dir, '.git')
         local gitfile
@@ -1964,26 +2163,32 @@ function flexprompt.get_git_dir(dir)
         end
     end
 
-    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
-        -- Return if it's a git dir.
-        local wks = has_dir(dir, ".git")
-        if wks then
-            return wks, wks
-        end
-        -- Check if it has a .git file.
-        local gitdir = has_git_file(dir)
-        if not gitdir then
-            return nil
-        end
-        local gitdir_file = path.join(gitdir, "gitdir")
-        local file = io.open(gitdir_file)
-        if not file then
-            return nil
-        end
-        wks = file:read("*l")
-        file:close()
-        return gitdir, wks
-    end)
+    -- Return if it's a git dir.
+    local wks = has_dir(dir, ".git")
+    if wks then
+        return wks, wks
+    end
+    -- Check if it has a .git file.
+    local gitdir = has_git_file(dir)
+    if not gitdir then
+        return nil
+    end
+    local gitdir_file = path.join(gitdir, "gitdir")
+    local file = io.open(gitdir_file)
+    if not file then
+        return nil
+    end
+    wks = file:read("*l")
+    file:close()
+    return gitdir, wks
+end
+
+-- Test whether dir is part of a git repo.
+-- @return  nil for not in a git repo; or git dir, workspace dir.
+--
+-- Synchronous call.
+function flexprompt.get_git_dir(dir)
+    return flexprompt.scan_upwards(dir, flexprompt.is_git_dir)
 end
 
 -- Get the name of the current branch.
