@@ -1223,7 +1223,7 @@ end
 
 local function normalize_segment_table(t)
     if t[1] then
-        return { text=t[1], color=t[2], altcolor=t[3] }
+        return { text=t[1], color=t[2], altcolor=t[3], isbreak=t.isbreak }
     elseif t.text then
         return t
     end
@@ -1242,9 +1242,10 @@ local function render_module(name, args, try_condense)
                 if segment.condense_callback then
                     local s = segment.condense_callback()
                     table.insert(ret, {
-                        text = a or s.text,
-                        color = b or s.color,
-                        altcolor = c or s.altcolor,
+                        text = s.text or segment.text,
+                        color = s.color or segment.color,
+                        altcolor = s.altcolor or segment.altcolor,
+                        isbreak = s.isbreak or segment.isbreak,
                     })
                 else
                     table.insert(ret, segment)
@@ -1391,7 +1392,7 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
         segmenter._current_module = nil
     end
 
-    out = out .. next_segment(nil, flexprompt.colors.default, nil, pending_segment)
+    out = out .. next_segment(nil, flexprompt.colors.default, nil)
 
     if anchors then
         anchors[2] = console.cellcount(out)
