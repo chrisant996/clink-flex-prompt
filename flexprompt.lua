@@ -2418,6 +2418,10 @@ if clink.oncommand then
     clink.oncommand(oncommand)
 end
 
+if clink.refilterafterterminalresize then
+    clink.refilterafterterminalresize()
+end
+
 local old_diag_custom = clink._diag_custom
 clink._diag_custom = function (arg)
     if old_diag_custom then
