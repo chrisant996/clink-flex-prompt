@@ -284,8 +284,9 @@ flexprompt.settings.oncommands = "moduleA=command1,moduleA=command2,moduleB=comm
 ```lua
 -- Use all available icons:
 flexprompt.settings.use_icons = true
--- Use icons only for the time and exit modules:
-flexprompt.settings.use_icons = { "time_module", "exit_module" }
+-- Use icons only for the time and exit modules, and specifically disable icons for git:
+-- This can be set in 2 ways, you can use ["key"] = true notation or key = true (no quotes)
+flexprompt.settings.use_icons = { time_module = true, ["exit_module"] = true, git = false }
 
 -- Enables battery level refresh in prompt:
 flexprompt.settings.battery_idle_refresh = 30 -- every 30 seconds
