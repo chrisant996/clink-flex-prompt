@@ -689,11 +689,11 @@ local function abbrev_child(parent, child)
         return dir, false
     end
 
-    local lcd = -1
+    local lcd = 0
     local dirs = os.globdirs(path.join(parent, letter .. "*"))
     for _, x in ipairs(dirs) do
         local m = string.matchlen(child, x)
-        if m >= 0 and (lcd < 0 or lcd > m) then
+        if lcd < m then
             lcd = m
         end
     end
@@ -707,7 +707,7 @@ local function abbrev_path(dir, fluent, all, relative)
     -- Removeable drives could be floppy disks or CD-ROMs, which are slow.
     -- Network drives are slow.  Invalid drives are unknown.  If the drive
     -- type might be slow then don't abbreviate.
-    local tilde = dir:find("^~[/\\]")
+    local tilde, tilde_len = dir:find("^~[/\\]+")
     local s, parent
 
     local drivetype, parse
@@ -720,18 +720,27 @@ local function abbrev_path(dir, fluent, all, relative)
     else
         local drive = path.getdrive(dir) or ""
         if tilde then
-            drivetype = os.getdrivetype(path.getdrive(os.getenv("HOME")))
-        elseif drive then
+            parent = os.getenv("HOME")
+            drive = path.getdrive(parent) or ""
             drivetype = os.getdrivetype(drive)
+            s = "~\\"
+            parse = dir:sub(tilde_len + 1)
+        elseif drive ~= "" then
+            local seps
+            parent = drive
+            drivetype = os.getdrivetype(drive)
+            seps, parse = dir:match("^([/\\]*)(.*)$", #drive + 1)
+            s = drive
+            if #seps > 0 then
+                s = s .. "\\"
+            end
         else
-            drivetype = os.getdrivetype(os.getcwd())
+            parent = os.getcwd()
+            drive = path.getdrive(parent) or ""
+            drivetype = os.getdrivetype(drive)
+            s = ""
+            parse = dir
         end
-        if drive ~= "" then
-            drive = drive .. "\\"
-        end
-        s = drive
-        parent = drive
-        parse = dir:sub(#drive + 1)
     end
 
     if drivetype ~= "fixed" and drivetype ~= "ramdisk" then
