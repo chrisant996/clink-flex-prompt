@@ -686,9 +686,10 @@ end
 local function abbrev_child(parent, child)
     local letter = first_letter(child)
     if not letter or letter == "" then
-        return dir, false
+        return child, false
     end
 
+    local any = false
     local lcd = 0
     local dirs = os.globdirs(path.join(parent, letter .. "*"))
     for _, x in ipairs(dirs) do
@@ -696,14 +697,19 @@ local function abbrev_child(parent, child)
         if lcd < m then
             lcd = m
         end
+        any = true
     end
     lcd = (lcd >= 0) and lcd or 0
+
+    if not any then
+        return child, false
+    end
 
     local abbr = child:sub(1, lcd) .. first_letter(child:sub(lcd + 1))
     return abbr, abbr ~= child
 end
 
-local function abbrev_path(dir, fluent, all, relative)
+local function abbrev_path(dir, fluent, all)
     -- Removeable drives could be floppy disks or CD-ROMs, which are slow.
     -- Network drives are slow.  Invalid drives are unknown.  If the drive
     -- type might be slow then don't abbreviate.
@@ -711,36 +717,29 @@ local function abbrev_path(dir, fluent, all, relative)
     local s, parent
 
     local drivetype, parse
-    if relative then
-        relative = os.getfullpathname(relative)
-        drivetype = os.getdrivetype(path.getdrive(relative))
-        s = ""
-        parent = relative
-        parse = dir
-    else
-        local drive = path.getdrive(dir) or ""
-        if tilde then
-            parent = os.getenv("HOME")
-            drive = path.getdrive(parent) or ""
-            drivetype = os.getdrivetype(drive)
-            s = "~\\"
-            parse = dir:sub(tilde_len + 1)
-        elseif drive ~= "" then
-            local seps
-            parent = drive
-            drivetype = os.getdrivetype(drive)
-            seps, parse = dir:match("^([/\\]*)(.*)$", #drive + 1)
-            s = drive
-            if #seps > 0 then
-                s = s .. "\\"
-            end
-        else
-            parent = os.getcwd()
-            drive = path.getdrive(parent) or ""
-            drivetype = os.getdrivetype(drive)
-            s = ""
-            parse = dir
+    local drive = path.getdrive(dir) or ""
+    if tilde then
+        parent = os.getenv("HOME")
+        drive = path.getdrive(parent) or ""
+        drivetype = os.getdrivetype(drive)
+        s = "~"
+        parse = dir:sub(tilde_len + 1)
+    elseif drive ~= "" then
+        local seps
+        parent = drive
+        drivetype = os.getdrivetype(drive)
+        seps, parse = dir:match("^([/\\]*)(.*)$", #drive + 1)
+        s = drive
+        if #seps > 0 then
+            parent = parent .. "\\"
+            s = s .. "\\"
         end
+    else
+        parent = os.getcwd()
+        drive = path.getdrive(parent) or ""
+        drivetype = os.getdrivetype(drive)
+        s = ""
+        parse = dir
     end
 
     if drivetype ~= "fixed" and drivetype ~= "ramdisk" then
@@ -763,8 +762,6 @@ local function abbrev_path(dir, fluent, all, relative)
 
     local first = #components
     if tilde then
-        s = "~"
-        parent = os.getenv("HOME")
         first = first - 1
     end
 
@@ -785,7 +782,8 @@ local function abbrev_path(dir, fluent, all, relative)
         parent = this_dir
     end
 
-    return s:gsub("[/\\]+$", "")
+    dir = s:gsub("[/\\]+$", "")
+    return dir
 end
 
 --------------------------------------------------------------------------------
