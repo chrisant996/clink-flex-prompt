@@ -1279,7 +1279,7 @@ local function render_npm(args)
     local package_name = string.match(package_info, '"name"%s*:%s*"(%g-)"') or ""
     local package_version = string.match(package_info, '"version"%s*:%s*"(.-)"') or ""
 
-    local folder_name = get_folder_name(clink.get_cwd())
+    local folder_name = get_folder_name(os.getcwd())
     local smartname = flexprompt.parse_arg_keyword(args, "smartname")
     if smartname and package_name == folder_name then
         package_name = ""
