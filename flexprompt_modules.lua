@@ -1257,7 +1257,8 @@ local function render_modmark(args)
 end
 
 --------------------------------------------------------------------------------
--- NPM MODULE:  {npm:color=color_name,alt_color_name}
+-- NPM MODULE:  {npm:smartname:color=color_name,alt_color_name}
+--  - smartname skips package name if it matches folder name.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
@@ -1277,6 +1278,12 @@ local function render_npm(args)
 
     local package_name = string.match(package_info, '"name"%s*:%s*"(%g-)"') or ""
     local package_version = string.match(package_info, '"version"%s*:%s*"(.-)"') or ""
+
+    local folder_name = get_folder_name(os.getcwd())
+    local smartname = flexprompt.parse_arg_keyword(args, "smartname")
+    if smartname and package_name == folder_name then
+        package_name = ""
+    end
 
     local text = package_name .. "@" .. package_version
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
