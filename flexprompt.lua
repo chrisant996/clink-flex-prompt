@@ -1442,7 +1442,7 @@ local function render_prompts(render_settings, need_anchors, condense)
         right_prompt = prompts[2]
     end
 
-    local can_condense
+    local can_condense = nil
     local any_condense_callbacks
 
     local top = ""
