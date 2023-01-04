@@ -1551,7 +1551,7 @@ local function render_prompts(render_settings, need_anchors, condense)
     if lines == 1 then
         prompt = wizard_prefix .. prompt
         rprompt = right1
-        if console.cellcount(prompt) + console.cellcount(rprompt) + 10 > screen_width then
+        if console.cellcount(prompt) + (rprompt and console.cellcount(rprompt) or 0) + 10 > screen_width then
             try_condense = true
         end
     else
