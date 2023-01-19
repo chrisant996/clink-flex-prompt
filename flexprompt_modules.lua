@@ -12,6 +12,11 @@ end
 -- luacheck: globals os.getbatterystatus os.geterrorlevel os.isfile
 -- luacheck: globals flexprompt
 
+if not flexprompt or not flexprompt.add_module or not settings.get("flexprompt.enable") then
+    log.info("flexprompt_cwdbrick requires flexprompt.")
+    return
+end
+
 -- Is reset to {} at each onbeginedit.
 local _cached_state = {}
 

@@ -12,6 +12,18 @@ if ((clink and clink.version_encoded) or 0) < 10020010 then
     return
 end
 
+settings.add(
+    "flexprompt.enable",
+    true,
+    "Enable flexprompt.",
+    "Setting this to false disables the flexprompt prompt filter.\n" ..
+    "Takes effect on the next Clink session.")
+
+if not settings.get("flexprompt.enable") then
+    log.info("Flexprompt is disabled by the 'flexprompt.enable' setting.")
+    return
+end
+
 --------------------------------------------------------------------------------
 -- Internals.
 
