@@ -464,9 +464,7 @@ local function get_frame_color()
     return frame_color
 end
 
-local function get_symbol(name, fallback)
-    local settings_symbols = flexprompt.settings.symbols
-    local symbol = settings_symbols and settings_symbols[name] or symbols[name] or fallback or ""
+local function resolve_symbol_table(symbol)
     if type(symbol) == "table" then
         local term = clink.getansihost and clink.getansihost() or nil
         if term and symbol[term] then
@@ -475,8 +473,18 @@ local function get_symbol(name, fallback)
             symbol = symbol["powerline"]
         else
             local charset = get_charset()
-            symbol = symbol[charset] or symbol[1] or ""
+            symbol = symbol[charset] or symbol[1]
         end
+    end
+    return symbol
+end
+
+local function get_symbol(name, fallback)
+    local settings_symbols = flexprompt.settings.symbols
+    local symbol = settings_symbols and settings_symbols[name] or symbols[name] or fallback or ""
+    symbol = resolve_symbol_table(symbol)
+    if not symbol then
+        symbol = resolve_symbol_table(symbols[name] or fallback or "")
     end
     return symbol
 end
