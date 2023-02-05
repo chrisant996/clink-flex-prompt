@@ -9,7 +9,7 @@ end
 -- Internals.
 
 -- luacheck: no max line length
--- luacheck: globals os.getbatterystatus os.geterrorlevel os.isfile
+-- luacheck: globals console os
 -- luacheck: globals flexprompt
 
 if not flexprompt or not flexprompt.add_module or not settings.get("flexprompt.enable") then

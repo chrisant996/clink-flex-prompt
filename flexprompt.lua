@@ -28,7 +28,9 @@ end
 -- Internals.
 
 -- luacheck: no max line length
--- luacheck: globals console io.popenyield os.geterrorlevel os.isfile string.equalsi unicode _error_handler NONL
+-- luacheck: globals console io os unicode
+-- luacheck: globals string.equalsi string.matchlen
+-- luacheck: globals _error_handler NONL
 -- luacheck: globals flexprompt
 -- luacheck: globals CMDER_SESSION prompt_includeVersionControl
 
