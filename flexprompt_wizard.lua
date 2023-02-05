@@ -12,6 +12,25 @@ local _transient
 local _striptime
 local _timeformat
 
+local function spairs(t, order)
+    local keys = {}
+    for k in pairs(t) do keys[#keys+1] = k end
+
+    if order then
+        table.sort(keys, function(a,b) return order(t, a, b) end)
+    else
+        table.sort(keys)
+    end
+
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return keys[i], t[keys[i]]
+        end
+    end
+end
+
 local function readinput()
     if console.readinput then
         local key = console.readinput()
@@ -84,7 +103,7 @@ local function write_var(file, line, name, value, indent)
             write_var(file, line, tonumber(n), v, indent .. "    ")
         end
 
-        for n,v in pairs(value) do
+        for n,v in spairs(value) do
             if type(n) == "string" then
                 write_var(file, line, n, v, indent .. "    ")
             end
@@ -141,7 +160,7 @@ local function write_settings(settings)
     local line = { 8 }
 
     local errors
-    for n,v in pairs(settings) do
+    for n,v in spairs(settings) do
         if n ~= "wizard" then
             local msg = write_var(file, line, "flexprompt.settings."..n, v)
             if msg then
