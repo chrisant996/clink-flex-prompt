@@ -29,6 +29,138 @@ local keymap_color = { fg="34", bg="44", extfg="38;5;26", extbg="48;5;26", lean=
 flexprompt.add_color("keymap", keymap_color)
 
 --------------------------------------------------------------------------------
+-- Helpers.
+
+-- Expects the colors arg to follow this scheme:
+-- All elements are by index:
+--  1 = token
+--  2 = alttoken
+--  3 = color
+--  4 = altcolor
+--  5 = extended color
+--  6 = extended altcolor
+local function parse_color_token(args, colors)
+    local parsed_colors = flexprompt.parse_arg_token(args, colors[1], colors[2])
+    local color = flexprompt.use_best_color(colors[3], colors[5] or colors[3])
+    local altcolor = flexprompt.use_best_color(colors[4], colors[6] or colors[4])
+    color, altcolor = flexprompt.parse_colors(parsed_colors, color, altcolor)
+    return color, altcolor
+end
+
+--------------------------------------------------------------------------------
+-- ADMIN MODULE:  {admin:always:forcetext:text_options:icon_options:color_options}
+--  - 'always' shows the module even when not running as an Adminstrator.
+--  - 'forcetext' shows text even if an icon is shown.
+--  - 'admintext=abc' sets admin mode text to 'abc' ('admintext=' for none).
+--  - 'normaltext=xyz' sets normal mode text to 'xyz' ('normaltext=' for none).
+--  - 'adminicon=X' sets the admin mode icon to 'X'.
+--  - 'normalicon=Y' sets the normal mode icon to 'Y'.
+--  - color_options override status colors as follows:
+--      - normal=color_name,alt_color_name      When not running as an Adminstrator.
+--      - admin=color_name,alt_color_name       When running as an Adminstrator.
+--
+-- By default, it uses just an icon if icons are enabled and the font supports
+-- powerline characters.
+--
+-- NOTES:
+--  - The ADMIN module requires at least Clink v1.4.17 or higher.
+--  - The admintext and normaltext options currently don't support text that
+--    contains a colon character ':'.
+
+local admin_color_list =
+{
+    default = {
+        -- NOTE:  Weird...  Using "38;2;0;102;0" here makes Windows Terminal
+        -- fail to draw color emoji later on in the prompt line.  And yet it
+        -- doesn't cause a problem when the style is "rainbow".
+        no_admin    = { "n", "normal",  "green",     nil,            "38;5;28",      nil },
+        admin       = { "a", "admin",   "brightred", nil,            "38;5;203",     nil },
+    },
+    rainbow = {
+        no_admin    = { "n", "normal",  "green",     "white",        "38;2;0;48;12", "38;5;252" },
+        admin       = { "a", "admin",   "red",       "brightyellow", "38;2;64;0;0",  "38;5;203" },
+    },
+}
+
+local admin_text_list =
+{
+    no_admin    = "normal",
+    admin       = "ADMIN",
+}
+
+local function render_admin(args)
+    local is_admin = _cached_state.is_admin or os.isuseradmin()
+    local mode = is_admin and "admin" or "no_admin"
+
+    if not is_admin then
+        local always = flexprompt.parse_arg_keyword(args, "always")
+        if not always then
+            return
+        end
+    end
+
+    local forcetext = flexprompt.parse_arg_keyword(args, "forcetext")
+    local colorlist = admin_color_list[flexprompt.get_style()] or admin_color_list.default
+    local colors = colorlist[mode]
+
+    local fallbacksymbol
+    local icon = flexprompt.parse_arg_token(args, is_admin and "ai" or "ni", is_admin and "adminicon" or "normalicon") or ""
+    if icon == "" then
+        icon = flexprompt.get_symbol(mode) or ""
+        fallbacksymbol = true
+    end
+
+    local text = ""
+    if forcetext or icon == "" then
+        text = flexprompt.parse_arg_token(args, is_admin and "at" or "nt", is_admin and "admintext" or "normaltext") or ""
+        if text == "" then
+            text = admin_text_list[mode]
+        end
+    end
+
+    if text ~= "" and fallbacksymbol then
+        icon = flexprompt.get_icon(mode) or ""
+    end
+
+    text = flexprompt.append_text(icon, text)
+
+    local color, altcolor = parse_color_token(args, colors)
+    return text, color, altcolor
+end
+
+local admin_registered_oninputlinechanged
+
+local function admin_onbeginedit()
+    -- Optimization to minimize processing while typing.
+    _cached_state.has_admin_module = flexprompt.is_module_in_prompt("admin")
+    if not admin_registered_oninputlinechanged and _cached_state.has_admin_module then
+        if clink.oninputlinechanged then
+            local function oninputlinechanged(line)
+                if _cached_state.has_admin_module then
+                    local is_admin
+                    for _,entry in ipairs(clink.parseline(line)) do
+                        local line_state = entry.line_state
+                        local cwi = line_state:getcommandwordindex()
+                        local cw = cwi and line_state:getword(cwi)
+                        if cw == "sudo" or cw == "gsudo" then
+                            is_admin = true
+                            break
+                        end
+                    end
+                    if is_admin ~= _cached_state.is_admin then
+                        _cached_state.is_admin = is_admin
+                        clink.refilterprompt()
+                    end
+                end
+            end
+
+            admin_registered_oninputlinechanged = true
+            clink.oninputlinechanged(oninputlinechanged)
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
 -- ANYCONNECT MODULE:  {anyconnect:novars:forcetext:text=conn,noconn,unknown:color_options}
 --
 -- Shows whether Cisco AnyConnect VPN is currently connected as well as the
@@ -737,22 +869,6 @@ local function collect_git_info(no_untracked)
     local conflict = flexprompt.get_git_conflict()
     local ahead, behind = flexprompt.get_git_ahead_behind()
     return { status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
-end
-
--- Expects the colors arg to follow this scheme:
--- All elements are by index:
---  1 = token
---  2 = alttoken
---  3 = color
---  4 = altcolor
---  5 = extended color
---  6 = extended altcolor
-local function parse_color_token(args, colors)
-    local parsed_colors = flexprompt.parse_arg_token(args, colors[1], colors[2])
-    local color = flexprompt.use_best_color(colors[3], colors[5] or colors[3])
-    local altcolor = flexprompt.use_best_color(colors[4], colors[6] or colors[4])
-    color, altcolor = flexprompt.parse_colors(parsed_colors, color, altcolor)
-    return color, altcolor
 end
 
 local git_colors =
@@ -1648,6 +1764,7 @@ end
 
 local function builtin_modules_onbeginedit()
     _cached_state = {}
+    admin_onbeginedit()
     duration_onbeginedit()
     keymap_onbeginedit()
     modmark_onbeginedit()
@@ -1681,6 +1798,10 @@ flexprompt.add_module( "svn",           render_svn                          )
 flexprompt.add_module( "time",          render_time,        { unicode="" } )
 flexprompt.add_module( "user",          render_user,        { unicode="" } )
 flexprompt.add_module( "vpn",           render_vpn,         { unicode="" } )
+
+if os.isuseradmin then
+flexprompt.add_module( "admin",         render_admin                        )
+end
 
 if clink.onaftercommand then
 flexprompt.add_module( "keymap",        render_keymap,      { unicode="" } )

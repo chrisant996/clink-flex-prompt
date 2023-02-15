@@ -296,6 +296,9 @@ local symbols =
     prompt          = { ">" },
     overtype_prompt = { "►" },
 
+    admin           = {         powerline="" },
+    no_admin        = {         powerline="" },
+
     vpn             = {         powerline="" },
     no_vpn          = {         powerline="" },
 

@@ -76,6 +76,7 @@ flexprompt.settings.right_prompt = "{exit}{overtype}{vpn}{duration}{time}"
 ## Modules
 The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` string variables list prompt modules to be displayed.
 
+- `"{admin}"` shows whether the shell is running as administrator.
 - `"{anyconnect}"` shows the current Cisco AnyConnect VPN connection.
 - `"{battery}"` shows the battery level and whether the battery is charging.
 - `"{break}"` shows a break between two modules; is automatically discarded if adjacent to only one visible module.
