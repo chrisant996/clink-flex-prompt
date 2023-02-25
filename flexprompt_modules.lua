@@ -934,6 +934,7 @@ local function render_git(args)
     local segments = {}
 
     -- Local status.
+    local segment = {}
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
@@ -947,22 +948,44 @@ local function render_git(args)
         icon_name = "unpublished"
         colors = git_colors.unpublished
     end
-    local text = flexprompt.format_branch_name(branch, icon_name, refreshing)
     if gitError then
         colors = git_colors.unknown
-        text = flexprompt.append_text(text, gitError)
     elseif gitConflict then
         colors = git_colors.conflict
-        text = flexprompt.append_text(text, flexprompt.get_symbol("conflict"))
     elseif gitStatus and gitStatus.working then
         colors = git_colors.dirty
-        text = add_details(text, gitStatus.working, include_counts)
     elseif gitUnknown then
         colors = git_colors.unknown
     end
-
     color, altcolor = parse_color_token(args, colors)
-    table.insert(segments, { text, color, altcolor })
+
+    local function make_text(b)
+        local text = flexprompt.format_branch_name(b, icon_name, refreshing)
+        if gitError then
+            text = flexprompt.append_text(text, gitError)
+        elseif gitConflict then
+            text = flexprompt.append_text(text, flexprompt.get_symbol("conflict"))
+        elseif gitStatus and gitStatus.working then
+            text = add_details(text, gitStatus.working, include_counts)
+        end
+        return text
+    end
+
+    local text = make_text(branch)
+    local segment = { text, color, altcolor }
+    segment.condense_callback = function ()
+        local b = branch
+        local target = math.max(console.getwidth() / 4, 20)
+        if console.cellcount(branch) > target then
+            b = b:sub(1, target - 3 - 4) .. flexprompt.make_fluent_text("...") .. b:sub(-4)
+        end
+        return {
+            text=make_text(b),
+            color=color,
+            altcolor=altcolor,
+        }
+    end
+    table.insert(segments, segment)
 
     -- Staged status.
     local noStaged = flexprompt.parse_arg_keyword(args, "ns", "nostaged")
