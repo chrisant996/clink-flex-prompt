@@ -1255,7 +1255,7 @@ end
 
 local function normalize_segment_table(t)
     if t[1] then
-        return { text=t[1], color=t[2], altcolor=t[3], isbreak=t.isbreak }
+        return { text=t[1], color=t[2], altcolor=t[3], isbreak=t.isbreak, condense_callback=t.condense_callback }
     elseif t.text then
         return t
     end
