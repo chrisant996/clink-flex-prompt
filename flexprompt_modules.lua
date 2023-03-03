@@ -973,17 +973,15 @@ local function render_git(args)
 
     local text = make_text(branch)
     local segment = { text, color, altcolor }
+    local condensed_segment = { color=color, altcolor=altcolor }
     segment.condense_callback = function ()
         local b = branch
         local target = math.max(console.getwidth() / 4, 20)
         if console.cellcount(branch) > target then
             b = b:sub(1, target - 3 - 4) .. flexprompt.make_fluent_text("...") .. b:sub(-4)
         end
-        return {
-            text=make_text(b),
-            color=color,
-            altcolor=altcolor,
-        }
+        condensed_segment.text = make_text(b)
+        return condensed_segment
     end
     table.insert(segments, segment)
 
