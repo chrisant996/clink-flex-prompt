@@ -84,6 +84,20 @@ local function inc_line(line)
     line[1] = line[1] + 1
 end
 
+local function order_table(t, a, b)
+    local typea = type(a)
+    local typeb = type(b)
+    if typea == typeb then
+        return a < b
+    elseif typea == "number" then
+        return true
+    elseif typeb == "number" then
+        return false
+    else
+        return tostring(a) < tostring(b)
+    end
+end
+
 local function write_var(file, line, name, value, indent)
     local t = type(value)
     if not indent then indent = "" end
@@ -103,7 +117,7 @@ local function write_var(file, line, name, value, indent)
             write_var(file, line, tonumber(n), v, indent .. "    ")
         end
 
-        for n,v in spairs(value) do
+        for n,v in spairs(value, order_table) do
             if type(n) == "string" then
                 write_var(file, line, n, v, indent .. "    ")
             end
