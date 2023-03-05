@@ -43,6 +43,12 @@ Here are some recommended fonts to consider:
 - [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
 - And there are many other fonts to have fun with -- enjoy!
 
+## I installed a font; why won't it show up in the list of available terminal fonts?
+
+The default built-in terminal window in Windows only lists a small set of predefined fonts.  Other terminal hosts such as Windows Terminal or ConEmu make it easy to choose other fonts, without any extra steps.
+
+If you want to add more fonts for the built-in terminal window, then you'll need to make some system registry changes.  [This article](https://superuser.com/questions/1347724/how-can-i-add-additional-fonts-to-the-windows-console) does a good job of collecting a variety of relevant info into one place.  But if that link is broken when you're this, then you can do an internet search for "add fonts for console windows" or similar phrases.
+
 # Configuration Wizard
 
 Flex prompt can be easily customized via its configuration wizard.
