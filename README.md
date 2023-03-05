@@ -47,7 +47,7 @@ Here are some recommended fonts to consider:
 
 The default built-in terminal window in Windows only lists a small set of predefined fonts.  Other terminal hosts such as Windows Terminal or ConEmu make it easy to choose other fonts, without any extra steps.
 
-If you want to add more fonts for the built-in terminal window, then you'll need to make some system registry changes.  [This article](https://superuser.com/questions/1347724/how-can-i-add-additional-fonts-to-the-windows-console) does a good job of collecting a variety of relevant info into one place.  But if that link is broken when you're this, then you can do an internet search for "add fonts for console windows" or similar phrases.
+If you want to add more fonts for the built-in terminal window, then you'll need to make some system registry changes.  [This article](https://superuser.com/questions/1347724/how-can-i-add-additional-fonts-to-the-windows-console) does a good job of collecting a variety of relevant info into one place.  But if that link is broken when you're reading this, then you can do an internet search for "add fonts for console windows" or similar phrases.
 
 # Configuration Wizard
 
