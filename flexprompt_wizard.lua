@@ -88,7 +88,7 @@ local function inc_line(line)
     line[1] = line[1] + 1
 end
 
-local function order_table(t, a, b)
+local function order_table(a, b)
     local typea = type(a)
     local typeb = type(b)
     if typea == typeb then
