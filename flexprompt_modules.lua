@@ -934,7 +934,6 @@ local function render_git(args)
     local segments = {}
 
     -- Local status.
-    local segment = {}
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
