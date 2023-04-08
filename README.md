@@ -88,6 +88,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{break}"` shows a break between two modules; is automatically discarded if adjacent to only one visible module.
 - `"{cwd}"` shows the current working directory.
 - `"{duration}"` shows the duration of the previous command.
+- `"{env}"` shows the content of an environment variable.
 - `"{exit}"` shows the exit code of the previous command.
 - `"{git}"` shows git status.
 - `"{hg}"` shows Mercurial status.
@@ -97,6 +98,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{maven}"` shows package info.
 - `"{modmark}"` shows a modified line indicator when the current line is a history entry and has been modified (only when the `mark-modified-lines` Readline config setting is `on`).
 - `"{npm}"` shows package name and version.
+- `"{label}"` shows the given text label.
 - `"{overtype}"` shows indicator when overtype mode is on (i.e. when insert mode is off).
 - `"{python}"` shows the virtual environment.
 - `"{svn}"` shows Subversion status.

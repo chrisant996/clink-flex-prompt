@@ -744,6 +744,32 @@ local function render_duration(args)
     return text, color, altcolor
 end
 
+-- ENV MODULE:  {env:var_name:color=color_name,alt_color_name}
+--  - var_name name of the environment variable
+--  - color_name is a name like "green", or an SGR code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+local function render_env(args)
+  --local env_var_name, color, alt_color = args:match("([^:]+):?([^:]*):?(.*)")
+  local env_var_name = args:match("([^:]+)")
+  if env_var_name == "" then
+      return
+  end
+
+  local colors = flexprompt.parse_arg_token(args, "c", "color")
+  local color, altcolor
+  local style = flexprompt.get_style()
+  if style == "rainbow" then
+      color = flexprompt.use_best_color("cyan", "38;5;67")
+  elseif style == "classic" then
+      color = flexprompt.use_best_color("cyan", "38;5;117")
+  else
+      color = flexprompt.use_best_color("cyan", "38;5;110")
+  end
+  color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
+
+  return os.getenv(env_var_name) or "", color, alt_color
+end
+
 --------------------------------------------------------------------------------
 -- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
 --  - 'always' always shows the exit code even when 0.
@@ -1334,6 +1360,34 @@ local function render_maven(args)
     return text, color, altcolor
 end
 
+-- LABEL MODULE:  {label:label_text:color=color_name,alt_color_name}
+--  - var_name name of the environment variable
+--  - color_name is a name like "green", or an SGR code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+local function render_label(args)
+  local label_text = args:match("(.+):color=")
+  if label_text == nil then
+     label_text = args
+  end
+  if label_text == "" then
+      return
+  end
+
+  local colors = flexprompt.parse_arg_token(args, "c", "color")
+  local color, altcolor
+  local style = flexprompt.get_style()
+  if style == "rainbow" then
+      color = flexprompt.use_best_color("cyan", "38;5;67")
+  elseif style == "classic" then
+      color = flexprompt.use_best_color("cyan", "38;5;117")
+  else
+      color = flexprompt.use_best_color("cyan", "38;5;110")
+  end
+  color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
+
+  return label_text, color, alt_color
+end
+
 --------------------------------------------------------------------------------
 -- MODMARK MODULE:  {modmark:color=color_name,alt_color_name:text=modmark_text}
 --  - modmark_text provides a string to show when the current line is modified.
@@ -1806,11 +1860,13 @@ flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
 flexprompt.add_module( "cwd",           render_cwd,         { unicode="" } )
 flexprompt.add_module( "duration",      render_duration,    { unicode="" } )
+flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
 flexprompt.add_module( "git",           render_git,         { unicode="" } )
 flexprompt.add_module( "hg",            render_hg                           )
 flexprompt.add_module( "histlabel",     render_histlabel,   { unicode="" } )
 flexprompt.add_module( "k8s",           render_k8s,         { unicode="ﴱ" } )
+flexprompt.add_module( "label",         render_label                        )
 flexprompt.add_module( "maven",         render_maven                        )
 flexprompt.add_module( "npm",           render_npm                          )
 flexprompt.add_module( "python",        render_python,      { unicode="" } )
