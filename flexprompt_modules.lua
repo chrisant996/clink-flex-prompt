@@ -745,6 +745,52 @@ local function render_duration(args)
 end
 
 --------------------------------------------------------------------------------
+-- ENV MODULE:  {env:var=var_name,color=color_name,alt_color_name:label=label_text:fluent=fluent_text}
+--  - var_name can be any environment variable name.
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--  - label_text is optional text to use as a label prefix before the
+--    environment variable's value.
+--  - fluent_text is optional text to use as a prefix when "fluent" mode is
+--    enabled.
+
+local function render_env(args)
+    local name = flexprompt.parse_arg_token(args, "v", "var") or ""
+    if name == "" then
+        return
+    end
+
+    local text = os.getenv(name) or ""
+    if text == "" then
+        return
+    end
+
+    local label = flexprompt.parse_arg_token(args, "l", "label") or ""
+    if label ~= "" then
+        text = flexprompt.append_text(label, text)
+    end
+
+    local fluent = flexprompt.parse_arg_token(args, "f", "fluent") or ""
+    if fluent ~= "" then
+        text = flexprompt.append_text(flexprompt.make_fluent_text(fluent), text)
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        color = flexprompt.use_best_color("green", "38;5;22")
+    elseif style == "classic" then
+        color = flexprompt.use_best_color("green", "38;5;35")
+    else
+        color = flexprompt.use_best_color("green", "38;5;28")
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- EXIT MODULE:  {exit:always:color=color_name,alt_color_name:hex}
 --  - 'always' always shows the exit code even when 0.
 --  - color_name is used when the exit code is 0, and is a name like "green", or
@@ -1806,6 +1852,7 @@ flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
 flexprompt.add_module( "cwd",           render_cwd,         { unicode="" } )
 flexprompt.add_module( "duration",      render_duration,    { unicode="" } )
+flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
 flexprompt.add_module( "git",           render_git,         { unicode="" } )
 flexprompt.add_module( "hg",            render_hg                           )

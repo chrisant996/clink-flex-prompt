@@ -88,6 +88,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{break}"` shows a break between two modules; is automatically discarded if adjacent to only one visible module.
 - `"{cwd}"` shows the current working directory.
 - `"{duration}"` shows the duration of the previous command.
+- `"{env}"` shows an environment variable.
 - `"{exit}"` shows the exit code of the previous command.
 - `"{git}"` shows git status.
 - `"{hg}"` shows Mercurial status.
