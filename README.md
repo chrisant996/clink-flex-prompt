@@ -13,11 +13,15 @@ https://raw.githubusercontent.com/chrisant996/clink-flex-prompt/master/demo.png)
 
 # Installation
 
+## Via .zip file
+
 1. Go to the [Releases](https://github.com/chrisant996/clink-flex-prompt/releases) page.
 2. Download the latest `clink-flex-prompt-*.zip` file.
 3. Extract the files from it into your Clink scripts directory (use `clink info` to find it if you're not sure where it is).
 
-- [ ] _TBD: publish via scoop?_
+## Or, via [Scoop](https://scoop.sh)
+
+1. Run `scoop install clink-flex-prompt`
 
 # Fonts
 
