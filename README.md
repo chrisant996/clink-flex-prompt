@@ -520,6 +520,33 @@ end
 flexprompt.add_module("mfm", my_first_module)
 ```
 
+## Abbreviation When Too Wide
+
+Prompt modules can optionally return a callback function for use in case the
+terminal is not wide enough for the full prompt to be displayed.  If the prompt
+is too wide, flexprompt calls each module's callback function to get an
+abbreviated form of the module and uses that instead to help the prompt fit.
+
+To provide a callback function, the prompt module should return a table with a
+`condense_callback` field:
+
+```lua
+return {
+    -- Normal results; text and colors.
+    "full module text here",
+    "green",
+    "black",
+    -- Callback when short form is needed.
+    condense_callback = function ()
+        return {
+            "mini text",
+            "green",
+            "black",
+        }
+    end
+}
+```
+
 ## Async Prompt Filtering
 
 Clink supports asynchronous prompt filtering, where the input line editor stays
@@ -555,7 +582,7 @@ local function collect_files_info()
 end
 ```
 
-## Step Two -- Make it collect the info asynchronously
+### Step Two -- Make it collect the info asynchronously
 
 Make a module that calls `flexprompt.prompt_info()`.  We'll discuss the middle
 two parameters later -- they can be empty strings if you don't need them.
@@ -582,7 +609,7 @@ end
 flexprompt.add_module("files", files_module)
 ```
 
-## Step Three -- [Optional] Maybe reset the cached prompt info
+### Step Three -- [Optional] Maybe reset the cached prompt info
 
 Async prompt filtering shows the previous prompt content until the async
 collection function finishes.
