@@ -2239,6 +2239,9 @@ function flexprompt.get_git_branch(git_dir)
     local HEAD = head_file:read()
     head_file:close()
 
+    -- If HEAD isn't present, something is wrong.
+    if not HEAD then return end
+
     -- If HEAD matches branch expression, then we're on named branch otherwise
     -- it is a detached commit.
     local branch_name = HEAD:match('ref: refs/heads/(.+)')
