@@ -848,6 +848,7 @@ end
 --  - 'nostaged' omits the staged details.
 --  - 'noaheadbehind' omits the ahead/behind details.
 --  - 'showremote' shows the branch and its remote.
+--  - 'submodules' includes status for submodules.
 --  - 'counts' shows the count of added/modified/etc files.
 --  - color_options override status colors as follows:
 --      - clean=color_name,alt_color_name           When status is clean.
@@ -899,7 +900,7 @@ end
 -- Collects git status info.
 --
 -- Uses async coroutine calls.
-local function collect_git_info(no_untracked)
+local function collect_git_info(no_untracked, includeSubmodules)
     if flexprompt.settings.git_fetch_interval then
         local git_dir = flexprompt.get_git_dir():lower()
         local when = fetched_repos[git_dir]
@@ -911,7 +912,7 @@ local function collect_git_info(no_untracked)
         end
     end
 
-    local status = flexprompt.get_git_status(no_untracked)
+    local status = flexprompt.get_git_status(no_untracked, includeSubmodules)
     local conflict = flexprompt.get_git_conflict()
     local ahead, behind = flexprompt.get_git_ahead_behind()
     return { status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
@@ -963,8 +964,9 @@ local function render_git(args)
 
         -- Collect or retrieve cached info.
         local noUntracked = flexprompt.parse_arg_keyword(args, "nu", "nountracked")
+        local includeSubmodules = flexprompt.parse_arg_keyword(args, "sm", "submodules")
         info, refreshing = flexprompt.prompt_info(git, git_dir, branch, function ()
-            return collect_git_info(noUntracked)
+            return collect_git_info(noUntracked, includeSubmodules)
         end)
 
         -- Add remote to branch name if requested.

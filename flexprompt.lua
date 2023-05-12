@@ -2256,9 +2256,16 @@ end
 -- @return  nil for clean, or a table with dirty counts.
 --
 -- Uses async coroutine call.
-function flexprompt.get_git_status(no_untracked)
-    local uflag = no_untracked and "-uno" or ""
-    local file = flexprompt.popenyield(git_command("status " .. uflag .. " --branch --porcelain"))
+function flexprompt.get_git_status(no_untracked, include_submodules)
+    local flags = ""
+    if no_untracked then
+        flags = flags .. "-uno "
+    end
+    if include_submodules then
+        flags = flags .. "--ignore-submodules=none "
+    end
+
+    local file = flexprompt.popenyield(git_command("status " .. flags .. " --branch --porcelain"))
     if not file then
         return { errmsg="[error]" }
     end
