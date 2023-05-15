@@ -211,8 +211,9 @@ local function collect_anyconnect_info()
     -- but then how do we parse the output ?
     -- they could give us the pattern to seach for as well
     local file, pclose = flexprompt.popenyield("vpncli state 2>nul")
-    local conns = {}
+    if not file then return end
 
+    local conns = {}
     for line in file:lines() do
         -- Strip the lines of any whitespaces
         line = line:match( "^%s*(.-)%s*$" )
@@ -273,9 +274,6 @@ local function render_anyconnect(args)
     else
         -- Get connection status.
         info, refreshing = flexprompt.prompt_info(anyconnect_cached_info, nil, nil, collect_anyconnect_info)
-    end
-    if not info then
-        return
     end
 
     -- Decide on the colors based on the VPN connection state and proxy env vars
@@ -1080,10 +1078,11 @@ local hg = {}
 
 local function collect_hg_info()
     local pipe = flexprompt.popenyield("hg status -amrd 2>&1")
-    local output = pipe:read('*all')
+    if not pipe then return end
+    local output = pipe:read('*all') or ""
     pipe:close()
 
-    local dirty = (output or "") ~= ""
+    local dirty = output ~= ""
     return { dirty=dirty }
 end
 
@@ -1100,7 +1099,8 @@ local function render_hg(args)
 
     -- We're inside of hg repo, read branch and status.
     local pipe = io.popen("hg branch 2>&1")
-    local output = pipe:read('*all')
+    if not pipe then return end
+    local output = pipe:read('*all') or ""
     pipe:close()
 
     -- Strip the trailing newline from the branch name.
@@ -1334,28 +1334,30 @@ local mvn = {}
 
 local function collect_mvn_info()
     local handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
-    local package_group = handle:read("*a")
+    if not handle then return end
+    local package_group = handle:read("*a") or ""
     handle:close()
-    if package_group == nil or package_group == "" then
-        local parent_handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
-        package_group = parent_handle:read("*a")
-        parent_handle:close()
-        if not package_group then package_group = "" end
+    if package_group == "" then
+        handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'groupId\']/text()" pom.xml 2>NUL')
+        if not handle then return end
+        package_group = handle:read("*a") or ""
+        handle:close()
     end
 
     handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'artifactId\']/text()" pom.xml 2>NUL')
-    local package_artifact = handle:read("*a")
+    if not handle then return end
+    local package_artifact = handle:read("*a") or ""
     handle:close()
-    if not package_artifact then package_artifact = "" end
 
     handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
-    local package_version = handle:read("*a")
+    if not handle then return end
+    local package_version = handle:read("*a") or ""
     handle:close()
-    if package_version == nil or package_version == "" then
-        local parent_handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
-        package_version = parent_handle:read("*a")
-        parent_handle:close()
-        if not package_version then package_version = "" end
+    if package_version == "" then
+        handle = flexprompt.popenyield('xmllint --xpath "//*[local-name()=\'project\']/*[local-name()=\'parent\']/*[local-name()=\'version\']/text()" pom.xml 2>NUL')
+        if not handle then return end
+        package_version = handle:read("*a") or ""
+        handle:close()
     end
 
     return { package_group=package_group, package_artifact=package_artifact, package_version=package_version }
@@ -1606,6 +1608,7 @@ end
 
 local function get_svn_branch()
     local file = io.popen("svn info 2>nul")
+    if not file then return end
     for line in file:lines() do
         local m = line:match("^Relative URL:")
         if m then
@@ -1618,6 +1621,7 @@ end
 
 local function get_svn_status()
     local file = flexprompt.popenyield("svn status -q")
+    if not file then return end
     for _ in file:lines() do -- luacheck: ignore 512
         file:close()
         return true
@@ -1752,17 +1756,17 @@ local vpn_cached_info = {}
 -- Uses async coroutine calls.
 local function collect_vpn_info()
     local file = flexprompt.popenyield("rasdial 2>nul")
-    local line
-    local conns = {}
+    if not file then return end
 
     -- Skip first line, which is always a header line.
-    line = file:read("*l")
-    if not line or line == "" then
+    local line = file:read("*l") or ""
+    if line == "" then
         file:close()
         return {}
     end
 
     -- Read the rest of the lines.
+    local conns = {}
     while true do
         line = file:read("*l")
         if not line then
@@ -1800,7 +1804,7 @@ local function render_vpn(args)
         info, refreshing = flexprompt.prompt_info(vpn_cached_info, nil, nil, collect_vpn_info)
     end
 
-    if not info or not info.connection then
+    if not info.connection then
         return
     end
 

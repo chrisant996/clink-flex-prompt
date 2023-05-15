@@ -638,7 +638,7 @@ local function has_file(dir, file)
 end
 
 local function append_text(lhs, rhs)
-    if not lhs then return tostring(rhs) end
+    if not lhs then return rhs and tostring(rhs) or "" end
     if not rhs then return tostring(lhs) end
 
     lhs = tostring(lhs)
@@ -2179,7 +2179,7 @@ function flexprompt.is_git_dir(dir)
         end
         if not gitfile then return end
 
-        local git_dir = gitfile:read():match('gitdir: (.*)')
+        local git_dir = (gitfile:read() or ""):match('gitdir: (.*)')
         gitfile:close()
 
         -- gitdir can (apparently) be absolute or relative:
