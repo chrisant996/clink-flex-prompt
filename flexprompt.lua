@@ -2112,6 +2112,25 @@ local function load_ini(fileName)
     return data;
 end
 
+local function join_into_absolute(parent, child)
+    -- gitdir can (apparently) be absolute or relative, but everything
+    -- downstream wants absolute paths.  Process leading .. and . path
+    -- components in child.
+    while true do
+        if child:find('^%.%.[/\\]') or child == '..' then
+            parent = path.toparent(parent)
+            child = child:sub(4)
+        elseif child:find('^%.[/\\]') or child == '.' then
+            child = child:sub(3)
+        else
+            break
+        end
+    end
+
+    -- Join the remaining parent and child.
+    return path.join(parent, child):gsub('/', '\\')
+end
+
 local git_config = {}
 function git_config.load(git_dir)
     git_config.config = git_dir and load_ini(path.join(git_dir, 'config')) or nil
@@ -2166,8 +2185,18 @@ end
 
 flexprompt.git_command = git_command
 
--- Test whether dir is a git repo root, or workspace dir.
--- @return  nil if not; otherwise git dir, workspace dir.
+-- Test whether dir is a git repo root, or workspace dir, or submodule dir.
+-- @return  nil if not; otherwise git_dir, workspace_dir, dir.
+--
+-- Examples:
+--  * In a repo c:\repo, the return is:
+--      "c:\repo\.git", "c:\repo\.git", "c:\repo"
+--  * In a submodule under c:\repo, the return is:
+--      "c:\repo\.git\modules\submodule", "c:\repo\.git", "c:\repo\submodule"
+--  * In a worktree under c:\repo, the return is:
+--      "c:\repo\.git\worktrees\worktree", "c:\repo\worktree\.git", "c:\repo\worktree"
+--  * In a worktree outside c:\repo, the return is:
+--      "c:\repo\.git\worktrees\worktree", "c:\worktree\.git", "c:\worktree"
 --
 -- Synchronous call.
 function flexprompt.is_git_dir(dir)
@@ -2182,38 +2211,44 @@ function flexprompt.is_git_dir(dir)
         local git_dir = (gitfile:read() or ""):match('gitdir: (.*)')
         gitfile:close()
 
-        -- gitdir can (apparently) be absolute or relative:
-        local file_when_absolute = git_dir and os.isdir(git_dir) and git_dir
-        if file_when_absolute then
-            -- Don't waste time calling os.isdir on a potentially relative path
-            -- if we already know it's an absolute path.
-            return file_when_absolute
-        end
-        local rel_dir = path.join(dir, git_dir)
-        local file_when_relative = git_dir and os.isdir(rel_dir) and rel_dir
-        if file_when_relative then
-            return file_when_relative
+        if git_dir then
+            -- gitdir can (apparently) be absolute or relative, so a custom
+            -- join routine is needed to build an absolute path regardless.
+            local abs_dir = join_into_absolute(dir, git_dir)
+            if os.isdir(abs_dir) then
+                return abs_dir
+            end
         end
     end
 
     -- Return if it's a git dir.
-    local wks = has_dir(dir, ".git")
-    if wks then
-        return wks, wks
+    local gitdir = has_dir(dir, ".git")
+    if gitdir then
+        return gitdir, gitdir, dir
     end
+
     -- Check if it has a .git file.
-    local gitdir = has_git_file(dir)
-    if not gitdir then
-        return nil
+    gitdir = has_git_file(dir)
+    if gitdir then
+        -- Check if it has a worktree.
+        local gitdir_file = path.join(gitdir, "gitdir")
+        local file = io.open(gitdir_file)
+        if file then
+            wks = file:read("*l")
+            file:close()
+        end
+        -- If no worktree, check if submodule inside a repo.
+        if not wks then
+            wks = flexprompt.scan_upwards(dir, function (x)
+                return has_dir(x, ".git")
+            end)
+            if not wks then
+                -- No worktree and not nested inside a repo, so give up!
+                return
+            end
+        end
+        return gitdir, wks, dir
     end
-    local gitdir_file = path.join(gitdir, "gitdir")
-    local file = io.open(gitdir_file)
-    if not file then
-        return nil
-    end
-    wks = file:read("*l")
-    file:close()
-    return gitdir, wks
 end
 
 -- Test whether dir is part of a git repo.
