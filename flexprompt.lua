@@ -2233,6 +2233,7 @@ function flexprompt.is_git_dir(dir)
         -- Check if it has a worktree.
         local gitdir_file = path.join(gitdir, "gitdir")
         local file = io.open(gitdir_file)
+        local wks
         if file then
             wks = file:read("*l")
             file:close()
