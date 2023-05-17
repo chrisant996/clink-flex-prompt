@@ -2167,7 +2167,7 @@ local function git_command(command, dont_suppress_stderr)
 
     if not flexprompt.settings.take_optional_locks then
         command = "--no-optional-locks " .. command
-    elseif type(flexprompt.take_optional_locks) == "table" then
+    elseif type(flexprompt.settings.take_optional_locks) == "table" then
         local words = string.explode(command)
         if not flexprompt.settings.take_optional_locks[words[1]] then
             command = "--no-optional-locks " .. command
