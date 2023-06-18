@@ -333,11 +333,13 @@ local function render_anyconnect(args)
 end
 
 --------------------------------------------------------------------------------
--- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright}
+-- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright:levelicon:onlyicon}
 --  - show_level shows the battery module unless the battery level is greater
 --    than show_level.
 --  - 'breakleft' adds an empty segment to left of battery in rainbow style.
 --  - 'breakright' adds an empty segment to right of battery in rainbow style.
+--  - 'levelicon' shows the battery level inside the icon.
+--  - 'onlyicon' shows only an icon.
 --
 -- The 'breakleft' and 'breakright' options may look better than having battery
 -- segment colors adjacent to other similarly colored segments in rainbow style.
@@ -366,10 +368,23 @@ local rainbow_battery_colors =
     }
 }
 
-local function get_battery_status()
+local battery_icon_series =
+{
+    [true] =    -- Charging.
+    {
+        nerdfonts2 = { "","","","","","","" },
+        nerdfonts3 = { "󰢟","󰢜","󰂆","󰂇","󰂈","󰢝","󰂉","󰢞","󰂊","󰂋","󰂅" },
+    },
+    [false] =   -- Not charging.
+    {
+        nerdfonts2 = { "","","","","","","","","","","" },
+        nerdfonts3 = { "󰂎","󰁺","󰁻","󰁼","󰁽","󰁾","󰁿","󰂀","󰂁","󰂂","󰁹" },
+    },
+}
+
+local function get_battery_status(levelicon, onlyicon)
     local level, acpower, charging
     local wizard = flexprompt.get_wizard_state()
-    local batt_symbol = flexprompt.get_symbol("battery")
 
     local status = wizard and wizard.battery or os.getbatterystatus()
     level = status.level
@@ -379,11 +394,32 @@ local function get_battery_status()
     if not level or level < 0 or (acpower and not charging) then
         return "", 0
     end
+
+    local batt_symbol
     if charging then
         batt_symbol = flexprompt.get_symbol("charging")
+    else
+        batt_symbol = flexprompt.get_symbol("battery")
     end
 
-    return level..batt_symbol, level
+    if levelicon then
+        local series = battery_icon_series[charging]
+        if series then
+            series = series[flexprompt.get_nerdfonts_version()]
+            if series then
+                batt_symbol = series[math.floor(level * (#series - 1) / 100)]
+                if flexprompt.get_nerdfonts_width() == 2 then
+                    batt_symbol = batt_symbol .. " "
+                end
+            end
+        end
+    end
+
+    if not onlyicon then
+        batt_symbol = level..batt_symbol
+    end
+
+    return batt_symbol, level
 end
 
 local function get_battery_status_color(level)
@@ -400,9 +436,9 @@ local function get_battery_status_color(level)
 end
 
 local prev_battery_status, prev_battery_level
-local function update_battery_prompt()
+local function update_battery_prompt(levelicon, onlyicon)
     while true do
-        local status,level = get_battery_status()
+        local status,level = get_battery_status(levelicon, onlyicon)
         if prev_battery_status ~= status or prev_battery_level ~= level then
             clink.refilterprompt()
         end
@@ -414,12 +450,16 @@ local function render_battery(args)
     if not os.getbatterystatus then return end
 
     local show = tonumber(flexprompt.parse_arg_token(args, "s", "show") or "100")
-    local batteryStatus,level = get_battery_status()
+    local onlyicon = flexprompt.parse_arg_keyword(args, "oi", "onlyicon")
+    local levelicon = flexprompt.parse_arg_keyword(args, "li", "levelicon")
+    local batteryStatus,level = get_battery_status(levelicon, onlyicon)
     prev_battery_status = batteryStatus
     prev_battery_level = level
 
     if clink.addcoroutine and flexprompt.settings.battery_idle_refresh ~= false and not _cached_state.battery_coroutine then
-        local t = coroutine.create(update_battery_prompt)
+        local t = coroutine.create(function ()
+            update_battery_prompt(levelicon, onlyicon)
+        end)
         _cached_state.battery_coroutine = t
         clink.addcoroutine(t, flexprompt.settings.battery_refresh_interval or 15)
     end
@@ -899,8 +939,13 @@ end
 --
 -- Uses async coroutine calls.
 local function collect_git_info(no_untracked, includeSubmodules)
-    if flexprompt.settings.git_fetch_interval then
-        local git_dir = flexprompt.get_git_dir():lower()
+    local git_dir, wks_dir = flexprompt.get_git_dir()
+    git_dir = git_dir and git_dir:lower()
+    wks_dir = wks_dir and wks_dir:lower()
+
+    local submodule = git_dir and git_dir:find(path.join(wks_dir, "modules\\")) == 1
+
+    if git_dir and flexprompt.settings.git_fetch_interval then
         local when = fetched_repos[git_dir]
         if not when or os.clock() - when > flexprompt.settings.git_fetch_interval * 60 then
             local file = flexprompt.popenyield(flexprompt.git_command("fetch"))
@@ -913,7 +958,7 @@ local function collect_git_info(no_untracked, includeSubmodules)
     local status = flexprompt.get_git_status(no_untracked, includeSubmodules)
     local conflict = flexprompt.get_git_conflict()
     local ahead, behind = flexprompt.get_git_ahead_behind()
-    return { status=status, conflict=conflict, ahead=ahead, behind=behind, finished=true }
+    return { status=status, conflict=conflict, ahead=ahead, behind=behind, submodule=submodule, finished=true }
 end
 
 local git_colors =
@@ -1005,7 +1050,7 @@ local function render_git(args)
     color, altcolor = parse_color_token(args, colors)
 
     local function make_text(b)
-        local text = flexprompt.format_branch_name(b, icon_name, refreshing)
+        local text = flexprompt.format_branch_name(b, icon_name, refreshing, info.submodule)
         if gitError then
             text = flexprompt.append_text(text, gitError)
         elseif gitConflict then
@@ -1856,28 +1901,28 @@ clink.onendedit(builtin_modules_onendedit)
 flexprompt.add_module( "anyconnect",    render_anyconnect                   )
 flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
-flexprompt.add_module( "cwd",           render_cwd,         { unicode="" } )
-flexprompt.add_module( "duration",      render_duration,    { unicode="" } )
+flexprompt.add_module( "cwd",           render_cwd,         { nerdfonts2={""," "} } )
+flexprompt.add_module( "duration",      render_duration,    { nerdfonts2={""," "} } )
 flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
-flexprompt.add_module( "git",           render_git,         { unicode="" } )
+flexprompt.add_module( "git",           render_git,         { nerdfonts2={""," "} } )
 flexprompt.add_module( "hg",            render_hg                           )
-flexprompt.add_module( "histlabel",     render_histlabel,   { unicode="" } )
-flexprompt.add_module( "k8s",           render_k8s,         { unicode="ﴱ" } )
+flexprompt.add_module( "histlabel",     render_histlabel,   { nerdfonts2={""," "} } )
+flexprompt.add_module( "k8s",           render_k8s,         { nerdfonts2={"ﴱ","ﴱ "}, nerdfonts3={"󰠳","󰠳 "} } )
 flexprompt.add_module( "maven",         render_maven                        )
 flexprompt.add_module( "npm",           render_npm                          )
-flexprompt.add_module( "python",        render_python,      { unicode="" } )
+flexprompt.add_module( "python",        render_python,      { nerdfonts2={""," "}, nerdfonts3={"󰌠","󰌠 "} } )
 flexprompt.add_module( "svn",           render_svn                          )
-flexprompt.add_module( "time",          render_time,        { unicode="" } )
-flexprompt.add_module( "user",          render_user,        { unicode="" } )
-flexprompt.add_module( "vpn",           render_vpn,         { unicode="" } )
+flexprompt.add_module( "time",          render_time,        { nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Always mono width (?!).
+flexprompt.add_module( "user",          render_user,        { nerdfonts2={""," "} } )
+flexprompt.add_module( "vpn",           render_vpn,         { nerdfonts2={""," "} } )
 
 if os.isuseradmin then
 flexprompt.add_module( "admin",         render_admin                        )
 end
 
 if clink.onaftercommand then
-flexprompt.add_module( "keymap",        render_keymap,      { unicode="" } )
+flexprompt.add_module( "keymap",        render_keymap,      { nerdfonts2={""," "} } )
 end
 
 if rl.insertmode then

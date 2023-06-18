@@ -686,7 +686,7 @@ end
 
 local function make_icon_list(icons)
     local out = "X"
-    local colors = { "\x1b[31m", "\x1b[32m", "\x1b[33m", "\x1b[34m", "\x1b[35m", "\x1b[36m" }
+    local colors = { --[["\x1b[31m", "\x1b[33m",]] "\x1b[32m", --[["\x1b[34m", "\x1b[35m", "\x1b[36m"]] }
     for i = 1, #icons, 1 do
         out = out .. colors[((i - 1) % #colors) + 1] .. icons[i] .. normal .. "X"
     end
@@ -704,6 +704,8 @@ local function config_wizard()
     local callout
     local choices
     local wrote
+    local nerdfonts_version
+    local nerdfonts_width
 
     print(string.rep("\n", console.getheight()))
 
@@ -729,6 +731,8 @@ local function config_wizard()
         _timeformat = nil
 
         hasicons = nil
+        nerdfonts_version = nil
+        nerdfonts_width = nil
         four_bit_color = false
 
         -- Find out about the font being used.
@@ -787,20 +791,56 @@ local function config_wizard()
 
         if preview.charset ~= "ascii" then
             clink.print("\x1b[4H\x1b[J", NONL)
-            display_centered("Are these icons and do they fit between the crosses?")
+            display_centered("Which of these looks like an icon of a "..brightgreen.."wrist watch"..normal.."?")
             clink.print("\n")
-            display_centered("-->  " .. make_icon_list({"","","","","","","","",""}) .. "  <--")
-            clink.print("\n")
-            choices = ""
-            choices = display_yes(choices, "They are icons and they fit closely, but with no overlap.")
-            choices = display_no(choices, "They are not icons, or some overlap neighboring crosses.")
+            clink.print("(1)  "..brightgreen..""..normal.."\n")
+            clink.print("(2)  "..brightgreen..""..normal.."\n")
+            clink.print("(3)  Neither.\n")
+            choices = "123"
             choices = display_restart(choices)
             choices = display_quit(choices)
             s = readchoice(choices)
             if not s or s == "q" then break end
             if s == "r" then goto continue end
-            hasicons = (s == "y") and true or false
+            if s == "1" then
+                nerdfonts_version = 3
+            elseif s == "2" then
+                nerdfonts_version = 2
+            end
+            hasicons = nerdfonts_version and true or false
         end
+
+        if hasicons then
+            clink.print("\x1b[4H\x1b[J", NONL)
+            display_centered("Which of these fit better between the crosses without being cut off?")
+            clink.print("\n")
+            clink.print("(1)  Mono width icons.  These should fit tightly, without being cut off.\n")
+            clink.print("     -->  " .. make_icon_list({"","","",""}) .. "  <--\n")
+            clink.print("(2)  Double-width icons.  These should fit loosely, without being cut off.\n")
+            clink.print("     -->  " .. make_icon_list({" "," "," "," "}) .. "  <--\n")
+            clink.print("(3)  Neither of them look right.\n")
+            choices = "123"
+            choices = display_restart(choices)
+            choices = display_quit(choices)
+            s = readchoice(choices)
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+            if s == "3" then
+                hasicons = false
+                nerdfonts_version = nil
+                nerdfonts_width = nil
+            elseif s == "2" then
+                nerdfonts_width = 2
+            else
+                nerdfonts_width = 1
+            end
+        end
+
+        preview.nerdfonts_version = nerdfonts_version
+        preview.nerdfonts_width = nerdfonts_width
+
+        -- Prompt about this?  This only applies when using Windows Terminal.
+        --preview.use_color_emoji = true
 
         if preview.charset == "ascii" then
             callout = { 4, {1,1}, "\x1b[1;33m/\x1b[A\x1b[Dseparator\x1b[m" }

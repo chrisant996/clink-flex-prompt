@@ -273,7 +273,8 @@ flexprompt.choices.prompt_symbols =
 local symbols =
 {
     branch          = {         powerline="" },
-    unpublished     = {         powerline="" },
+    unpublished     = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
+    submodule       = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
 
     conflict        = { "!" },
     addcount        = { "+" },
@@ -288,21 +289,34 @@ local symbols =
     staged          = { "#",    unicode="↗" },
 
     battery         = { "%" },
-    charging        = { "++",   powerline="" },
+    charging        = { "++",   nerdfonts2={""," "}, nerdfonts3={"󱐋","󱐋 "} },
 
-    exit_zero       = {         powerline="\x1b[92m\002" },
-    exit_nonzero    = {         powerline="\x1b[91m\002" },
+    exit_zero       = {         nerdfonts2={"\x1b[92m\002","\x1b[92m \002"}, nerdfonts3={"\x1b[92m\002","\x1b[92m \002"} },
+    exit_nonzero    = {         nerdfonts2={"\x1b[91m\002","\x1b[91m \002"}, nerdfonts3={"\x1b[91m\002","\x1b[91m \002"} },
 
     prompt          = { ">" },
-    overtype_prompt = { "►" },
+    overtype_prompt = { ">",    unicode="►" },
 
     admin           = {         powerline="" },
-    no_admin        = {         powerline="" },
+    no_admin        = {         nerdfonts2={""," "} },
 
-    vpn             = {         powerline="" },
-    no_vpn          = {         powerline="" },
+    vpn             = {         nerdfonts2={"",""}, nerdfonts3="󰖂 " },
+    no_vpn          = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
 
-    refresh         = {         unicode="" },  --   
+    refresh         = {         nerdfonts2="", nerdfonts3=" " },  --   
+}
+
+local optional_color_emoji =
+{
+    cwd_module      = "📁",
+    duration_module = "⏳",
+    time_module     = "🕒",
+    user_module     = "🙍‍♂️",
+    vpn_module      = "☁️",
+    exit_zero       = "✔️",     -- Requires Clink v1.4.28 or higher.
+    exit_nonzero    = "❌",
+    vpn             = "☁️",
+    no_vpn          = "🌎",
 }
 
 --------------------------------------------------------------------------------
@@ -377,6 +391,43 @@ local function get_charset()
         _charset = flexprompt.choices.charsets[flexprompt.settings.charset or "unicode"] or "unicode"
     end
     return _charset
+end
+
+local _nerdfonts_version
+local function get_nerdfonts_version()
+    if not _nerdfonts_version then
+        if flexprompt.settings.nerdfonts_version == 3 then
+            _nerdfonts_version = "nerdfonts3"
+        else
+            local env = os.getenv("FLEXPROMPT_NERDFONTS_VERSION")
+            local ver = 2
+            if env then
+                local num = tonumber(env)
+                if num and math.floor(num) == 3 then
+                    ver = 3
+                end
+            end
+            _nerdfonts_version = "nerdfonts" .. ver
+        end
+    end
+    return _nerdfonts_version
+end
+
+local _nerdfonts_width
+local function get_nerdfonts_width()
+    if not _nerdfonts_width then
+        if flexprompt.settings.nerdfonts_width == 2 then
+            _nerdfonts_width = 2
+        else
+            local env = os.getenv("FLEXPROMPT_NERDFONTS_WIDTH")
+            if env and tonumber(env) == 2 then
+                _nerdfonts_width = 2
+            else
+                _nerdfonts_width = 1
+            end
+        end
+    end
+    return _nerdfonts_width
 end
 
 local function get_lines()
@@ -474,11 +525,26 @@ local function resolve_symbol_table(symbol)
         local term = clink.getansihost and clink.getansihost() or nil
         if term and symbol[term] then
             symbol = symbol[term]
-        elseif flexprompt.settings.powerline_font and symbol["powerline"] then
-            symbol = symbol["powerline"]
         else
-            local charset = get_charset()
-            symbol = symbol[charset] or symbol[1]
+            local nf = get_nerdfonts_version()
+            if not symbol[nf] then
+                nf = "nerdfonts2"
+            end
+            if symbol[nf] then
+                symbol = symbol[nf]
+                if type(symbol) == "table" then
+                    if get_nerdfonts_width() == 2 then
+                        symbol = symbol[2] or symbol[1]
+                    else
+                        symbol = symbol[1]
+                    end
+                end
+            elseif flexprompt.settings.powerline_font and symbol["powerline"] then
+                symbol = symbol["powerline"]
+            else
+                local charset = get_charset()
+                symbol = symbol[charset] or symbol[1]
+            end
         end
     end
     return symbol
@@ -591,10 +657,30 @@ end
 local function reset_render_state(keep_results)
     _can_use_extended_colors = nil
     _charset = nil
+    _nerdfonts_version = nil
+    _nerdfonts_width = nil
     _wizard = nil
     _refilter_modules = nil
     if not keep_results then
         _module_results = {}
+    end
+end
+
+local function init_optional_color_emoji()
+    if flexprompt.settings.use_color_emoji then
+        local improved_emoji = ((clink.version_encoded) or 0) >= 10040028
+        for name, value in pairs(optional_color_emoji) do
+            if improved_emoji or name ~= "exit_zero" then
+                local t = flexprompt.settings.symbols[name]
+                if not t then
+                    t = {}
+                    flexprompt.settings.symbols[name] = t
+                end
+                if not t["winterminal"] then
+                    t["winterminal"] = value
+                end
+            end
+        end
     end
 end
 
@@ -1781,6 +1867,12 @@ flexprompt.get_style = get_style
 -- Function to get the prompt line count.
 flexprompt.get_lines = get_lines
 
+-- Function to get the nerdfonts version (based on what the user has told us).
+flexprompt.get_nerdfonts_version = get_nerdfonts_version
+
+-- Function to get the nerdfonts width (based on what the user has told us).
+flexprompt.get_nerdfonts_width = get_nerdfonts_width
+
 -- Function to get the prompt flow.
 flexprompt.get_flow = get_flow
 
@@ -2014,22 +2106,27 @@ function flexprompt.scan_upwards(dir, scan_func)
 end
 
 -- Function to format a version control branch name:
--- "on module_symbol branch_symbol branch"
+-- "on module_symbol submodule_symbol branch_symbol branch"
 --  - The "on" is present when flow is fluent.
 --  - The module_symbol is present when using icons and the module has a symbol.
+--  - The submodule_symbol is present when using icons and in a submodule.
 --  - The branch_symbol is present when not lean and not fluent, or when using
 --    icons (the icon_name argument is optional, and defaults to "branch").
 --  - The branch name is always present.
-function flexprompt.format_branch_name(branch, icon_name, refreshing)
+function flexprompt.format_branch_name(branch, icon_name, refreshing, submodule)
     local style = get_style()
     local flow = get_flow()
 
-    local text
+    local text = branch
 
     if style == "lean" or flow == "fluent" then
-        text = append_text(flexprompt.get_icon(icon_name or "branch"), branch)
+        text = append_text(flexprompt.get_icon(icon_name or "branch"), text)
     else
-        text = append_text(flexprompt.get_symbol(icon_name or "branch"), branch)
+        text = append_text(flexprompt.get_symbol(icon_name or "branch"), text)
+    end
+
+    if submodule then
+        text = append_text(flexprompt.get_symbol("submodule"), text)
     end
 
     text = append_text(flexprompt.get_module_symbol(refreshing), text)
@@ -2448,6 +2545,7 @@ end
 -- Shared event handlers.
 
 local offered_wizard
+local is_initialized
 
 local function onbeginedit()
     -- Fix our tables if a script deleted them accidentally.
@@ -2482,6 +2580,11 @@ local function onbeginedit()
             clink.print('Run "flexprompt configure" to configure the prompt.\n')
         end
         offered_wizard = true
+    end
+
+    if not is_initialized then
+        init_optional_color_emoji()
+        is_initialized = true
     end
 end
 

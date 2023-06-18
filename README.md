@@ -47,6 +47,10 @@ Here are some recommended fonts to consider:
 - [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
 - And there are many other fonts to have fun with -- enjoy!
 
+> **NOTE:**  Most Nerd Fonts have multiple variations of the font included.  The `flexprompt configure` wizard asks questions to figure out which variation of Nerd Font you're using (if any).
+> - Variations named "Nerd Font Mono" or "NF Mono" have small icons that take up only 1 cell (e.g. "RobotoMono **Nerd Font Mono** Medium").
+> - Variations named just "Nerd Font" without "Mono" have larger double width icons that take up 2 cells (e.g. "RobotoMono **Nerd Font** Medium").
+
 ## I installed a font; why won't it show up in the list of available terminal fonts?
 
 The default built-in terminal window in Windows only lists a small set of predefined fonts.  Other terminal hosts such as Windows Terminal or ConEmu make it easy to choose other fonts, without any extra steps.
@@ -344,6 +348,14 @@ flexprompt.settings.take_optional_locks = true
 
 -- Disable detection of unpublished branches:
 flexprompt.settings.dont_check_unpublished = true
+
+-- Nerd Fonts version:  (e.g. NF version 3.0.0 and higher rearranged the icons)
+flexprompt.settings.nerdfonts_version = 3
+-- Nerd Fonts width:  (set to 1 to indicate font has mono width icons, or 2 to indicate double-width icons)
+flexprompt.settings.nerdfonts_width = 2
+
+-- Override certain icons with color emoji in Windows Terminal:
+flexprompt.settings.use_color_emoji = true
 ```
 
 # Writing Custom Prompt Modules
@@ -655,6 +667,49 @@ end
 ## Customizable Styling
 
 - [ ] _TBD: there is a lot of styling available, but it's poorly documented, sorry.  You can reverse engineer details from reading `flexprompt.lua` and the configuration option tables near the beginning of it._
+
+### Customizing Icons
+
+- [ ] _TBD: for now this section just has a quick example showing the structure for icon definitions in flexprompt._
+
+```lua
+flexprompt.settings.symbol["icon_name_here"] =
+{
+    -- All fields here are optional; supply as many or as few as you want.
+
+    -- Symbol to use in Windows Terminal.
+    winterminal     = "W",
+
+    -- Symbol to use in ConEmu.
+    conemu          = "C",
+
+    -- Symbol to use with Nerd Fonts v3 fonts.
+    -- Can be a string or a table:
+                      -- String:  Use this symbol always.
+    nerdfonts3      = "3",
+                      -- Table:  Use second symbol "3 " with double-width icon fonts, otherwise use first symbol "3".
+    nerdfonts3      = { "3", "3 " },
+
+    -- Symbol to use with Nerd Fonts v2 fonts.
+    -- Can be a string or a table:
+                      -- String:  Use this symbol always.
+    nerdfonts2      = "2",
+                      -- Table:  Use second symbol "2 " with double-width icon fonts, otherwise use first symbol "2".
+    nerdfonts2      = { "2", "2 " },
+
+    -- Symbol to use with fonts that have Powerline characters but not Nerd Fonts icons.
+    powerline       = "P",
+
+    -- Symbol to use with Unicode fonts that don't have Powerline characters.
+    unicode         = "U",
+
+    -- Symbol to use in plain ASCII mode.
+    ascii           = "A",
+
+    -- Fallback symbol to use if none of the other available specializations are applicable.
+    "F"
+}
+```
 
 ## Running Actions
 
