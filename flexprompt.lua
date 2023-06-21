@@ -309,7 +309,7 @@ local symbols =
 local optional_color_emoji =
 {
     cwd_module      = "📁",
-    duration_module = "⏳",
+    duration_module = "⌛",
     time_module     = "🕒",
     user_module     = "🙍‍♂️",
     vpn_module      = "☁️",
