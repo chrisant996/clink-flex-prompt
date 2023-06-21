@@ -52,7 +52,7 @@ local function readchoice(choices)
         clink.print("\x1b[G\x1b[K", NONL)
 
         if not s then -- Happens when resizing the terminal.
-            break
+            s = ""
         end
 
         if #s == 1 and string.find(choices, s) then
