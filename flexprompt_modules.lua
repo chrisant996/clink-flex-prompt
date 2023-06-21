@@ -13,7 +13,6 @@ end
 -- luacheck: globals flexprompt
 
 if not flexprompt or not flexprompt.add_module or not settings.get("flexprompt.enable") then
-    log.info("flexprompt_cwdbrick requires flexprompt.")
     return
 end
 
