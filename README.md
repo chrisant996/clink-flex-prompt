@@ -677,6 +677,9 @@ flexprompt.settings.symbol["icon_name_here"] =
 {
     -- All fields here are optional; supply as many or as few as you want.
 
+    -- Symbol to use in Windows Terminal, if flexprompt.settings.use_color_emoji is true.
+    coloremoji      = "E",
+
     -- Symbol to use in Windows Terminal.
     winterminal     = "W",
 
