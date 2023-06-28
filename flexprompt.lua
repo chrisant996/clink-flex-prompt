@@ -291,8 +291,9 @@ local symbols =
     battery         = { "%" },
     charging        = { "++",   nerdfonts2={""," "}, nerdfonts3={"󱐋","󱐋 "} },
 
-    exit_zero       = {         nerdfonts2={"\x1b[92m\002","\x1b[92m \002"}, nerdfonts3={"\x1b[92m\002","\x1b[92m \002"} },
-    exit_nonzero    = {         nerdfonts2={"\x1b[91m\002","\x1b[91m \002"}, nerdfonts3={"\x1b[91m\002","\x1b[91m \002"} },
+                                -- Note: coloremoji for exit_zero requires Clink v1.4.28 or higher.
+    exit_zero       = {         coloremoji="✔️", nerdfonts2={"\x1b[92m\002","\x1b[92m \002"}, nerdfonts3={"\x1b[92m\002","\x1b[92m \002"} },
+    exit_nonzero    = {         coloremoji="❌", nerdfonts2={"\x1b[91m\002","\x1b[91m \002"}, nerdfonts3={"\x1b[91m\002","\x1b[91m \002"} },
 
     prompt          = { ">" },
     overtype_prompt = { ">",    unicode="►" },
@@ -300,24 +301,16 @@ local symbols =
     admin           = {         powerline="" },
     no_admin        = {         nerdfonts2={""," "} },
 
-    vpn             = {         nerdfonts2={"",""}, nerdfonts3="󰖂 " },
-    no_vpn          = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
+    vpn             = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3="󰖂 " },
+    no_vpn          = {         coloremoji="🌎", nerdfonts2={""," "}, nerdfonts3={""," "} },
 
     refresh         = {         nerdfonts2="", nerdfonts3=" " },  --   
 }
 
-local optional_color_emoji =
-{
-    cwd_module      = "📁",
-    duration_module = "⌛",
-    time_module     = "🕒",
-    user_module     = "🙍‍♂️",
-    vpn_module      = "☁️",
-    exit_zero       = "✔️",     -- Requires Clink v1.4.28 or higher.
-    exit_nonzero    = "❌",
-    vpn             = "☁️",
-    no_vpn          = "🌎",
-}
+if ((clink.version_encoded) or 0) < 10040028 then
+    -- Remove the coloremoji for exit_zero if the Clink version is too low.
+    symbols.exit_zero.coloremoji = nil
+end
 
 --------------------------------------------------------------------------------
 -- Wizard state.
@@ -523,7 +516,9 @@ end
 local function resolve_symbol_table(symbol)
     if type(symbol) == "table" then
         local term = clink.getansihost and clink.getansihost() or nil
-        if term and symbol[term] then
+        if flexprompt.settings.use_color_emoji and term == "winterminal" and symbol["coloremoji"] then
+            symbol = symbol["coloremoji"]
+        elseif term and symbol[term] then
             symbol = symbol[term]
         else
             local nf = get_nerdfonts_version()
@@ -634,6 +629,8 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
         rhs_len = 0 -- luacheck: no unused
         rhs = ""
         if gap < 0 then
+            gap = gap + frame_len
+            frame_len = 0 -- luacheck: no unused
             frame = ""
         end
         dropped = true
@@ -663,24 +660,6 @@ local function reset_render_state(keep_results)
     _refilter_modules = nil
     if not keep_results then
         _module_results = {}
-    end
-end
-
-local function init_optional_color_emoji()
-    if flexprompt.settings.use_color_emoji then
-        local improved_emoji = ((clink.version_encoded) or 0) >= 10040028
-        for name, value in pairs(optional_color_emoji) do
-            if improved_emoji or name ~= "exit_zero" then
-                local t = flexprompt.settings.symbols[name]
-                if not t then
-                    t = {}
-                    flexprompt.settings.symbols[name] = t
-                end
-                if not t["winterminal"] then
-                    t["winterminal"] = value
-                end
-            end
-        end
     end
 end
 
@@ -1673,9 +1652,9 @@ local function render_prompts(render_settings, need_anchors, condense)
                 if left1 and #left1 > 0 then left1 = left1 .. " " end
                 if right1 and #right1 > 0 then right1 = " " .. right1 end
             end
-            prompt, try_condense = connect(left1 or "", right1 or "", rightframe1 or "", sgr_frame_color)
+            prompt, try_condense = connect(wizard_prefix .. (left1 or ""), right1 or "", rightframe1 or "", sgr_frame_color)
         end
-        prompt = wizard_prefix .. prompt .. sgr()
+        prompt = prompt .. sgr()
         if console.cellcount(prompt) > screen_width then
             try_condense = true
         end
@@ -2545,7 +2524,6 @@ end
 -- Shared event handlers.
 
 local offered_wizard
-local is_initialized
 
 local function onbeginedit()
     -- Fix our tables if a script deleted them accidentally.
@@ -2580,11 +2558,6 @@ local function onbeginedit()
             clink.print('Run "flexprompt configure" to configure the prompt.\n')
         end
         offered_wizard = true
-    end
-
-    if not is_initialized then
-        init_optional_color_emoji()
-        is_initialized = true
     end
 end
 

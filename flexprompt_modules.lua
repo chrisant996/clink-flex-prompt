@@ -638,9 +638,10 @@ local function render_cwd(args)
     local git_wks = wizard and (wizard.git_dir or false)
 
     local text, sym, shortened = process_cwd_string(cwd, git_wks, args)
+    sym = sym or flexprompt.get_module_symbol()
 
     text = flexprompt.append_text(flexprompt.get_dir_stack_depth(), text)
-    text = flexprompt.append_text(sym or flexprompt.get_module_symbol(), text)
+    text = flexprompt.append_text(sym, text)
 
     local results = {
         text=text,
@@ -651,7 +652,7 @@ local function render_cwd(args)
     if not shortened then
         results.condense_callback = function ()
             return {
-                text=flexprompt.abbrev_path(cwd, true),
+                text=flexprompt.append_text(sym, flexprompt.abbrev_path(cwd, true)),
                 color=color,
                 altcolor=altcolor,
             }
@@ -1900,8 +1901,8 @@ clink.onendedit(builtin_modules_onendedit)
 flexprompt.add_module( "anyconnect",    render_anyconnect                   )
 flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
-flexprompt.add_module( "cwd",           render_cwd,         { nerdfonts2={""," "} } )
-flexprompt.add_module( "duration",      render_duration,    { nerdfonts2={""," "} } )
+flexprompt.add_module( "cwd",           render_cwd,         { coloremoji="📁", nerdfonts2={""," "} } )
+flexprompt.add_module( "duration",      render_duration,    { coloremoji="⌛", nerdfonts2={""," "} } )
 flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
 flexprompt.add_module( "git",           render_git,         { nerdfonts2={""," "} } )
@@ -1912,9 +1913,9 @@ flexprompt.add_module( "maven",         render_maven                        )
 flexprompt.add_module( "npm",           render_npm                          )
 flexprompt.add_module( "python",        render_python,      { nerdfonts2={""," "}, nerdfonts3={"󰌠","󰌠 "} } )
 flexprompt.add_module( "svn",           render_svn                          )
-flexprompt.add_module( "time",          render_time,        { nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Always mono width (?!).
-flexprompt.add_module( "user",          render_user,        { nerdfonts2={""," "} } )
-flexprompt.add_module( "vpn",           render_vpn,         { nerdfonts2={""," "} } )
+flexprompt.add_module( "time",          render_time,        { coloremoji="🕒", nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Note: nerdfonts are always mono width for this.
+flexprompt.add_module( "user",          render_user,        { coloremoji="🙍‍♂️", nerdfonts2={""," "} } )
+flexprompt.add_module( "vpn",           render_vpn,         { coloremoji="☁️",nerdfonts2={""," "} } )
 
 if os.isuseradmin then
 flexprompt.add_module( "admin",         render_admin                        )

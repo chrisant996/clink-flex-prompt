@@ -604,6 +604,16 @@ local function choose_icons(settings, title)
     display_preview(preview)
     clink.print()
 
+    if clink.getansihost and clink.getansihost() == "winterminal" then
+        choices = choices .. "3"
+        clink.print("(3)  Many icons, and use color emoji in Windows Terminal.\n")
+        preview = copy_table(settings)
+        preview.use_icons = true
+        preview.use_color_emoji = true
+        display_preview(preview)
+        clink.print()
+    end
+
     choices = display_restart(choices)
     choices = display_quit(choices)
 
@@ -613,7 +623,13 @@ local function choose_icons(settings, title)
     if s == "r" then -- luacheck: ignore 542
     elseif s == "q" then -- luacheck: ignore 542
     else
-        settings.use_icons = (s == "2") and true or nil
+        settings.use_icons = nil
+        if s == "2" then
+            settings.use_icons = true
+        elseif s == "3" then
+            settings.use_icons = true
+            settings.use_color_emoji = true
+        end
     end
     return s
 end
@@ -838,9 +854,6 @@ local function config_wizard()
 
         preview.nerdfonts_version = nerdfonts_version
         preview.nerdfonts_width = nerdfonts_width
-
-        -- Prompt about this?  This only applies when using Windows Terminal.
-        --preview.use_color_emoji = true
 
         if preview.charset == "ascii" then
             callout = { 4, {1,1}, "\x1b[1;33m/\x1b[A\x1b[Dseparator\x1b[m" }
