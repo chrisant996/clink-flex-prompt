@@ -1639,11 +1639,11 @@ local function render_prompts(render_settings, need_anchors, condense)
     local screen_width = get_screen_width()
 
     if lines == 1 then
-        prompt = wizard_prefix .. prompt
         rprompt = right1
         if console.cellcount(prompt) + (rprompt and console.cellcount(rprompt) or 0) + 10 > screen_width then
             try_condense = true
         end
+        prompt = wizard_prefix .. prompt
     else
         rprompt = right2
         if right1 or right_frame then
@@ -1652,13 +1652,12 @@ local function render_prompts(render_settings, need_anchors, condense)
                 if left1 and #left1 > 0 then left1 = left1 .. " " end
                 if right1 and #right1 > 0 then right1 = " " .. right1 end
             end
-            prompt, try_condense = connect(wizard_prefix .. (left1 or ""), right1 or "", rightframe1 or "", sgr_frame_color)
+            prompt, try_condense = connect((left1 or ""), right1 or "", rightframe1 or "", sgr_frame_color)
         end
-        prompt = prompt .. sgr()
         if console.cellcount(prompt) > screen_width then
             try_condense = true
         end
-        prompt = prompt .. "\r\n" .. wizard_prefix .. left2
+        prompt = wizard_prefix .. prompt .. sgr() .. "\r\n" .. wizard_prefix .. left2
     end
 
     if #top > 0 then

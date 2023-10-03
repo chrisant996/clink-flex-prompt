@@ -61,6 +61,10 @@ local function readchoice(choices)
     until false
 end
 
+local function refresh_width(preview)
+    preview.width = console.getwidth() - 10 -- Align with "(1)  <-Here".
+end
+
 local function clear_screen()
     clink.print("\x1b[H\x1b[J", NONL)
 end
@@ -214,7 +218,7 @@ local function display_callout(row, col, text)
     clink.print("\x1b[s\x1b[" .. row .. ";" .. col .. "H" .. text .. "\x1b[u", NONL)
 end
 
-local function display_centered(s)
+local function display_centered(s, title)
     local cells = console.cellcount(s)
     local width = console.getwidth()
     if width > 80 then width = 80 end
@@ -223,6 +227,10 @@ local function display_centered(s)
         clink.print(string.rep(" ", (width - cells) / 2), NONL)
     end
     clink.print(s)
+end
+
+local function display_title(s)
+    display_centered(bold .. s .. normal)
 end
 
 local function apply_time_format(s)
@@ -316,8 +324,10 @@ end
 local function choose_setting(settings, title, choices_name, setting_name, subset, callout) -- luacheck: no unused
     local choices = ""
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     for index,name in ipairs(subset) do
@@ -358,8 +368,10 @@ local function choose_sides(settings, title)
     local withbreaks = flexprompt.choices.prompts["breaks"]
     local preview
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     choices = (settings.style == "rainbow") and "1234" or "12"
@@ -429,8 +441,10 @@ local function choose_time(settings, title)
     local choices = "" -- luacheck: ignore 311
     local preview
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     choices = "12345"
@@ -483,8 +497,10 @@ local function choose_frames(settings, title)
     local choices = "" -- luacheck: ignore 311
     local preview
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     choices = "1234"
@@ -535,8 +551,10 @@ end
 local function choose_spacing(settings, title)
     local choices = "" -- luacheck: ignore 311
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     choices = "123"
@@ -584,8 +602,10 @@ local function choose_icons(settings, title)
     local choices = "" -- luacheck: ignore 311
     local preview
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     choices = "12"
@@ -637,8 +657,10 @@ end
 local function choose_transient(settings, title)
     local choices = "" -- luacheck: ignore 311
 
+    refresh_width(settings)
+
     clear_screen()
-    display_centered(title)
+    display_title(title)
     clink.print()
 
     choices = "yn"
@@ -732,7 +754,6 @@ local function config_wizard()
         {
             wizard =
             {
-                width = console.getwidth() - 10, -- Align with "(1)  <-Here".
                 cwd = "c:\\directory",
                 duration = 5,
                 exit = 0,
@@ -753,8 +774,10 @@ local function config_wizard()
 
         -- Find out about the font being used.
 
+        refresh_width(preview)
+
         clear_screen()
-        display_centered(bold.."Welcome to the configuration wizard for flexprompt."..normal)
+        display_title("Welcome to the configuration wizard for flexprompt.")
         display_centered("This will ask a few questions and configure your prompt.")
         clink.print()
         display_centered("Does this look like a "..brightgreen.."diamond"..normal.." (rotated square)?")
@@ -777,6 +800,7 @@ local function config_wizard()
         end
 
         if not preview.charset then
+            refresh_width(preview)
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Does this look like a "..brightgreen.."rectangle"..normal.."?")
             clink.print()
@@ -806,6 +830,7 @@ local function config_wizard()
         end
 
         if preview.charset ~= "ascii" then
+            refresh_width(preview)
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Which of these looks like an icon of a "..brightgreen.."wrist watch"..normal.."?")
             clink.print("\n")
@@ -827,6 +852,7 @@ local function config_wizard()
         end
 
         if hasicons then
+            refresh_width(preview)
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Which of these fit better between the crosses without being cut off?")
             clink.print("\n")
@@ -865,6 +891,7 @@ local function config_wizard()
             preview.left_frame = "round"
             preview.right_frame = "round"
 
+            refresh_width(preview)
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Does this look like "..brightgreen.."><"..normal.." but taller and fatter?")
             clink.print("\n")
@@ -893,6 +920,7 @@ local function config_wizard()
         end
 
         if wizard_can_use_extended_colors(preview) then
+            refresh_width(preview)
             clink.print("\x1b[4H\x1b[J", NONL)
             display_centered("Are the letters "..brightgreen.."A"..normal.." to "..brightgreen.."L"..normal.." readable, in a smooth gradient?")
             clink.print("\n")
@@ -1065,8 +1093,8 @@ local function config_wizard()
 
         if os.isfile(settings_filename) then
             clear_screen()
-            display_centered("Flexprompt autoconfig file already exists.")
-            display_centered(bold.."Overwrite "..brightgreen..settings_filename..normal..bold.."?"..normal)
+            display_title("Flexprompt autoconfig file already exists.")
+            display_centered("Overwrite "..brightgreen..settings_filename..normal.."?")
             clink.print()
             choices = ""
             choices = display_yes(choices)
