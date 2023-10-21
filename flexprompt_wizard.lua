@@ -1122,6 +1122,9 @@ local function config_wizard()
             clink.print("\x1b[1mThe new flexprompt configuration will take effect when Clink is reloaded.\x1b[m")
         end
 
+        clink.print()
+        clink.print("For information on how to configure the prompt further, see\nhttps://github.com/chrisant996/clink-flex-prompt#readme.")
+
         if errors then
             clink.print()
             for _,msg in ipairs(errors) do
