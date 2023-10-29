@@ -94,6 +94,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{anyconnect}"` shows the current Cisco AnyConnect VPN connection.
 - `"{battery}"` shows the battery level and whether the battery is charging.
 - `"{break}"` shows a break between two modules; is automatically discarded if adjacent to only one visible module.
+- `"{conda}"` shows the current Conda environment, if `%CONDA_DEFAULT_ENV%` is set.
 - `"{cwd}"` shows the current working directory.
 - `"{duration}"` shows the duration of the previous command, if more than 3 seconds.
 - `"{env}"` shows an environment variable.

@@ -513,6 +513,56 @@ local function render_break(args)
 end
 
 --------------------------------------------------------------------------------
+-- CONDA MODULE:  {conda:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--  - truncate is optional; if the conda environment is longer than this many
+--    directory levels, only the rightmost names are kept (the default is 1,
+--    and 0 means don't truncate).
+--
+-- Shows the current Conda environment, if %CONDA_DEFAULT_ENV% is set.
+
+local function render_conda(args)
+    local conda = os.getenv("CONDA_DEFAULT_ENV")
+    if not conda or conda == "" then
+        return
+    end
+
+    local colors = flexprompt.parse_arg_token(args, "c", "color")
+    local color, altcolor
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        color = flexprompt.use_best_color("green", "38;5;40")
+        altcolor = "realblack"
+    elseif style == "classic" then
+        color = flexprompt.use_best_color("green", "38;5;40")
+    else
+        color = flexprompt.use_best_color("green", "38;5;40")
+    end
+    color, altcolor = flexprompt.parse_colors(colors, color, altcolor) -- luacheck: ignore 321
+
+    local text = ""
+    local truncate = flexprompt.parse_arg_token(args, "t", "truncate") or 1
+    truncate = tonumber(truncate)
+    if truncate > 0 then
+        while truncate > 0 do
+            truncate = truncate - 1
+            local last = conda:match("([/\\][^/\\]+)$") or conda
+            text = last .. text
+            conda = conda:sub(1, #conda - #last)
+        end
+        text = text:gsub("^[/\\]+", "")
+    else
+        text = conda
+    end
+
+    text = "(" .. text .. ")"
+    text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- CWD MODULE:  {cwd:color=color_name,alt_color_name:rootcolor=rootcolor_name:type=type_name:shorten}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
@@ -1901,6 +1951,7 @@ clink.onendedit(builtin_modules_onendedit)
 flexprompt.add_module( "anyconnect",    render_anyconnect                   )
 flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
+flexprompt.add_module( "conda",         render_conda,       { nerdfonts2={"🅒","🅒"} } )
 flexprompt.add_module( "cwd",           render_cwd,         { coloremoji="📁", nerdfonts2={""," "} } )
 flexprompt.add_module( "duration",      render_duration,    { coloremoji="⌛", nerdfonts2={""," "} } )
 flexprompt.add_module( "env",           render_env                          )
@@ -1915,7 +1966,7 @@ flexprompt.add_module( "python",        render_python,      { nerdfonts2={"",
 flexprompt.add_module( "svn",           render_svn                          )
 flexprompt.add_module( "time",          render_time,        { coloremoji="🕒", nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Note: nerdfonts are always mono width for this.
 flexprompt.add_module( "user",          render_user,        { coloremoji="🙍‍♂️", nerdfonts2={""," "} } )
-flexprompt.add_module( "vpn",           render_vpn,         { coloremoji="☁️",nerdfonts2={""," "} } )
+flexprompt.add_module( "vpn",           render_vpn,         { coloremoji="☁️", nerdfonts2={""," "} } )
 
 if os.isuseradmin then
 flexprompt.add_module( "admin",         render_admin                        )
