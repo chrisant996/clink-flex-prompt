@@ -1123,7 +1123,7 @@ local function config_wizard()
         end
 
         clink.print()
-        clink.print("For information on how to configure the prompt further, see\nhttps://github.com/chrisant996/clink-flex-prompt#readme.")
+        clink.print("For information on how to configure the prompt further and how to include\nmore modules, see https://github.com/chrisant996/clink-flex-prompt#readme.")
 
         if errors then
             clink.print()
