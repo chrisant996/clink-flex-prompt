@@ -1565,7 +1565,7 @@ local function render_prompts(render_settings, need_anchors, condense)
 
     -- Line 1 ----------------------------------------------------------------
 
-    if true then
+    do
         left1, any_condense_callbacks = render_modules(left_prompt or "", 0, frame_color, condense, anchors)
         can_condense = can_condense or any_condense_callbacks
 

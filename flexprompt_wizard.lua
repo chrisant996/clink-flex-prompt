@@ -218,7 +218,7 @@ local function display_callout(row, col, text)
     clink.print("\x1b[s\x1b[" .. row .. ";" .. col .. "H" .. text .. "\x1b[u", NONL)
 end
 
-local function display_centered(s, title)
+local function display_centered(s)
     local cells = console.cellcount(s)
     local width = console.getwidth()
     if width > 80 then width = 80 end
@@ -1072,7 +1072,7 @@ local function config_wizard()
             if s == "r" then goto continue end
         end
 
-        if true then
+        do
             local old_settings = flexprompt.settings
             flexprompt.settings = preview
 
