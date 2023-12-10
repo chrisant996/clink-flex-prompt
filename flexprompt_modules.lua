@@ -727,6 +727,7 @@ end
 local endedit_time
 local last_duration
 local invert_tenths
+local force_duration
 
 if rl.setbinding then
     if not rl.getbinding([["\e\C-T"]]) then
@@ -739,6 +740,7 @@ end
 
 function flexprompt_toggle_tenths(rl_buffer) -- luacheck: no global, no unused
     if flexprompt.is_module_in_prompt("duration") then
+        force_duration = true
         invert_tenths = not invert_tenths
         flexprompt.refilter_module("duration")
         clink.refilterprompt()
@@ -752,6 +754,7 @@ local duration_clock = ((clink.version_encoded or 0) >= 10020030) and os.clock o
 
 local function duration_onbeginedit()
     last_duration = nil
+    force_duration = nil
     if endedit_time then
         local beginedit_time = duration_clock()
         local elapsed = beginedit_time - endedit_time
@@ -767,8 +770,8 @@ end
 
 local function render_duration(args)
     local wizard = flexprompt.get_wizard_state()
-    local duration = wizard and wizard.duration or last_duration
-    if (duration or 0) < (flexprompt.settings.duration_threshold or 3) then return end
+    local duration = wizard and wizard.duration or last_duration or 0
+    if not force_duration and duration < (flexprompt.settings.duration_threshold or 3) then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
