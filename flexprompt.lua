@@ -1777,8 +1777,15 @@ end
 local function spacing_onbeginedit()
     if get_spacing() ~= "normal" then
         local text
-        local line = console.getnumlines() - 1
         local up = 0
+        local line
+        if console.getcursorpos then
+            local _, y = console.getcursorpos()
+            if y then
+                line = y - 1
+            end
+        end
+        line = line or console.getnumlines() - 1
         while line > 0 do
             text = console.getlinetext(line)
             if not text or #text ~= 0 then
