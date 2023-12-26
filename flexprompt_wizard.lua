@@ -1,5 +1,5 @@
 -- luacheck: no max line length
--- luacheck: globals console os.getalias os.isfile NONL
+-- luacheck: globals console os.isfile NONL
 -- luacheck: globals flexprompt
 
 local normal = "\x1b[m"
@@ -195,7 +195,7 @@ local function write_settings(settings)
     file:close()
 
     if _transient then
-        local command = os.getalias("clink"):gsub("%$%*", " set prompt.transient " .. _transient)
+        local command = string.format('2>nul "%s" set prompt.transient %s', CLINK_EXE, _transient)
         os.execute(command)
     end
 
