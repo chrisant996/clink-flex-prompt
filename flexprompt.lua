@@ -43,6 +43,9 @@ local modules = {}
 -- Is reset to {} at each onbeginedit.
 local _cached_state = {}
 
+-- Check if Clink natively supporting prompt spacing.
+local clink_prompt_spacing = (settings.get("prompt.spacing") ~= nil)
+
 --------------------------------------------------------------------------------
 -- Color codes.
 
@@ -428,9 +431,13 @@ local function get_lines()
 end
 
 local function get_spacing()
-    -- Indexing into the spacing table validates that the spacing name is
-    -- recognized.
-    return flexprompt.choices.spacing[flexprompt.settings.spacing or "normal"] or "normal"
+    if clink_prompt_spacing then
+        return "normal"
+    else
+        -- Indexing into the spacing table validates that the spacing name is
+        -- recognized.
+        return flexprompt.choices.spacing[flexprompt.settings.spacing or "normal"] or "normal"
+    end
 end
 
 local function get_connector()

@@ -12,6 +12,8 @@ local _transient
 local _striptime
 local _timeformat
 
+local clink_prompt_spacing = (settings.get("prompt.spacing") ~= nil)
+
 local function spairs(t, order)
     local keys = {}
     local num = 0
@@ -200,6 +202,11 @@ local function write_settings(settings)
 
     if _transient then
         local command = string.format('2>nul "%s" set prompt.transient %s', CLINK_EXE, _transient)
+        os.execute(command)
+    end
+
+    if clink_prompt_spacing then
+        local command = string.format('2>nul "%s" set prompt.spacing %s', CLINK_EXE, settings.spacing)
         os.execute(command)
     end
 
