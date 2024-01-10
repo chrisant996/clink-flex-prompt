@@ -1592,13 +1592,13 @@ local function render_prompts(render_settings, need_anchors, condense)
     if render_settings then
         flexprompt.settings = render_settings
         if render_settings.wizard then
-            local width = console.getwidth()
             reset_render_state(condense)
             _wizard = render_settings.wizard
-            _wizard.width = _wizard.width or (width - 8)
+            local screenwidth = _wizard.screenwidth or console.getwidth()
+            _wizard.width = _wizard.width or (screenwidth - 8)
             _wizard.prefix = ""
-            if _wizard.width < width then
-                _wizard.prefix = string.rep(" ", (width - _wizard.width) / 2)
+            if _wizard.width < screenwidth then
+                _wizard.prefix = string.rep(" ", (screenwidth - _wizard.width) / 2)
             end
         end
     end

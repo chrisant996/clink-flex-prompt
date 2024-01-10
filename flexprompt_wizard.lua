@@ -1210,9 +1210,13 @@ local function run_demo()
     local wizard =
     {
         cwd = "~\\src",
+        root = "~\\src",
+        type = "git",
+        branch = "main",
         duration = 5,
         exit = 0,
-        width = console.getwidth(),
+        width = math.min(console.getwidth(), 80),
+        screenwidth = math.min(console.getwidth(), 80),
     }
 
     local preview =
@@ -1310,6 +1314,23 @@ local function run_demo()
     preview.left_frame = "none"
     preview.right_frame = "round"
     preview.connection = "solid"
+    display_preview(preview)
+
+    print()
+    display_centered("\x1b[1mBubbles Style\x1b[m ")
+    preview.style = "lean"
+    preview.connection = nil
+    preview.heads = nil
+    preview.tails = nil
+    preview.separators = nil
+
+    print()
+    preview.lines = "two"
+    preview.left_prompt = "{lbubble}"
+    preview.right_prompt = "{rbubble}"
+    preview.flow = nil
+    preview.use_icons = true
+    preview.powerline_font = true
     display_preview(preview)
 
     print()
