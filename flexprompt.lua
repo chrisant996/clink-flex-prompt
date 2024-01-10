@@ -1784,8 +1784,12 @@ local function render_prompts(render_settings, need_anchors, condense)
     return prompt, rprompt, anchors
 end
 
-local function render_transient_prompt()
-    return get_prompt_symbol_color() .. get_transient_prompt_symbol() .. sgr() .. " "
+local function render_transient_prompt(wizard)
+    local s
+    _wizard = wizard
+    s = get_prompt_symbol_color() .. get_transient_prompt_symbol() .. sgr() .. " "
+    _wizard = nil
+    return s
 end
 
 function flexprompt.render_wizard(settings, need_anchors)

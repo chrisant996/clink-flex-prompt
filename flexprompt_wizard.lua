@@ -732,8 +732,8 @@ local function choose_transient(settings, title)
     -- This initializes the settings.wizard.prefix needed below.
     flexprompt.render_wizard(settings)
 
-    clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard() .. "git pull")
-    clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard() .. "git branch x")
+    clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard(settings.wizard) .. "git pull")
+    clink.print(settings.wizard.prefix .. flexprompt.render_transient_wizard(settings.wizard) .. "git branch x")
     if settings.spacing == "sparse" then clink.print() end
     display_preview(settings, "git checkout x")
     clink.print()
