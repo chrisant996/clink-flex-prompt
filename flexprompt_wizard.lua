@@ -219,12 +219,12 @@ local function write_settings(settings)
     end
 
     if _transient then
-        local command = string.format('2>nul "%s" set prompt.transient %s', CLINK_EXE, _transient)
+        local command = string.format('2>nul >nul "%s" set prompt.transient %s', CLINK_EXE, _transient)
         os.execute(command)
     end
 
     if clink_prompt_spacing then
-        local command = string.format('2>nul "%s" set prompt.spacing %s', CLINK_EXE, settings.spacing)
+        local command = string.format('2>nul >nul "%s" set prompt.spacing %s', CLINK_EXE, settings.spacing)
         os.execute(command)
     end
 
