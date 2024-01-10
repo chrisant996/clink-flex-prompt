@@ -1957,7 +1957,6 @@ end
 -- include colons).
 
 local function render_time(args)
-    local wizard = flexprompt.get_wizard_state()
     local time = flexprompt.get_time()
 
     local dim = flexprompt.parse_arg_keyword(args, "d", "dim")

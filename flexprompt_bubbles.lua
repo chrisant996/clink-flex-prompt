@@ -1,8 +1,3 @@
-if not clink.promptcoroutine then
-    log.info("This script requires a newer version of Clink; please upgrade.")
-    return
-end
-
 -- luacheck: globals flexprompt flexprompt_git
 if not flexprompt or not flexprompt.add_module then
     log.info("flexprompt_bubbles requires flexprompt.")
@@ -874,10 +869,6 @@ local function render_rbubble(args)
     local prompt = table.concat(segments)
     return prompt, "black", "black"
 end
-
-flexprompt.on_reset_render_state(function()
-    last_time = nil
-end)
 
 clink.onbeginedit(function()
     local cwd = os.getcwd()

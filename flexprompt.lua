@@ -2105,12 +2105,12 @@ end
 -- Function that returns a table of modules that include the duration.
 function flexprompt.get_duration_modules()
     local any
-    local modules = {}
+    local m = {}
     for k, v in pairs(duration_modules) do
         any = true
-        table[k] = v
+        m[k] = v
     end
-    return any and modules
+    return any and m
 end
 
 -- Function that gets the duration of the last command.
