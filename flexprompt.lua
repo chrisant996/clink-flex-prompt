@@ -39,6 +39,8 @@ flexprompt.settings = flexprompt.settings or {}
 flexprompt.settings.symbols = flexprompt.settings.symbols or {}
 flexprompt.defaultargs = flexprompt.defaultargs or {}
 local modules = {}
+local scms = {}
+local vpns = {}
 
 -- Is reset to {} at each onbeginedit.
 local _cached_state = {}
@@ -321,8 +323,10 @@ end
 local _wizard
 
 local function get_errorlevel()
-    if _wizard then return _wizard.exit or 0 end
-    return os.geterrorlevel()
+    if os.geterrorlevel and settings.get("cmd.get_errorlevel") then
+        if _wizard then return _wizard.exit or 0 end
+        return os.geterrorlevel()
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -384,7 +388,11 @@ local function get_charset()
     if not _charset then
         -- Indexing into the charsets table validates that the charset name is
         -- recognized.
-        _charset = flexprompt.choices.charsets[flexprompt.settings.charset or "unicode"] or "unicode"
+        if flexprompt.settings.no_graphics then
+            _charset = "ascii"
+        else
+            _charset = flexprompt.choices.charsets[flexprompt.settings.charset or "unicode"] or "unicode"
+        end
     end
     return _charset
 end
@@ -522,8 +530,8 @@ end
 
 local function resolve_symbol_table(symbol)
     if type(symbol) == "table" then
-        local term = clink.getansihost and clink.getansihost() or nil
-        if flexprompt.settings.use_color_emoji and term == "winterminal" and symbol["coloremoji"] then
+        local term = not flexprompt.settings.no_graphics and clink.getansihost and clink.getansihost() or nil
+        if not flexprompt.settings.no_graphics and flexprompt.settings.use_color_emoji and term == "winterminal" and symbol["coloremoji"] then
             symbol = symbol["coloremoji"]
         elseif term and symbol[term] then
             symbol = symbol[term]
@@ -563,7 +571,7 @@ local function get_symbol(name, fallback)
 end
 
 local function get_icon(name)
-    if not flexprompt.settings.use_icons then return "" end
+    if flexprompt.settings.no_graphics or not flexprompt.settings.use_icons then return "" end
     if type(flexprompt.settings.use_icons) == "table" and not flexprompt.settings.use_icons[name] then return "" end
 
     return get_symbol(name)
@@ -573,13 +581,15 @@ local function get_prompt_symbol_color()
     local color
     if flexprompt.settings.prompt_symbol_color then
         color = flexprompt.settings.prompt_symbol_color
-    elseif os.geterrorlevel then
-        color = (get_errorlevel() == 0) and
-                (flexprompt.settings.exit_zero_color or "realbrightgreen") or
-                (flexprompt.settings.exit_nonzero_color or "realbrightred")
     else
-        color = "brightwhite"
+        local err = get_errorlevel()
+        if err then
+            color = (err == 0) and
+                    (flexprompt.settings.exit_zero_color or "realbrightgreen") or
+                    (flexprompt.settings.exit_nonzero_color or "realbrightred")
+        end
     end
+    color = color or "brightwhite"
     color = lookup_color(color)
     return sgr(get_best_fg(color))
 end
@@ -668,6 +678,11 @@ local function reset_render_state(keep_results)
     if not keep_results then
         _module_results = {}
     end
+end
+
+local list_on_reset_render_state = {}
+local function add_on_reset_render_state(func)
+    table.insert(list_on_reset_render_state, func)
 end
 
 --------------------------------------------------------------------------------
@@ -762,6 +777,14 @@ local function is_module_in_prompt(name)
     end
     if is > 0 then
         return is
+    end
+end
+
+local function unicode_normalize(s)
+    if unicode.normalize then
+        return unicode.normalize(3, s)
+    else
+        return s
     end
 end
 
@@ -919,6 +942,42 @@ if clink.onaftercommand then
 end
 
 --------------------------------------------------------------------------------
+-- Helpers for duration, exit code, and time.
+
+local duration_modules
+local endedit_time
+local last_duration
+local last_time
+
+-- Clink v1.2.30 has a fix for Lua's os.clock() implementation failing after the
+-- program has been running more than 24 days.  Without that fix, os.time() must
+-- be used instead, but the resulting duration can be off by up to +/- 1 second.
+local duration_clock = ((clink.version_encoded or 0) >= 10020030) and os.clock or os.time
+
+local function duration_onbeginedit()
+    last_duration = nil
+    duration_modules = nil
+    flexprompt.settings.force_duration = nil
+    if endedit_time then
+        local beginedit_time = duration_clock()
+        local elapsed = beginedit_time - endedit_time
+        if elapsed >= 0 then
+            last_duration = elapsed
+        end
+    end
+end
+
+local function duration_onendedit()
+    endedit_time = duration_clock()
+end
+
+local function time_onbeginedit()
+    last_time = nil
+end
+
+add_on_reset_render_state(time_onbeginedit)
+
+--------------------------------------------------------------------------------
 -- Segments.
 
 local segmenter = nil
@@ -1055,6 +1114,19 @@ local function init_segmenter(side, frame_color)
             separators = sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector
         else
             separators = resolve_color_codes(separators, "")
+        end
+
+        if separators and flexprompt.settings.no_graphics then
+            local t = separators
+            if type(t) ~= "table" then
+                t = { t }
+            end
+            for _, s in ipairs(t) do
+                if s:find("[\x01-\x1f\x80-\xff]") then
+                    separators = ""
+                    break
+                end
+            end
         end
 
         return separators
@@ -1824,6 +1896,32 @@ function flexprompt.add_module(name, func, symbol)
     symbols[name .. "_module"] = symbol
 end
 
+-- Add a source control management plugin.
+function flexprompt.register_scm(name, funcs, priority)
+    if type(name) ~= "string" then
+        error("arg #1 must be name of source control management system")
+    end
+    if type(funcs) ~= "table" then
+        error("arg #2 must be a table of functions")
+    elseif type(funcs.test) ~= "function" or type(funcs.info) ~= "function" then
+        error("arg #2 table must include 'test' and 'info' functions")
+    end
+    table.insert(scms, { type=name, test=funcs.test, info=funcs.info, prio=(priority or 50) })
+    table.sort(scms, function(a, b) return a.prio < b.prio end)
+end
+
+-- Add a VPN detector plugin.
+function flexprompt.register_vpn(name, func, priority)
+    if type(name) ~= "string" then
+        error("arg #1 must be name of VPN detector")
+    end
+    if type(func) ~= "function" then
+        error("arg #2 must be a function")
+    end
+    table.insert(vpns, { type=name, test=func, prio=(priority or 50) })
+    table.sort(vpns, function(a, b) return a.prio < b.prio end)
+end
+
 -- Add a named color.
 -- Named colors must be a table { fg=_sgr_code_, bg=_sgr_code_ }.
 -- The fg and bg are needed for the rainbow style to properly color transitions
@@ -2000,6 +2098,35 @@ function flexprompt.parse_colors(text, default, altdefault)
     return color, altcolor
 end
 
+-- Function that returns a table of modules that include the duration.
+function flexprompt.get_duration_modules()
+    local any
+    local modules = {}
+    for k, v in pairs(duration_modules) do
+        any = true
+        table[k] = v
+    end
+    return any and modules
+end
+
+-- Function that gets the duration of the last command.
+function flexprompt.get_duration()
+    local wizard = flexprompt.get_wizard_state()
+    if segmenter and segmenter._current_module then
+        duration_modules = duration_modules or {}
+        duration_modules[segmenter._current_module] = true
+    end
+    return wizard and wizard.duration or last_duration or 0
+end
+
+-- Function that gets the time for the prompt.
+function flexprompt.get_time()
+    if not last_time then
+        last_time = os.time()
+    end
+    return last_time
+end
+
 -- Function that takes (dir, force) and collapses HOME dir prefix into a tilde,
 -- if configured to do so (flexprompt.settings.use_home_tilde) or if force.
 -- Returns the directory and true or false indicating whether tilde was applied.
@@ -2038,6 +2165,19 @@ flexprompt.is_module_in_prompt = is_module_in_prompt
 -- gets refreshed when toggling insert/overtype mode.  The flags are reset
 -- whenever a new prompt is begun (i.e. a new edit line is begun).
 flexprompt.refilter_module = refilter_module
+
+-- Function that resets all rendering state and forces rerunning all prompt
+-- modules the next time the prompt is filtered.
+function flexprompt.reset_render_state()
+    reset_render_state()
+    for _, func in ipairs(list_on_reset_render_state) do
+        func()
+    end
+end
+
+function flexprompt.on_reset_render_state(func)
+    add_on_reset_render_state(func)
+end
 
 -- Function to check whether extended colors are available (256 color and 24 bit
 -- color codes).
@@ -2109,7 +2249,7 @@ end
 --  - The branch_symbol is present when not lean and not fluent, or when using
 --    icons (the icon_name argument is optional, and defaults to "branch").
 --  - The branch name is always present.
-function flexprompt.format_branch_name(branch, icon_name, refreshing, submodule)
+function flexprompt.format_branch_name(branch, icon_name, refreshing, submodule, module_icon)
     local style = get_style()
     local flow = get_flow()
 
@@ -2125,13 +2265,97 @@ function flexprompt.format_branch_name(branch, icon_name, refreshing, submodule)
         text = append_text(flexprompt.get_symbol("submodule"), text)
     end
 
-    text = append_text(flexprompt.get_module_symbol(refreshing), text)
+    text = append_text(module_icon or flexprompt.get_module_symbol(refreshing), text)
 
     if flow == "fluent" then
         text = append_text(flexprompt.make_fluent_text("on"), text)
     end
 
     return text
+end
+
+-- Function to check whether flexprompt.settings.no_smart_cwd should disable
+-- smart cwd behavior for the specified directory.
+function flexprompt.is_no_smart_cwd(dir)
+    if flexprompt.settings.no_smart_cwd then
+        if type(flexprompt.settings.no_smart_cwd) ~= "table" then
+            return true
+        else
+            dir = clink.lower(path.normalise(path.join(unicode_normalize(dir), "")))
+            for _, value in ipairs(flexprompt.settings.no_smart_cwd) do
+                if type(value) == "string" then
+                    if dir:find(value, 1, true) == 1 then
+                        return true
+                    end
+                elseif type(value) == "function" then
+                    local ret = value(dir)
+                    if ret then
+                        return ret
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Function to add a specified directory to not use smart cwd display, or add
+-- a function to check whether a directory should not use smart cwd display.
+-- When adding a function, the function can return true to disable smart cwd
+-- display, or can return a string to use as the parent for the smart cwd
+-- display.
+function flexprompt.add_no_smart_cwd(dir)
+    flexprompt.settings.no_smart_cwd = flexprompt.settings.no_smart_cwd or {}
+    if type(dir) == "string" then
+        dir = clink.lower(path.normalise(path.join(unicode_normalize(dir), "")))
+    end
+    table.insert(flexprompt.settings.no_smart_cwd, dir)
+end
+
+-- Function to check whether flexprompt.settings.cwd_colors has a custom color
+-- for the specified directory.
+function flexprompt.get_cwd_color(dir)
+    if type(flexprompt.settings.cwd_colors) == "table" then
+        dir = clink.lower(path.normalise(path.join(unicode_normalize(dir), "")))
+        for _, t in ipairs(flexprompt.settings.cwd_colors) do
+            if dir:find(t.dir, 1, true) == 1 then
+                if t.color then
+                    local color = t.color
+                    if string.byte(color) ~= 0x1b then
+                        color = sgr(color)
+                    end
+                    return color
+                end
+            end
+        end
+    end
+end
+
+-- Function to add a custom color for the specified directory.
+function flexprompt.set_cwd_color(dir, color)
+    flexprompt.settings.cwd_colors = flexprompt.settings.cwd_colors or {}
+    dir = clink.lower(path.normalise(path.join(unicode_normalize(dir), "")))
+    table.insert(flexprompt.settings.cwd_colors, { dir=dir, color=color })
+end
+
+-- Function to check whether a custom color is available for the specified
+-- Source Control Management plugin.
+function flexprompt.get_scm_color(scm_type)
+    if scm_type and type(flexprompt.settings.scm_colors) == "table" then
+        local color = flexprompt.settings.scm_colors[scm_type:lower()]
+        if color then
+            if string.byte(color) ~= 0x1b then
+                color = sgr(color)
+            end
+            return color
+        end
+    end
+end
+
+-- Function to set a custom color for the specified Source Control Management
+-- plugin.
+function flexprompt.set_scm_color(scm_type, color)
+    flexprompt.settings.scm_colors = flexprompt.settings.scm_colors or {}
+    flexprompt.settings.scm_colors[scm_type:lower()] = color
 end
 
 -- Function to register a module's prompt coroutine.
@@ -2384,7 +2608,7 @@ end
 -- Get the status of working dir.
 -- @return  nil for clean, or a table with dirty counts.
 --
--- Uses async coroutine call.
+-- Use in promptcoroutine callback function.
 function flexprompt.get_git_status(no_untracked, include_submodules)
     local flags = ""
     if no_untracked then
@@ -2399,7 +2623,7 @@ function flexprompt.get_git_status(no_untracked, include_submodules)
         return { errmsg="[error]" }
     end
 
-    local w_add, w_mod, w_del, w_unt = 0, 0, 0, 0
+    local w_add, w_mod, w_del, w_con, w_unt = 0, 0, 0, 0, 0
     local s_add, s_mod, s_del, s_ren = 0, 0, 0, 0
     local unpublished
     local line
@@ -2421,6 +2645,8 @@ function flexprompt.get_git_status(no_untracked, include_submodules)
             w_mod = w_mod + 1
         elseif kind == "D" then
             w_del = w_del + 1
+        elseif kind == "U" then
+            w_con = w_con + 1
         elseif kind == "?" then
             w_unt = w_unt + 1
         end
@@ -2445,11 +2671,12 @@ function flexprompt.get_git_status(no_untracked, include_submodules)
     local working
     local staged
 
-    if w_add + w_mod + w_del + w_unt > 0 then
+    if w_add + w_mod + w_del + w_con + w_unt > 0 then
         working = {}
         working.add = w_add
         working.modify = w_mod
         working.delete = w_del
+        working.conflict = w_con
         working.untracked = w_unt
     end
 
@@ -2477,7 +2704,7 @@ end
 -- Gets the number of commits ahead/behind from upstream.
 -- @return  ahead, behind.
 --
--- Uses async coroutine call.
+-- Use in promptcoroutine callback function.
 function flexprompt.get_git_ahead_behind()
     local file = flexprompt.popenyield(git_command("rev-list --count --left-right @{upstream}...HEAD"))
     if not file then
@@ -2496,7 +2723,7 @@ end
 -- Gets the conflict status.
 -- @return  true for conflict, or false for no conflicts.
 --
--- Uses async coroutine call.
+-- Use in promptcoroutine callback function.
 function flexprompt.get_git_conflict()
     local file = flexprompt.popenyield(git_command("diff --name-only --diff-filter=U"))
     if not file then
@@ -2538,6 +2765,117 @@ function flexprompt.get_git_remote(git_dir)
 end
 
 --------------------------------------------------------------------------------
+-- SCM detectors.
+
+function flexprompt.detect_scm()
+    local cwd = os.getcwd()
+    return flexprompt.scan_upwards(cwd, function(dir)
+        for _, scm in ipairs(scms) do
+            local tested_info = scm.test(dir)
+            if tested_info then
+                tested_info = type(tested_info) == "table" and tested_info or {}
+                tested_info.type = scm.type
+                tested_info.info_func = scm.info
+                tested_info.cwd = cwd
+                tested_info.root = dir
+                return tested_info
+            end
+        end
+    end)
+end
+
+function flexprompt.get_scm_info(detected_info)
+    if not detected_info or not detected_info.info_func or not detected_info.root then
+        detected_info = flexprompt.detect_scm()
+        if not detected_info or not detected_info.info_func or not detected_info.root then
+            return
+        end
+    end
+
+    local info = detected_info.info_func(detected_info.root, detected_info)
+    if not info then
+        return
+    end
+
+    info.type = info.type or detected_info.type
+    info.cwd = info.cwd or detected_info.cwd
+    info.root = info.root or detected_info.root
+
+    if info and info.status then
+        local wrk = info.status.working
+        if wrk then
+            if (wrk.conflict or 0) > 0 then
+                info.conflict = true
+            end
+            local keep = false
+            for _, value in pairs(wrk) do
+                if type(value) ~= "number" or value ~= 0 then
+                    keep = true
+                    break
+                end
+            end
+            if keep then
+                info.status.working.add = info.status.working.add or 0
+                info.status.working.modify = info.status.working.modify or 0
+                info.status.working.delete = info.status.working.delete or 0
+                info.status.working.conflict = info.status.working.conflict or 0
+                info.status.working.untracked = info.status.working.untracked or 0
+            else
+                info.status.working = nil
+            end
+        end
+        local stg = info.status.staged
+        if stg then
+            local keep = false
+            for _, value in pairs(stg) do
+                if type(value) ~= "number" or value ~= 0 then
+                    keep = true
+                    break
+                end
+            end
+            if keep then
+                info.status.staged.add = info.status.staged.add or 0
+                info.status.staged.modify = info.status.staged.modify or 0
+                info.status.staged.delete = info.status.staged.delete or 0
+                info.status.staged.rename = info.status.staged.rename or 0
+            else
+                info.status.staged = nil
+            end
+        end
+    end
+    return info
+end
+
+--------------------------------------------------------------------------------
+-- VPN detectors.
+
+-- Run the VPN detectors to get a list of VPN connections.
+--
+-- Use in promptcoroutine callback function.
+function flexprompt.get_vpn_info()
+    local connections = {}
+    for _, vpn in ipairs(vpns) do
+        local t = vpn.test()
+        if t then
+            if type(t) == "table" then
+                for _, name in ipairs(t) do
+                    if type(name) == "table" then
+                        if type(name.name) == "string" then
+                            table.insert(connections, { name=name.name, type=vpn.type, table=name })
+                        end
+                    else
+                        table.insert(connections, { name=name, type=vpn.type })
+                    end
+                end
+            elseif type(t) == "string" then
+                table.insert(connections, { name=t, type=vpn.type })
+            end
+        end
+    end
+    return connections[1] and connections
+end
+
+--------------------------------------------------------------------------------
 -- Shared event handlers.
 
 local offered_wizard
@@ -2550,6 +2888,9 @@ local function onbeginedit()
     _cached_state = {}
 
     reset_render_state()
+
+    duration_onbeginedit()
+    time_onbeginedit()
 
     spacing_onbeginedit()
 
@@ -2578,6 +2919,10 @@ local function onbeginedit()
     end
 end
 
+local function onendedit()
+    duration_onendedit()
+end
+
 local function oncommand(line_state, info) -- luacheck: no unused
     if flexprompt.settings.oncommands then
         _cached_state.command = path.getbasename(info.command):lower()
@@ -2586,6 +2931,7 @@ local function oncommand(line_state, info) -- luacheck: no unused
 end
 
 clink.onbeginedit(onbeginedit)
+clink.onendedit(onendedit)
 if clink.oncommand then
     clink.oncommand(oncommand)
 end

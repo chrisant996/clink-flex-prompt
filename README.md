@@ -109,6 +109,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{npm}"` shows package name and version.
 - `"{overtype}"` shows indicator when overtype mode is on (i.e. when insert mode is off).
 - `"{python}"` shows the virtual environment.
+- `"{scm}"` shows source control management status (git, hg, svn, or custom SCM plugins).
 - `"{svn}"` shows Subversion status.
 - `"{time}"` shows the current time and/or date.
 - `"{user}"` shows the current user name and/or computer name.
@@ -357,6 +358,9 @@ flexprompt.settings.nerdfonts_width = 2
 
 -- Override certain icons with color emoji in Windows Terminal:
 flexprompt.settings.use_color_emoji = true
+
+-- Supersede other settings and try to avoid displaying graphics that may not exist in all fonts.
+flexprompt.settings.no_graphics = true
 ```
 
 # Writing Custom Prompt Modules

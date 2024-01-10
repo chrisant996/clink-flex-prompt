@@ -76,22 +76,36 @@ local function clear_screen()
 end
 
 local function get_settings_filename()
-    local name
-    local info = debug.getinfo(1, 'S')
-    if info.source and info.source:sub(1, 1) == "@" then
-        name = path.join(path.toparent(info.source:sub(2)), "flexprompt_autoconfig.lua")
-        if not os.isfile(name) then
-            name = nil
+    local script_name
+    local profile_name
+
+    local force_dir = flexprompt_autoconfig_dir -- luacheck: no global
+    if force_dir then
+        script_name = path.join(force_dir, "flexprompt_autoconfig.lua")
+    end
+
+    if not script_name then
+        local info = debug.getinfo(1, 'S')
+        if info.source and info.source:sub(1, 1) == "@" then
+            local dir = path.toparent(info.source:sub(2))
+            if os.isdir(dir) then
+                script_name = path.join(dir, "flexprompt_autoconfig.lua")
+            end
         end
     end
+
+    local dir = os.getenv("=clink.profile")
+    if dir then
+        profile_name = path.join(dir, "flexprompt_autoconfig.lua")
+    end
+
+    local name = script_name or profile_name
+    local delete_name = (script_name ~= profile_name) and profile_name
     if not name then
-        local dir = os.getenv("=clink.profile")
-        if not os.isdir(dir) then
-            error("Unable to write settings; file location unknown.")
-        end
-        name = path.join(dir, "flexprompt_autoconfig.lua")
+        error("Unable to write settings; file location unknown.")
     end
-    return name
+
+    return name, delete_name
 end
 
 local function inc_line(line)
@@ -170,7 +184,7 @@ local function write_var(file, line, name, value, indent)
 end
 
 local function write_settings(settings)
-    local name = get_settings_filename()
+    local name, delete_name = get_settings_filename()
     local file = io.open(name, "w")
     if not file then
         error("Unable to write settings; unable to write to '" .. name .. "'.")
@@ -199,6 +213,10 @@ local function write_settings(settings)
     end
 
     file:close()
+
+    if delete_name then
+        os.remove(delete_name)
+    end
 
     if _transient then
         local command = string.format('2>nul "%s" set prompt.transient %s', CLINK_EXE, _transient)
@@ -744,7 +762,7 @@ end
 
 local function config_wizard()
     local s
-    local settings_filename = get_settings_filename()
+    local settings_filename, delete_filename = get_settings_filename()
     local errors
 
     local hasicons
@@ -1102,10 +1120,14 @@ local function config_wizard()
 
         -- Done.
 
-        if os.isfile(settings_filename) then
+        if delete_filename or os.isfile(settings_filename) then
             clear_screen()
             display_title("Flexprompt autoconfig file already exists.")
-            display_centered("Overwrite "..brightgreen..settings_filename..normal.."?")
+            if os.isfile(settings_filename) then
+                display_centered("Overwrite "..brightgreen..settings_filename..normal.."?")
+            else
+                display_centered("Write new "..brightgreen..settings_filename..normal.." file?")
+            end
             clink.print()
             choices = ""
             choices = display_yes(choices)

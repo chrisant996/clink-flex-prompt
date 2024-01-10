@@ -724,11 +724,6 @@ end
 -- Use the "luafunc:flexprompt_toggle_tenths" command to toggle displaying
 -- tenths of seconds.  By default it is bound to Ctrl+Alt+T.
 
-local endedit_time
-local last_duration
-local invert_tenths
-local force_duration
-
 if rl.setbinding then
     if not rl.getbinding([["\e\C-T"]]) then
         rl.setbinding([["\e\C-T"]], [["luafunc:flexprompt_toggle_tenths"]])
@@ -739,39 +734,21 @@ if rl.setbinding then
 end
 
 function flexprompt_toggle_tenths(rl_buffer) -- luacheck: no global, no unused
-    if flexprompt.is_module_in_prompt("duration") then
-        force_duration = true
-        invert_tenths = not invert_tenths
-        flexprompt.refilter_module("duration")
+    local modules = flexprompt.get_duration_modules()
+    if modules then
+        flexprompt.settings.force_duration = true
+        flexprompt.settings.duration_invert_tenths = not flexprompt.settings.duration_invert_tenths
+        for module in pairs(modules) do
+            flexprompt.refilter_module(module)
+        end
         clink.refilterprompt()
     end
 end
 
--- Clink v1.2.30 has a fix for Lua's os.clock() implementation failing after the
--- program has been running more than 24 days.  Without that fix, os.time() must
--- be used instead, but the resulting duration can be off by up to +/- 1 second.
-local duration_clock = ((clink.version_encoded or 0) >= 10020030) and os.clock or os.time
-
-local function duration_onbeginedit()
-    last_duration = nil
-    force_duration = nil
-    if endedit_time then
-        local beginedit_time = duration_clock()
-        local elapsed = beginedit_time - endedit_time
-        if elapsed >= 0 then
-            last_duration = elapsed
-        end
-    end
-end
-
-local function duration_onendedit()
-    endedit_time = duration_clock()
-end
-
 local function render_duration(args)
     local wizard = flexprompt.get_wizard_state()
-    local duration = wizard and wizard.duration or last_duration or 0
-    if not force_duration and duration < (flexprompt.settings.duration_threshold or 3) then return end
+    local duration = flexprompt.get_duration()
+    if not flexprompt.settings.force_duration and duration < (flexprompt.settings.duration_threshold or 3) then return end
 
     local colors = flexprompt.parse_arg_token(args, "c", "color")
     local color, altcolor
@@ -799,7 +776,7 @@ local function render_duration(args)
     local tenths = flexprompt.parse_arg_keyword(args, "t", "tenths")
     if wizard then
         tenths = wizard.duration_tenths
-    elseif invert_tenths then
+    elseif flexprompt.settings.invert_tenths then
         tenths = not tenths
     end
 
@@ -988,6 +965,19 @@ local function add_details(text, details, include_counts)
     return text
 end
 
+local function maybe_git_fetch(info)
+    if info.type == "git" and flexprompt.settings.git_fetch_interval then
+        local when = fetched_repos[info.root]
+        if not when or os.clock() - when > flexprompt.settings.git_fetch_interval * 60 then
+            local file = flexprompt.popenyield(flexprompt.git_command("fetch"))
+            if file then
+                file:close()
+            end
+            fetched_repos[info.root] = os.clock()
+        end
+    end
+end
+
 -- Collects git status info.
 --
 -- Uses async coroutine calls.
@@ -998,15 +988,7 @@ local function collect_git_info(no_untracked, includeSubmodules)
 
     local submodule = git_dir and git_dir:find(path.join(wks_dir, "modules\\")) == 1
 
-    if git_dir and flexprompt.settings.git_fetch_interval then
-        local when = fetched_repos[git_dir]
-        if not when or os.clock() - when > flexprompt.settings.git_fetch_interval * 60 then
-            local file = flexprompt.popenyield(flexprompt.git_command("fetch"))
-            if file then file:close() end
-
-            fetched_repos[git_dir] = os.clock()
-        end
-    end
+    maybe_git_fetch({ type="git", root=git_dir })
 
     local status = flexprompt.get_git_status(no_untracked, includeSubmodules)
     local conflict = flexprompt.get_git_conflict()
@@ -1681,6 +1663,214 @@ local function render_python(args)
 end
 
 --------------------------------------------------------------------------------
+-- SCM MODULE:  {scm:nostaged:noaheadbehind:counts:color_options}
+--  - 'noaheadbehind' omits the ahead/behind details.
+--  - 'noconflict' omits conflict info.
+--  - 'nostaged' omits the staged details.
+--  - 'nosubmodules' omits status for submodules.
+--  - 'nountracked' omits untracked files.
+--  - 'showremote' shows the branch and its remote.
+--  - 'counts' shows the count of added/modified/etc files.
+--  - color_options override status colors as follows:
+--      - clean=color_name,alt_color_name           When status is clean.
+--      - conflict=color_name,alt_color_name        When a conflict exists.
+--      - dirty=color_name,alt_color_name           When status is dirty.
+--      - remote=color_name,alt_color_name          For ahead/behind details.
+--      - staged=color_name,alt_color_name          For staged details.
+--      - unknown=color_name,alt_color_name         When status is unknown.
+--      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
+
+-- TODO: some way to postprocess the branch name string.
+
+local cached_scm = {}
+
+-- Collects SCM status info.
+--
+-- Uses async coroutine calls.
+local function collect_scm_info(detected_info, no_untracked, no_submodules)
+    local flags = {}
+    flags.no_untracked = no_untracked
+    flags.no_submodules = no_submodules
+
+    local info = flexprompt.get_scm_info(detected_info, flags)
+
+    maybe_git_fetch(info)
+
+    info.ready = true
+    return info
+end
+
+local scm_colors =
+{
+    clean       = { "c",   "clean",        "vcs_clean",         },
+    conflict    = { "!",   "conflict",     "vcs_conflict",      },
+    dirty       = { "d",   "dirty",        "vcs_dirty",         },
+    remote      = { "r",   "remote",       "vcs_remote",        },
+    staged      = { "s",   "staged",       "vcs_staged",        },
+    unknown     = { "u",   "unknown",      "vcs_unknown",       },
+    unpublished = { "up",  "unpublished",  "vcs_unpublished",   },
+}
+
+local function render_scm(args)
+    local branch, detached
+    local info
+    local refreshing
+    local wizard = flexprompt.get_wizard_state()
+
+    if wizard then
+        branch = wizard.branch or "main"
+        -- Copy values so .finished can be added without altering the contents
+        -- of the wizard table.
+        info = {}
+        if wizard.git then
+            for key, value in pairs(wizard.git) do
+                info[key] = value
+            end
+        end
+        info.type = "git"
+        info.ready = true
+    else
+        local detected = flexprompt.detect_scm()
+        if not detected then return end
+        if not detected.type then return end
+
+-- TODO: postprocess_branch
+--[[
+        if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
+            local modified = flexprompt_git.postprocess_branch(branch)
+            if modified then
+                branch = modified
+            end
+        end
+--]]
+
+        -- Collect or retrieve cached info.
+        local flags = {}
+        flags.no_ahead_behind = flexprompt.settings.no_ahead_behind or flexprompt.parse_arg_keyword(args, "nab", "noaheadbehind")
+        flags.no_conflict = flexprompt.settings.no_conflict or flexprompt.parse_arg_keyword(args, "nc", "noconflict")
+        flags.no_submodules = flexprompt.settings.no_submodules or flexprompt.parse_arg_keyword(args, "ns", "nosubmodules")
+        flags.no_untracked = flexprompt.settings.no_untracked or flexprompt.parse_arg_keyword(args, "nu", "nountracked")
+        flags.show_remote = not flexprompt.settings.no_remote and flexprompt.parse_arg_keyword(args, "sr", "showremote")
+        info, refreshing = flexprompt.prompt_info(cached_scm, detected.root, detected.branch, function ()
+            return collect_scm_info(detected, flags)
+        end)
+
+        -- Fill in initial values from detect_scm() until the prompt_info()
+        -- coroutine completes.
+        info.type = info.type or detected.type
+        info.cwd = info.cwd or detected.cwd
+        info.root = info.root or detected.root
+        info.branch = info.branch or detected.branch
+        info.detached = info.detached or detected.detached
+
+        branch = info.branch
+        detached = info.detached
+
+        -- Add remote to branch name if requested.
+        if flexprompt.parse_arg_keyword(args, "sr", "showremote") then
+            if info.remote then
+                branch = branch .. flexprompt.make_fluent_text("->") .. info.remote
+            end
+        end
+    end
+
+    -- Segments.
+    local segments = {}
+
+    -- Local status.
+    local ready = info.ready
+    local status = info.status
+    local conflict = info.conflict
+    local unpublished = not detached and status and status.unpublished
+    local errmsg = status and status.errmsg
+    local colors = scm_colors.clean
+    local color, altcolor
+    local icon_name = "branch"
+    local include_counts = flexprompt.parse_arg_keyword(args, "num", "counts")
+    if unpublished then
+        icon_name = "unpublished"
+        colors = scm_colors.unpublished
+    end
+    if errmsg then
+        colors = scm_colors.unknown
+    elseif conflict then
+        colors = scm_colors.conflict
+    elseif status and status.working then
+        colors = scm_colors.dirty
+    elseif not ready then
+        colors = scm_colors.unknown
+    end
+    color, altcolor = parse_color_token(args, colors)
+
+    local module_sym = flexprompt.get_icon(string.lower(info.type.."_module"))
+    if not module_sym or module_sym == "" then
+        module_sym = info.type
+    elseif refreshing then
+        local ref_icon = flexprompt.get_icon(refreshing)
+        if ref_icon and ref_icon ~= "" then
+            module_sym = ref_icon
+        end
+    end
+
+    local function make_text(b)
+        local text = flexprompt.format_branch_name(b, icon_name, refreshing, info.submodule, module_sym)
+        if errmsg then
+            text = flexprompt.append_text(text, errmsg)
+        elseif conflict then
+            text = flexprompt.append_text(text, flexprompt.get_symbol("conflict"))
+        elseif status and status.working then
+            text = add_details(text, status.working, include_counts)
+        end
+        return text
+    end
+
+    local text = make_text(branch)
+    local segment = { text, color, altcolor }
+    local condensed_segment = { color=color, altcolor=altcolor }
+    segment.condense_callback = function ()
+        local b = branch
+        local target = math.max(console.getwidth() / 4, 20)
+        if console.cellcount(branch) > target then
+            b = b:sub(1, target - 3 - 4) .. flexprompt.make_fluent_text("...") .. b:sub(-4)
+        end
+        condensed_segment.text = make_text(b)
+        return condensed_segment
+    end
+    table.insert(segments, segment)
+
+    -- Staged status.
+    local noStaged = flexprompt.parse_arg_keyword(args, "ns", "nostaged")
+    if not noStaged and status and status.staged then
+        text = flexprompt.append_text("", flexprompt.get_symbol("staged"))
+        colors = scm_colors.staged
+        text = add_details(text, status.staged, include_counts)
+        color, altcolor = parse_color_token(args, colors)
+        table.insert(segments, { text, color, altcolor })
+    end
+
+    -- Remote status (ahead/behind).
+    local noAheadBehind = flexprompt.parse_arg_keyword(args, "nab", "noaheadbehind")
+    if not noAheadBehind then
+        local ahead = info.ahead or "0"
+        local behind = info.behind or "0"
+        if ahead ~= "0" or behind ~= "0" then
+            text = flexprompt.append_text("", flexprompt.get_symbol("aheadbehind"))
+            colors = scm_colors.remote
+            if ahead ~= "0" then
+                text = flexprompt.append_text(text, flexprompt.get_symbol("aheadcount") .. ahead)
+            end
+            if behind ~= "0" then
+                text = flexprompt.append_text(text, flexprompt.get_symbol("behindcount") .. behind)
+            end
+            color, altcolor = parse_color_token(args, colors)
+            table.insert(segments, { text, color, altcolor })
+        end
+    end
+
+    return segments
+end
+
+--------------------------------------------------------------------------------
 -- SVN MODULE:  {svn:color_options}
 --  - color_options override status colors as follows:
 --      - clean=color_name,alt_color_name       When status is clean.
@@ -1766,17 +1956,9 @@ end
 -- If present, the 'format=' option must be last (otherwise it could never
 -- include colons).
 
-local last_time
-
-local function time_onbeginedit()
-    last_time = nil
-end
-
 local function render_time(args)
     local wizard = flexprompt.get_wizard_state()
-    if not wizard and last_time then
-        return last_time[1], last_time[2], last_time[3]
-    end
+    local time = flexprompt.get_time()
 
     local dim = flexprompt.parse_arg_keyword(args, "d", "dim")
     local colors = flexprompt.parse_arg_token(args, "c", "color")
@@ -1794,15 +1976,13 @@ local function render_time(args)
         format = "%a %H:%M"
     end
 
-    local text = os.date(format)
+    local text = os.date(format, time)
 
     if flexprompt.get_flow() == "fluent" then
         text = flexprompt.append_text(flexprompt.make_fluent_text("at"), text)
     end
 
     text = flexprompt.append_text(text, flexprompt.get_module_symbol())
-
-    last_time = { text, color, altcolor }
 
     return text, color, altcolor
 end
@@ -1853,40 +2033,26 @@ local vpn_cached_info = {}
 --
 -- Uses async coroutine calls.
 local function collect_vpn_info()
-    local file = flexprompt.popenyield("rasdial 2>nul")
-    if not file then return end
-
-    -- Skip first line, which is always a header line.
-    local line = file:read("*l") or ""
-    if line == "" then
-        file:close()
+    -- Run the VPN detectors to find connections.
+    local conns = flexprompt.get_vpn_info()
+    if not conns or not conns[1] then
         return {}
     end
 
-    -- Read the rest of the lines.
-    local conns = {}
-    while true do
-        line = file:read("*l")
-        if not line then
+    -- Concatenate connection names.
+    local line = ""
+    local count = 0
+    for _,c in ipairs(conns) do
+        if count > 0 then
+            line = line .. ","
+        end
+        count = count + 1
+        if count > 2 then
+            line = line .. "..."
             break
         end
-        table.insert(conns, line)
-    end
-    file:close()
-
-    -- Discard the last line, which says the command completed successfully.
-    table.remove(conns)
-    if #conns == 0 then
-        return {}
-    end
-
-    -- Concatenate the connection(s) into a string.
-    line = ""
-    for _,c in ipairs(conns) do
-        if #line > 0 then line = line .. "," end
         line = line .. c
     end
-
     return { connection=line }
 end
 
@@ -1928,6 +2094,187 @@ local function render_vpn(args)
 end
 
 --------------------------------------------------------------------------------
+-- Built-in SCM detectors.
+
+local function test_git(dir)
+    local git_dir, wks_dir = flexprompt.is_git_dir(dir)
+    if git_dir then
+        local info = {}
+        info.git_dir = git_dir
+        info.wks_dir = wks_dir
+        info.branch, info.detached = flexprompt.get_git_branch()
+        return info
+    end
+end
+
+local function info_git(dir, tested_info, flags) -- luacheck: no unused
+    local info = {}
+    if tested_info and tested_info.branch then
+        info.branch, info.detached = tested_info.branch, tested_info.detached
+    else
+        info.branch, info.detached = flexprompt.get_git_branch()
+    end
+    info.status = flexprompt.get_git_status()
+    if info.status and info.status.errmsg then
+        info._error = true
+    else
+        if not flexprompt.settings.no_ahead_behind then
+            info.ahead, info.behind = flexprompt.get_git_ahead_behind()
+        end
+        if not flexprompt.settings.no_conflict then
+            info.conflict = flexprompt.get_git_conflict()
+        end
+        if not flexprompt.settings.no_remote then
+            info.remote = flexprompt.get_git_remote()
+        end
+        if not flexprompt.settings.no_submodules then
+            info.submodule = info.git_dir and info.git_dir:find(path.join(info.wks_dir, "modules\\")) == 1
+        end
+    end
+    info.type = "git"
+    return info
+end
+
+local function test_hg(dir)
+    return flexprompt.has_dir(dir, ".hg")
+end
+
+local function info_hg(dir) -- luacheck: no unused
+    local info = {}
+    info.type = "hg"
+    -- Get branch name.
+    do
+        local pipe = io.popenyield("2>&1 hg identify -b")
+        if pipe then
+            info.branch = pipe:read()
+            info.branch = info.branch:gsub("^ +", ""):gsub(" +$", "")
+            pipe:close()
+        end
+        if not info.branch or info.branch == "" then
+            info.branch = "<unidentified>"
+        end
+    end
+    -- Get file status.
+    do
+        local pipe = io.popenyield("2>&1 hg status -amrd -v")
+        if pipe then
+            info.status = { add=0, modify=0, delete=0, untracked=0 }
+            for line in pipe:lines() do
+                local s = line:match("^([AMR!?]) ")
+                if s then
+                    -- Report file status.
+                    if s == "A" then
+                        info.status.add = info.status.add + 1
+                    elseif s == "M" then
+                        info.status.modify = info.status.modify + 1
+                    elseif s == "R" then
+                        info.status.delete = info.status.delete + 1
+                    else
+                        info.status.untracked = info.status.untracked + 1
+                    end
+                elseif s:match("#.* repo.* unfinished ") then
+                    -- Report unfinished states as conflict.
+                    info.conflict = true
+                end
+            end
+            pipe:close()
+        else
+            info._error = true
+        end
+    end
+    return info
+end
+
+local function test_svn(dir)
+    return flexprompt.has_dir(dir, ".svn")
+end
+
+local function info_svn(dir) -- luacheck: no unused
+    local info = {}
+    info.type = "svn"
+    -- Get branch name.
+    if not info._error then
+        local pipe = io.popenyield("2>nul svn info")
+        if pipe then
+            for line in pipe:lines() do
+                local m = line:match("^Relative URL:")
+                if m then
+                    info.branch = line:sub(line:find("/") + 1, #line)
+                    break
+                end
+            end
+            pipe:close()
+        else
+            info._error = true
+        end
+    end
+    -- Get file status.
+    if not info._error then
+        local pipe = io.popenyield("2>nul svn status -q")
+        if pipe then
+            info.status = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
+            for line in pipe:lines() do
+                local s = line:match("^([AMDCRE!~])")
+                if s then
+                    if s == "A" then
+                        info.status.add = info.status.add + 1
+                    elseif s == "M" then
+                        info.status.modify = info.status.modify + 1
+                    elseif s == "D" then
+                        info.status.delete = info.status.delete + 1
+                    elseif s == "C" then
+                        info.status.conflict = info.status.conflict + 1
+                    else
+                        info.status.untracked = info.status.untracked + 1
+                    end
+                end
+            end
+            pipe:close()
+        else
+            info._error = true
+        end
+    end
+    return info
+end
+
+--------------------------------------------------------------------------------
+-- Built-in VPN detectors.
+
+local function vpn_rasdial()
+    local pipe = io.popenyield("2>nul rasdial")
+    if not pipe then
+        return
+    end
+
+    -- Skip first line, which is always either a header line or reports that
+    -- there are no completions.
+    local line = pipe:read("*l") or ""
+    if line == "" then
+        pipe:close()
+        return
+    end
+
+    -- Read the rest of the lines.
+    local conns = {}
+    while true do
+        line = pipe:read("*l")
+        if not line then
+            break
+        end
+        table.insert(conns, line)
+    end
+    pipe:close()
+
+    -- Discard the last line, which says the command completed successfully.
+    table.remove(conns)
+    if #conns == 0 then
+        return
+    end
+
+    return conns
+end
+
+--------------------------------------------------------------------------------
 -- Event handlers.  Since this file contains multiple modules, let them all
 -- share one event handler per event type, rather than adding separate handlers
 -- for separate modules.
@@ -1935,18 +2282,11 @@ end
 local function builtin_modules_onbeginedit()
     _cached_state = {}
     admin_onbeginedit()
-    duration_onbeginedit()
     keymap_onbeginedit()
     modmark_onbeginedit()
-    time_onbeginedit()
-end
-
-local function builtin_modules_onendedit()
-    duration_onendedit()
 end
 
 clink.onbeginedit(builtin_modules_onbeginedit)
-clink.onendedit(builtin_modules_onendedit)
 
 --------------------------------------------------------------------------------
 -- Initialize the built-in modules.
@@ -1966,6 +2306,7 @@ flexprompt.add_module( "k8s",           render_k8s,         { nerdfonts2={"ﴱ",
 flexprompt.add_module( "maven",         render_maven                        )
 flexprompt.add_module( "npm",           render_npm                          )
 flexprompt.add_module( "python",        render_python,      { nerdfonts2={""," "}, nerdfonts3={"󰌠","󰌠 "} } )
+flexprompt.add_module( "scm",           render_scm                          )
 flexprompt.add_module( "svn",           render_svn                          )
 flexprompt.add_module( "time",          render_time,        { coloremoji="🕒", nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Note: nerdfonts are always mono width for this.
 flexprompt.add_module( "user",          render_user,        { coloremoji="🙍‍♂️", nerdfonts2={""," "} } )
@@ -1986,5 +2327,11 @@ end
 if rl.ismodifiedline then
 flexprompt.add_module( "modmark",       render_modmark                      )
 end
+
+flexprompt.register_scm("git", { test=test_git, info=info_git }, 20)
+flexprompt.register_scm("hg",  { test=test_hg,  info=info_hg  }, 40)
+flexprompt.register_scm("svn", { test=test_svn, info=info_svn }, 41)
+
+flexprompt.register_vpn("rasdial", vpn_rasdial, 60)
 
 _flexprompt_test_process_cwd_string = process_cwd_string -- luacheck: no global
