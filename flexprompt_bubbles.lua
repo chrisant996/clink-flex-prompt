@@ -458,8 +458,7 @@ end
 local function get_exit_code(include_icons, hex)
     local value = flexprompt.get_errorlevel()
     if value then
-        if math.abs(value) > (hex or 255 or 32767) then
-            local hex
+        if math.abs(value) > (hex and 255 or 32767) then
             local lo = bit32.band(value, 0xffff)
             local hi = bit32.rshift(value, 16)
             if hi > 0 then
