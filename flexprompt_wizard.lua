@@ -799,6 +799,7 @@ local function config_wizard()
     local hasicons
     local eight_bit_color_test = make_8bit_color_test()
     local four_bit_color
+    local style_choices
     local callout
     local choices
     local wrote
@@ -1006,7 +1007,11 @@ local function config_wizard()
 
         -- Configuration.
 
-        s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow", "bubbles" })
+        style_choices = { "lean", "classic", "rainbow" }
+        if preview.use_8bit_color then
+            table.insert(style_choices, "bubbles")
+        end
+        s = choose_setting(preview, "Prompt Style", "styles", "style", style_choices)
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
