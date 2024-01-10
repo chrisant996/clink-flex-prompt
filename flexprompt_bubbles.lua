@@ -308,8 +308,10 @@ end
 local function addosep(segments, sep, new_bg)
     if flexprompt.settings.no_graphics then
         table.insert(segments, new_bg.." ")
+    elseif new_bg == segments.bg then
+        table.insert(segments, segments.bg..fg_black..sep.sep[2]..fg_default)
     else
-        table.insert(segments, transition_bg(sep[1], new_bg, segments.bg or bg_default))
+        table.insert(segments, transition_bg(sep.cap[1], new_bg, segments.bg or bg_default))
     end
     segments.bg = new_bg
 end
@@ -317,8 +319,10 @@ end
 local function addcsep(segments, sep, new_bg)
     if flexprompt.settings.no_graphics then
         table.insert(segments, " "..new_bg)
+    elseif new_bg == segments.bg then
+        table.insert(segments, segments.bg..fg_black..sep.sep[1]..fg_default)
     else
-        table.insert(segments, transition_bg(sep[2], segments.bg or bg_default, new_bg))
+        table.insert(segments, transition_bg(sep.cap[2], segments.bg or bg_default, new_bg))
     end
     segments.bg = new_bg
 end
@@ -536,7 +540,10 @@ end
 
 local cached = {}
 
-local sep = flexprompt.choices.caps[sep_shape or "round"] or { "", "" }
+local sep = {
+    cap=flexprompt.choices.caps[sep_shape or "round"] or { "", "" },
+    sep=flexprompt.choices.separators[sep_shape or "round"] or { "", "" },
+}
 
 local function which_icon(info)
     if info.detached then
