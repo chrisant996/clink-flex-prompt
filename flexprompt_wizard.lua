@@ -262,27 +262,44 @@ local function display_title(s)
     display_centered(bold .. s .. normal)
 end
 
+local function replace_arg(s, module, arg, value)
+    if s:find("{" .. module) then
+        local args = s:match("{" .. module .. "(:[^}]*)}")
+        value = value and (":" .. arg .. "=" .. value) or ""
+        if not args then
+            args = value
+        elseif args:find(":" .. arg) then
+            args = args:gsub(":" .. arg .. "=[^:]*", value)
+        else
+            args = args .. value
+        end
+        s = s:gsub("{" .. module .. "[^}]*}", "{" .. module .. args .. "}")
+    end
+    return s
+end
+
 local function apply_time_format(s)
     if not s then return end
 
     if _striptime then
         s = s:gsub("{time[^}]*}", "")
+        s = replace_arg(s, "rbubble", "format", nil)
     elseif _timeformat then
         if _timeformat == "2" then
-            s = s:gsub("{time:dim}", "{time:dim:format=%%H:%%M:%%S}")
-            s = s:gsub("{time}", "{time:format=%%H:%%M:%%S}")
+            s = replace_arg(s, "time", "format", "%%H:%%M:%%S")
+            s = replace_arg(s, "rbubble", "format", "%%H:%%M:%%S")
         elseif _timeformat == "3" then
-            s = s:gsub("{time:dim}", "{time:dim:format=%%a %%H:%%M}")
-            s = s:gsub("{time}", "{time:format=%%a %%H:%%M}")
+            s = replace_arg(s, "time", "format", "%%a %%H:%%M")
+            s = replace_arg(s, "rbubble", "format", "%%a %%H:%%M")
         elseif _timeformat == "4" then
-            s = s:gsub("{time:dim}", "{time:dim:format=%%I:%%M:%%S %%p}")
-            s = s:gsub("{time}", "{time:format=%%I:%%M:%%S %%p}")
+            s = replace_arg(s, "time", "format", "%%I:%%M:%%S %%p")
+            s = replace_arg(s, "rbubble", "format", "%%I:%%M:%%S %%p")
         elseif _timeformat == "5" then
-            s = s:gsub("{time:dim}", "{time:dim:format=%%a %%I:%%M %%p}")
-            s = s:gsub("{time}", "{time:format=%%a %%I:%%M %%p}")
+            s = replace_arg(s, "time", "format", "%%a %%I:%%M %%p")
+            s = replace_arg(s, "rbubble", "format", "%%a %%I:%%M %%p")
         else
-            s = s:gsub("{time:dim}", "")
-            s = s:gsub("{time}", "")
+            s = replace_arg(s, "time", "format", "")
+            s = replace_arg(s, "rbubble", "format", "")
         end
     end
     return s
@@ -296,8 +313,22 @@ local function replace_modules(s)
     return s
 end
 
+local function translate_bubbles(settings, final)
+    if settings.style == "bubbles" then
+        settings.style = "lean"
+        settings.top_prompt = "{tbubble}"
+        settings.left_prompt = "{lbubble}"
+        settings.right_prompt = "{rbubble}"
+        if final then
+            settings.right_prompt = apply_time_format(settings.right_prompt)
+        end
+    end
+end
+
 local function display_preview(settings, command, show_cursor, callout)
     local preview = copy_table(settings)
+    translate_bubbles(preview)
+
     if preview.left_prompt then
         preview.left_prompt = replace_modules(preview.left_prompt)
     end
@@ -784,6 +815,8 @@ local function config_wizard()
             wizard =
             {
                 cwd = "c:\\directory",
+                type = "git",
+                branch = "main",
                 duration = 5,
                 exit = 0,
             },
@@ -973,7 +1006,7 @@ local function config_wizard()
 
         -- Configuration.
 
-        s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow" })
+        s = choose_setting(preview, "Prompt Style", "styles", "style", { "lean", "classic", "rainbow", "bubbles" })
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
@@ -1015,7 +1048,7 @@ local function config_wizard()
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
-        if preview.style ~= "lean" then
+        if preview.style ~= "lean" and preview.style ~= "bubbles" then
             local seps
             if preview.style == "rainbow" then
                 if preview.powerline_font then
@@ -1037,7 +1070,7 @@ local function config_wizard()
             end
         end
 
-        if preview.charset ~= "ascii" and preview.style ~= "lean" then
+        if preview.charset ~= "ascii" and preview.style ~= "lean" and preview.style ~= "bubbles" then
             local caps = preview.powerline_font and { "pointed", "flat", "slant", "round", "blurred" } or { "flat", "blurred" }
 
             callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
@@ -1053,9 +1086,11 @@ local function config_wizard()
 
         -- Choose sides after choosing tails, so there's a good anchor for
         -- the tails callout.
-        s = choose_sides(preview, "Prompt Sides")
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
+        if preview.style ~= "bubbles" then
+            s = choose_sides(preview, "Prompt Sides")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
 
         s = choose_setting(preview, "Prompt Height", "lines", "lines", { "one", "two" })
         if not s or s == "q" then break end
@@ -1085,21 +1120,25 @@ local function config_wizard()
         if not s or s == "q" then break end
         if s == "r" then goto continue end
 
-        if hasicons and preview.charset == "unicode" then
+        if hasicons and preview.charset == "unicode" and preview.style ~= "bubbles" then
             s = choose_icons(preview, "Icons")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
 
-        s = choose_setting(preview, "Prompt Flow", "flows", "flow", { "concise", "fluent" })
-        if not s or s == "q" then break end
-        if s == "r" then goto continue end
+        if preview.style ~= "bubbles" then
+            s = choose_setting(preview, "Prompt Flow", "flows", "flow", { "concise", "fluent" })
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
 
         if clink.version_encoded >= 10020029 then
             s = choose_transient(preview, "Transient Prompt")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end
+
+        translate_bubbles(preview, true)
 
         do
             local old_settings = flexprompt.settings
