@@ -1762,9 +1762,13 @@ local function render_scm(args)
         info.root = info.root or detected.root
         info.branch = info.branch or detected.branch
         info.detached = info.detached or detected.detached
+        info.commit = info.commit or detected.commit
 
         branch = info.branch
         detached = info.detached
+        if detached and info.commit then
+            branch = info.commit:sub(1, 8)
+        end
 
         -- Add remote to branch name if requested.
         if flexprompt.parse_arg_keyword(args, "sr", "showremote") then
@@ -2101,7 +2105,7 @@ local function test_git(dir)
         local info = {}
         info.git_dir = git_dir
         info.wks_dir = wks_dir
-        info.branch, info.detached = flexprompt.get_git_branch()
+        info.branch, info.detached, info.commit = flexprompt.get_git_branch()
         return info
     end
 end
@@ -2109,9 +2113,9 @@ end
 local function info_git(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
     if tested_info and tested_info.branch then
-        info.branch, info.detached = tested_info.branch, tested_info.detached
+        info.branch, info.detached, info.commit = tested_info.branch, tested_info.detached, tested_info.commit
     else
-        info.branch, info.detached = flexprompt.get_git_branch()
+        info.branch, info.detached, info.commit = flexprompt.get_git_branch()
     end
     info.status = flexprompt.get_git_status()
     if info.status and info.status.errmsg then

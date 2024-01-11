@@ -2599,6 +2599,8 @@ end
 -- Get the name of the current branch.
 -- @return  branch_name, is_detached.
 --
+-- Newer versions return branch_name, is_detached, detached_commit.
+--
 -- Synchronous call.
 function flexprompt.get_git_branch(git_dir)
     git_dir = git_dir or flexprompt.get_git_dir()
@@ -2620,7 +2622,7 @@ function flexprompt.get_git_branch(git_dir)
     if branch_name then
         return branch_name
     else
-        return 'HEAD detached at '..HEAD:sub(1, 7), true
+        return 'HEAD detached at '..HEAD:sub(1, 7), true, HEAD
     end
 end
 

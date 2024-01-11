@@ -572,7 +572,6 @@ local function get_info()
 
     local info = flexprompt.promptcoroutine(collect_info)
     if info then
-        assert(not info.refreshing)
         info.ready = true
         cached = info
     else
@@ -698,9 +697,10 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
     else
         addcsep(segments, sep, bg_gray2)
         if info.type or info.branch or info.working or info.detached then
-            local icon = flexprompt.get_symbol(which_icon(info))
-            if info.detached and (icon == "" or flexprompt.get_flow() == "fluent") then
-                icon = make_fluent_text("detached", fg_status)
+            local which = which_icon(info)
+            local icon = flexprompt.get_symbol(which)
+            if which == "detached" and (icon == "" or flexprompt.get_flow() == "fluent") then
+                icon = make_fluent_text("detached", fg_status, fg_muted)
             end
             if info.refreshing and icon and console.cellcount(icon) == 1 then
                 icon = flexprompt.get_symbol("refresh")
@@ -708,7 +708,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
 
             local branch
             if info.detached then
-                branch = info.branch:sub(1, 8)
+                branch = info.commit:sub(1, 8)
             else
                 branch = info.branch
                 if info.type == "git" and flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
@@ -884,13 +884,15 @@ clink.onbeginedit(function()
             detect.root ~= cached.root or
             detect.type ~= cached.type or
             (detect.branch and detect.branch ~= cached.branch) or
-            detect.detached ~= cached.detached) then
+            detect.detached ~= cached.detached or
+            detect.commit ~= cached.commit) then
         cached = {
             cwd=cwd,
             root=detect.root,
             type=detect.type,
             branch=detect.branch,
             detached=detect.detached,
+            commit=detect.commit
         }
     end
 
