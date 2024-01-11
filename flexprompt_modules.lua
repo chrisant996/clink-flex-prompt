@@ -1768,10 +1768,8 @@ local function render_scm(args)
         end
 
         -- Add remote to branch name if requested.
-        if flexprompt.parse_arg_keyword(args, "sr", "showremote") then
-            if info.remote then
-                branch = branch .. flexprompt.make_fluent_text("->") .. info.remote
-            end
+        if not info.detached and info.remote and flexprompt.parse_arg_keyword(args, "sr", "showremote") then
+            branch = branch .. flexprompt.make_fluent_text("->") .. info.remote
         end
     end
 
