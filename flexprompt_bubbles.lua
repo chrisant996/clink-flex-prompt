@@ -24,7 +24,7 @@ flexprompt.settings.symbols.detached = { nerdfonts2={"ﰖ", " "}, nerdfonts3=
 local default_bg_as_fg = "30" -- REVIEW: Is this really needed?
 
 local bg_default = sgr("49")
-local bg_softblue = sgr("48;2;60;90;140")
+local bg_softblue = sgr("48;2;50;100;140")
 local bg_softmagenta = sgr("48;2;100;60;160")
 local bg_softgreen = sgr("48;2;60;120;100")
 local bg_red = sgr("48;5;88")
