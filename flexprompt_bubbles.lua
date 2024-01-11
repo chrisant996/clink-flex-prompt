@@ -733,7 +733,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 end
             end
 
-            local text = (smart_cwd and icon) or (not smart_cwd and flexprompt.append_text(scm_icon, icon)) or ""
+            local text = icon or ""
             text = flexprompt.append_text(text, branch)
             if not info.detached and info.remote and flexprompt.parse_arg_keyword(args, "sr", "showremote") then
                 text = text..make_fluent_text("->", fg_status, fg_muted)..ellipsify(info.remote, 10)
