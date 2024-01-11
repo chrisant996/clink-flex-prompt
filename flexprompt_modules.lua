@@ -1734,16 +1734,6 @@ local function render_scm(args)
         if not detected then return end
         if not detected.type then return end
 
--- TODO: postprocess_branch
---[[
-        if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
-            local modified = flexprompt_git.postprocess_branch(branch)
-            if modified then
-                branch = modified
-            end
-        end
---]]
-
         -- Collect or retrieve cached info.
         local flags = {}
         flags.no_ahead_behind = flexprompt.settings.no_ahead_behind or flexprompt.parse_arg_keyword(args, "nab", "noaheadbehind")
@@ -1768,6 +1758,13 @@ local function render_scm(args)
         detached = info.detached
         if detached and info.commit then
             branch = info.commit:sub(1, 8)
+        end
+
+        if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
+            local modified = flexprompt_git.postprocess_branch(branch)
+            if modified then
+                branch = modified
+            end
         end
 
         -- Add remote to branch name if requested.
