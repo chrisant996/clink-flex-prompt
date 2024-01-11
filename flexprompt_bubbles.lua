@@ -14,7 +14,6 @@ show_fluent_color_contrast = false
 --------------------------------------------------------------------------------
 
 local sep_shape = "round"   -- FUTURE: Maybe allow a way to override the shape?
-local smart_cwd = true      -- FUTURE: Smart cwd is a core feature, but maybe allow a way to disable it?
 
 --------------------------------------------------------------------------------
 -- luacheck: push no unused
@@ -213,7 +212,7 @@ local function abbrev_child(parent, child)
     return abbr, abbr ~= child
 end
 
-local function abbrev_path(dir, fluent, all, relative)
+local function abbrev_path(dir, fluent, all, relative, notrim)
     -- Removeable drives could be floppy disks or CD-ROMs, which are slow.
     -- Network drives are slow.  Invalid drives are unknown.  If the drive
     -- type might be slow then don't abbreviate.
@@ -290,7 +289,7 @@ local function abbrev_path(dir, fluent, all, relative)
         parent = this_dir
     end
 
-    dir = s:gsub("[/\\]+$", "")
+    dir = notrim and s or s:gsub("[/\\]+$", "")
     return dir
 end
 
@@ -645,16 +644,14 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
     local cwd = flexprompt.maybe_apply_tilde(info.cwd)
     addosep(segments, sep, cwd_color)
     do
-        local no_smart = true
         local force_parent
-        if smart_cwd then
-            no_smart = flexprompt.is_no_smart_cwd and flexprompt.is_no_smart_cwd(info.cwd)
-            if type(no_smart) == "string" then
-                force_parent = no_smart
-                no_smart = false
-            end
+        local full_cwd = flexprompt.parse_arg_keyword(args, "f", "fullcwd")
+        local no_smart = flexprompt.is_no_smart_cwd and flexprompt.is_no_smart_cwd(info.cwd)
+        if type(no_smart) == "string" then
+            force_parent = no_smart
+            no_smart = false
         end
-        if smart_cwd and not no_smart and info.type then
+        if not no_smart and info.type then
             local root, r_tilde = flexprompt.maybe_apply_tilde(force_parent or info.root)
             local parent, p_tilde = flexprompt.maybe_apply_tilde(path.toparent(force_parent or info.root))
             local can_smart = (root ~= parent and r_tilde == p_tilde)
@@ -662,12 +659,19 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             smart = smart:gsub("^[\\/]+", ""):gsub("[\\/]+$", "")
             if shorten then
                 smart = abbrev_path(smart, fg_white, nil, parent)
+                if full_cwd then
+                    parent = abbrev_path(parent, nil, true, nil, true)
+                end
             end
             local drive = path.getdrive(info.cwd)
-            if drive and drive:upper() ~= "C:" then
+            if full_cwd then
+                smart = make_fluent_text(path.join(parent, ""), fg_white)..smart
+            elseif drive and drive:upper() ~= "C:" then
                 smart = make_fluent_text(drive, fg_white)..smart
+            else
+                smart = fg_white..smart
             end
-            addtext(segments, fg_black, flexprompt.append_text(scm_icon, fg_white..smart))
+            addtext(segments, fg_black, flexprompt.append_text(scm_icon, smart))
         else
             local text = cwd
             if shorten then
