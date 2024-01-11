@@ -162,6 +162,10 @@ local function make_fluent_text(text, restore_color, fluent_color)
     return fluent_color..text..restore_color
 end
 
+local function resolve_fluent_colors(text, fluent, normal)
+    return text:gsub("\001", fluent):gsub("\002", normal)
+end
+
 --------------------------------------------------------------------------------
 
 local function first_letter(s)
@@ -714,7 +718,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 if info.type == "git" and flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
                     local modified = flexprompt_git.postprocess_branch(branch)
                     if modified then
-                        branch = modified
+                        branch = resolve_fluent_colors(modified, fg_fluent, fg_status)
                     end
                 end
                 if shorten then
