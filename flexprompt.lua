@@ -400,21 +400,31 @@ end
 local _nerdfonts_version
 local function get_nerdfonts_version()
     if not _nerdfonts_version then
-        if flexprompt.settings.nerdfonts_version == 3 then
-            _nerdfonts_version = "nerdfonts3"
-        else
+        local ver
+        local t = type(flexprompt.settings.nerdfonts_version)
+        if t == "string" or t == "number" then
+            ver = tostring(flexprompt.settings.nerdfonts_version)
+            if ver == "" then
+                ver = nil
+            end
+        end
+        if not ver then
             local env = os.getenv("FLEXPROMPT_NERDFONTS_VERSION")
-            local ver = 2
             if env then
-                local num = tonumber(env)
-                if num and math.floor(num) == 3 then
-                    ver = 3
+                local num = tonumber(env:gsub("^ +", ""))
+                if num then
+                    ver = tostring(num)
+                    if ver == "" then
+                        ver = nil
+                    end
                 end
             end
+        end
+        if ver then
             _nerdfonts_version = "nerdfonts" .. ver
         end
     end
-    return _nerdfonts_version
+    return not flexprompt.settings.no_graphics and _nerdfonts_version
 end
 
 local _nerdfonts_width
@@ -529,35 +539,40 @@ local function get_frame_color()
 end
 
 local function resolve_symbol_table(symbol)
-    if type(symbol) == "table" then
-        local term = not flexprompt.settings.no_graphics and clink.getansihost and clink.getansihost() or nil
-        if not flexprompt.settings.no_graphics and flexprompt.settings.use_color_emoji and term == "winterminal" and symbol["coloremoji"] then
-            symbol = symbol["coloremoji"]
-        elseif term and symbol[term] then
-            symbol = symbol[term]
-        else
-            local nf = get_nerdfonts_version()
-            if not symbol[nf] then
-                nf = "nerdfonts2"
-            end
-            if symbol[nf] then
-                symbol = symbol[nf]
-                if type(symbol) == "table" then
-                    if get_nerdfonts_width() == 2 then
-                        symbol = symbol[2] or symbol[1]
-                    else
-                        symbol = symbol[1]
-                    end
-                end
-            elseif flexprompt.settings.powerline_font and symbol["powerline"] then
-                symbol = symbol["powerline"]
+    if type(symbol) ~= "table" then
+        return symbol
+    else
+        local ret
+        if not flexprompt.settings.no_graphics then
+            local term = clink.getansihost and clink.getansihost() or nil
+            if flexprompt.settings.use_color_emoji and term == "winterminal" and symbol["coloremoji"] then
+                ret = symbol["coloremoji"]
+            elseif term and symbol[term] then
+                ret = symbol[term]
             else
-                local charset = get_charset()
-                symbol = symbol[charset] or symbol[1]
+                local nf = get_nerdfonts_version()
+                if symbol[nf] then
+                    symbol = symbol[nf]
+                    if type(symbol) == "table" then
+                        if get_nerdfonts_width() == 2 then
+                            ret = symbol[2] or symbol[1]
+                        else
+                            ret = symbol[1]
+                        end
+                    else
+                        ret = symbol
+                    end
+                elseif flexprompt.settings.powerline_font and symbol["powerline"] then
+                    ret = symbol["powerline"]
+                end
             end
         end
+        if not ret then
+            local charset = get_charset()
+            ret = symbol[charset] or symbol[1]
+        end
+        return ret
     end
-    return symbol
 end
 
 local function get_symbol(name, fallback)
