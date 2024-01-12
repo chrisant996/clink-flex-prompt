@@ -886,6 +886,7 @@ local function config_wizard()
                 if clink.getansihost then
                     local term = clink.getansihost()
                     if term ~= "clink" and term ~= "winterminal" then
+                        preview.symbols = preview.symbols or {}
                         preview.symbols.prompt = { ">", winterminal="❯" }
                     end
                 end
