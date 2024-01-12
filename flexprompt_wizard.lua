@@ -1233,111 +1233,144 @@ local function run_demo()
         symbols = {
             prompt = { ">", winterminal="❯" },
         },
+        nerdfonts_version = flexprompt.settings.nerdfonts_version,
+        nerdfonts_width = flexprompt.settings.nerdfonts_width,
     }
+
+    local remember
+    local function override(settings, fields)
+        if fields then
+            assert(not remember)
+            remember = {}
+            remember.fields = fields
+            for k, v in pairs(fields) do
+                remember[k] = settings[k]
+                settings[k] = v
+            end
+        else
+            for k, v in pairs(remember.fields) do
+                settings[k] = remember[k]
+            end
+            remember = nil
+        end
+    end
 
     print()
     display_centered("\x1b[1mLean Style\x1b[m ")
     preview.style = "lean"
-    preview.connection = nil
-    preview.heads = nil
-    preview.tails = nil
-    preview.separators = nil
 
     print()
-    preview.lines = nil
     preview.right_prompt = "{duration}"
-    preview.flow = nil
-    preview.use_icons = false
-    preview.powerline_font = false
     display_preview(preview)
 
     print()
-    preview.lines = "two"
     preview.right_prompt = "{duration}{time}"
-    preview.flow = "fluent"
-    preview.use_icons = true
-    preview.powerline_font = true
+    override(preview, {
+        lines = "two",
+        flow = "fluent",
+        use_icons = true,
+        use_color_emoji = true,
+        powerline_font = true,
+    })
     display_preview(preview)
+    override(preview)
 
     print()
     display_centered("\x1b[1mClassic Style\x1b[m")
     preview.style = "classic"
     preview.frame_color = "dark"
-    preview.connection = nil
-    preview.heads = nil
-    preview.tails = nil
-    preview.separators = nil
 
     print()
-    preview.lines = nil
     preview.right_prompt = "{duration}"
-    preview.flow = nil
-    preview.use_icons = false
-    preview.powerline_font = false
-    preview.heads = "pointed"
+    override(preview, {
+        flow = "fluent",
+        heads = "pointed",
+    })
     display_preview(preview)
+    override(preview)
 
     print()
-    preview.lines = "two"
     preview.right_prompt = "{duration}{time}"
-    preview.flow = "fluent"
-    preview.use_icons = true
-    preview.powerline_font = true
-    preview.heads = "blurred"
-    preview.tails = "blurred"
-    preview.separators = "slant"
-    preview.left_frame = "round"
-    preview.right_frame = "round"
-    preview.connection = "dotted"
+    override(preview, {
+        lines = "two",
+        heads = "blurred",
+        tails = "blurred",
+        separators = "slant",
+        left_frame = "round",
+        right_frame = "round",
+        connection = "dotted",
+        use_icons = true,
+        powerline_font = true,
+    })
     display_preview(preview)
+    override(preview)
 
     print()
     display_centered("\x1b[1mRainbow Style\x1b[m")
     preview.style = "rainbow"
-    preview.connection = nil
-    preview.heads = nil
-    preview.tails = nil
-    preview.separators = nil
 
     print()
-    preview.lines = nil
+    preview.left_prompt = "{battery}{break}{cwd}{git}"
     preview.right_prompt = "{duration}"
-    preview.flow = nil
-    preview.use_icons = false
-    preview.powerline_font = false
     preview.heads = "pointed"
+    override(preview, {
+        heads = "pointed",
+        use_icons = true,
+    })
     display_preview(preview)
+    override(preview)
 
     print()
-    preview.lines = "two"
+    preview.left_prompt = "{cwd}{git}"
     preview.right_prompt = "{duration}{time}"
-    preview.flow = "fluent"
-    preview.use_icons = true
-    preview.powerline_font = true
-    preview.heads = "slant"
-    preview.tails = "slant"
-    preview.separators = nil
-    preview.left_frame = "none"
-    preview.right_frame = "round"
-    preview.connection = "solid"
+    override(preview, {
+        lines = "two",
+        heads = "slant",
+        tails = "slant",
+        left_frame = "none",
+        right_frame = "round",
+        connection = "solid",
+        use_icons = true,
+        use_color_emoji = true,
+        powerline_font = true,
+    })
     display_preview(preview)
+    override(preview)
 
     print()
     display_centered("\x1b[1mBubbles Style\x1b[m ")
     preview.style = "lean"
-    preview.connection = nil
-    preview.heads = nil
-    preview.tails = nil
-    preview.separators = nil
+    wizard.battery = nil
 
     print()
-    preview.lines = "two"
-    preview.left_prompt = "{lbubble}"
-    preview.right_prompt = "{rbubble}"
-    preview.flow = nil
-    preview.use_icons = true
-    preview.powerline_font = true
+    wizard.type = nil
+    wizard.branch = nil
+    wizard.cwd = "D:\\data"
+    wizard.duration = nil
+    override(preview, {
+        lines = "two",
+        left_prompt = "{lbubble}",
+        right_prompt = "{rbubble}",
+        use_icons = true,
+        powerline_font = true,
+    })
     display_preview(preview)
+    override(preview)
+
+    print()
+    wizard.type = "git"
+    wizard.branch = "main"
+    wizard.cwd = "~\\src"
+    wizard.duration = 5
+    override(preview, {
+        lines = "two",
+        left_prompt = "{lbubble}",
+        right_prompt = "{rbubble}",
+        use_icons = true,
+        powerline_font = true,
+    })
+    display_preview(preview)
+    override(preview)
 
     print()
 end
