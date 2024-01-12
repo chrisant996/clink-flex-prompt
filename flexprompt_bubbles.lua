@@ -407,13 +407,15 @@ local function get_battery_color()
 end
 
 local function get_battery_status()
-    local status = os.getbatterystatus()
+    local wizard = flexprompt.get_wizard_state()
+
+    local status = wizard and wizard.battery or os.getbatterystatus()
     local level = status.level
     local acpower = status.acpower
     local charging = status.charging
 
     -- Check for battery status failure.
-    if not level or level < 0 then
+    if not level or level < 0 or (acpower and not charging) then
         return (level or -1), "", "", acpower
     end
 
@@ -803,7 +805,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
     local prompt = table.concat(segments)
 
     local level, bsym, lsym, acpower = get_battery_status()
-    if (level >= 0 and level < 100) or not acpower then
+    if level >= 0 and (level < 100 or not acpower) then
         local color, critical = get_battery_color()
         if use_battery_level_icon and not critical and lsym and lsym ~= "" then
             level = lsym
