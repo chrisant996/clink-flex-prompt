@@ -115,6 +115,11 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{user}"` shows the current user name and/or computer name.
 - `"{vpn}"` shows the current VPN or dialup connection.
 
+Also, the following modules work together for a new "Bubbles" style, which is designed as a variation of the `"lean"` prompt style.
+- `"{tbubble}"` shows the top prompt line for the "Bubbles" style.  You can add other modules in your `top_prompt` as well, even when using `{tbubble}`.
+- `"{lbubble}"` shows the left prompt for the "Bubbles" style.  You can add other modules in your `left_prompt` as well, but they'll look best if they come _after_ `{lbubble}`.
+- `"{rbubble}"` shows the right prompt for the "Bubbles" style.  You can add other modules in your `right_prompt` as well, but they'll look best if they come _before_ `{rbubble}`.
+
 ```lua
 flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
@@ -130,6 +135,8 @@ flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```lua
 flexprompt.settings.style = "classic"
 ```
+
+> **Note:** The `flexprompt configure` wizard lets you choose a "Bubbles" style.  The "Bubbles" style is designed for use with `flexprompt.settings.style = "lean"`; there is not a separate `"bubbles"` style.
 
 ## Charset
 - `"ascii"` uses only ASCII characters, and is compatible with all fonts; text copy/pasted from the terminal display will look right everywhere.
@@ -255,6 +262,8 @@ flexprompt.settings.right_frame = { "═╗", "◄───╜" }
 flexprompt.settings.spacing = "sparse"
 ```
 
+> **Note:** Clink v1.6.1 and higher have built-in support for a [`prompt.spacing`](https://chrisant996.github.io/clink/clink.html#prompt_spacing) setting, so `flexprompt.settings.spacing` is deprecated and ignored now.  The `flexprompt configure` wizard will also automatically set Clink's `prompt.spacing` setting appropriately now.
+
 ## Flow
 - `"concise"` shows minimal text for each prompt module.
 - `"fluent"` shows additional text for some prompt modules, to make the prompt "read" nicely.
@@ -358,6 +367,9 @@ flexprompt.settings.nerdfonts_width = 2
 
 -- Override certain icons with color emoji in Windows Terminal:
 flexprompt.settings.use_color_emoji = true
+
+-- Use Powerline icons (the font must support them):
+flexprompt.settings.powerline_font = true
 
 -- Supersede other settings and try to avoid displaying graphics that may not exist in all fonts.
 flexprompt.settings.no_graphics = true
