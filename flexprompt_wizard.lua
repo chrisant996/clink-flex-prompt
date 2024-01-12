@@ -308,7 +308,6 @@ end
 local function replace_modules(s)
     if not s then return end
 
-    s = s:gsub("{battery[^}]*}", "")
     s = apply_time_format(s)
     return s
 end
@@ -820,6 +819,7 @@ local function config_wizard()
                 branch = "main",
                 duration = 5,
                 exit = 0,
+                battery = {},
             },
             lines = "two",
             left_prompt = "{cwd}{git}",
@@ -1222,6 +1222,7 @@ local function run_demo()
         exit = 0,
         width = math.min(console.getwidth(), 80),
         screenwidth = math.min(console.getwidth(), 80),
+        battery = {},
     }
 
     local preview =
