@@ -1209,6 +1209,9 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
         out = next_segment(pending_segment.text, lookup_color(pending_segment.color), pending_segment.altcolor, pending_segment.isbreak)
     end
 
+    local wasbreak = segmenter.isbreak
+    segmenter.isbreak = isbreak
+
     if not color then color = flexprompt.colors.red end
 
     if rainbow_text_color then rainbow_text_color = lookup_color(rainbow_text_color) end
@@ -1250,10 +1253,6 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
                  or text == "") -- Segment with empty string has no padding.
                  and "" or " "
 
-    if isbreak and pad == "" and flexprompt.settings.no_graphics then
-        pad = " "
-    end
-
     if not text then
         if segmenter.style ~= "lean" and not segmenter.open_cap then
             out = out .. color_segment_transition(color, segmenter.close_cap, true)
@@ -1263,7 +1262,9 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
 
     local override_back_color
     if classic and text == "" then
-        local cap = flexprompt.choices.caps[flexprompt.settings.separators]
+        local charset = get_charset()
+        local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
+        local cap = available_caps[flexprompt.settings.separators]
         if cap then
             sep = cap[2 - segmenter.side]
             override_style = "rainbow"
@@ -1292,9 +1293,7 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
     -- frame color.
     if text == "" and sep:gsub(" ", "") == "" then
         local connector = get_connector()
-        if connector ~= " " then
-            text = make_fluent_text(sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector)
-        end
+        text = make_fluent_text(sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector)
     end
 
     -- Applying 'color' goes last so that the module can override other colors
@@ -1312,7 +1311,10 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
     end
 
     out = out .. base_color
-    if pad ~= "" and not isbreak and not (classic and (sep == "" or sep == " ") and not segmenter.open_cap) then
+
+    -- Add leading pad character.  Except in classic style if two segments are
+    -- immediately adjacent; in that case it would look like double-padding.
+    if pad ~= "" and not (classic and not wasbreak and (sep == "" or sep == " ") and not segmenter.open_cap) then
         out = out .. pad
     end
 
@@ -1599,7 +1601,7 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
         segmenter._current_module = nil
     end
 
-    out = out .. next_segment(nil, flexprompt.colors.default, nil, false)
+    out = out .. next_segment(nil, flexprompt.colors.default, nil, nil)
 
     if anchors then
         anchors[2] = console.cellcount(out)
