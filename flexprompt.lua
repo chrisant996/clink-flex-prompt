@@ -167,6 +167,7 @@ flexprompt.choices.prompts =
 flexprompt.choices.ascii_caps =
 {
                 --  Open    Close
+    none        = { "",     ""      },
     flat        = { "",     "",     separators="bar" },
 }
 
@@ -1104,10 +1105,8 @@ local function init_segmenter(side, frame_color)
 
             -- If specified separators not found, use it as a literal separator.
             local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
-            if available_caps[sep_name] then
-                separators = available_caps[sep_name]
-                sep_index = (1 - side) + 1 -- Convert to an end cap index.
-            end
+            separators = available_caps[sep_name] or available_caps["none"]
+            sep_index = (1 - side) + 1 -- Convert to an end cap index.
 
             -- Set up altseparators, if available, for when bg == fg.
             altseparators = available_separators[sep_name]
