@@ -1202,11 +1202,11 @@ local function color_segment_transition(color, symbol, close)
     return out
 end
 
-local function next_segment(text, color, rainbow_text_color, pending_segment)
+local function next_segment(text, color, rainbow_text_color, isbreak, pending_segment)
     local out = ""
 
     if pending_segment then
-        out = next_segment(pending_segment.text, lookup_color(pending_segment.color), pending_segment.altcolor)
+        out = next_segment(pending_segment.text, lookup_color(pending_segment.color), pending_segment.altcolor, pending_segment.isbreak)
     end
 
     if not color then color = flexprompt.colors.red end
@@ -1249,6 +1249,10 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
     local pad = (segmenter.style == "lean" -- Lean has no padding.
                  or text == "") -- Segment with empty string has no padding.
                  and "" or " "
+
+    if isbreak and pad == "" and flexprompt.settings.no_graphics then
+        pad = " "
+    end
 
     if not text then
         if segmenter.style ~= "lean" and not segmenter.open_cap then
@@ -1308,7 +1312,7 @@ local function next_segment(text, color, rainbow_text_color, pending_segment)
     end
 
     out = out .. base_color
-    if pad ~= "" and not (classic and (sep == "" or sep == " ") and not segmenter.open_cap) then
+    if pad ~= "" and not isbreak and not (classic and (sep == "" or sep == " ") and not segmenter.open_cap) then
         out = out .. pad
     end
 
@@ -1581,7 +1585,7 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
                                 pending_segment = segment
                             end
                         else
-                            out = out .. next_segment(segment.text, lookup_color(segment.color), segment.altcolor, pending_segment)
+                            out = out .. next_segment(segment.text, lookup_color(segment.color), segment.altcolor, segment.isbreak, pending_segment)
                             pending_segment = nil
                         end
                         if segment.condense_callback then
@@ -1595,7 +1599,7 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
         segmenter._current_module = nil
     end
 
-    out = out .. next_segment(nil, flexprompt.colors.default, nil)
+    out = out .. next_segment(nil, flexprompt.colors.default, nil, false)
 
     if anchors then
         anchors[2] = console.cellcount(out)
