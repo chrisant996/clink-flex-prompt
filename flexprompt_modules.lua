@@ -1801,13 +1801,20 @@ local function render_scm(args)
     end
     color, altcolor = parse_color_token(args, colors)
 
-    local module_sym = flexprompt.get_icon(string.lower(info.type.."_module"))
-    if not module_sym or module_sym == "" then
-        module_sym = info.type
-    elseif refreshing then
-        local ref_icon = flexprompt.get_icon(refreshing)
-        if ref_icon and ref_icon ~= "" then
-            module_sym = ref_icon
+    local old_no_graphics = flexprompt.settings.no_graphics
+    flexprompt.settings.no_graphics = nil
+    local module_sym = flexprompt.get_module_symbol()
+    flexprompt.settings.no_graphics = old_no_graphics
+
+    if module_sym and module_sym ~= "" then
+        module_sym = flexprompt.get_icon(string.lower(info.type.."_module"))
+        if not module_sym or module_sym == "" then
+            module_sym = info.type
+        elseif refreshing then
+            local ref_icon = flexprompt.get_icon(refreshing)
+            if ref_icon and ref_icon ~= "" then
+                module_sym = ref_icon
+            end
         end
     end
 
@@ -2304,7 +2311,7 @@ flexprompt.add_module( "k8s",           render_k8s,         { nerdfonts2={"ﴱ",
 flexprompt.add_module( "maven",         render_maven                        )
 flexprompt.add_module( "npm",           render_npm                          )
 flexprompt.add_module( "python",        render_python,      { nerdfonts2={""," "}, nerdfonts3={"󰌠","󰌠 "} } )
-flexprompt.add_module( "scm",           render_scm                          )
+flexprompt.add_module( "scm",           render_scm,         { "scm" }       ) -- Placeholder to check icon config.
 flexprompt.add_module( "svn",           render_svn                          )
 flexprompt.add_module( "time",          render_time,        { coloremoji="🕒", nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Note: nerdfonts are always mono width for this.
 flexprompt.add_module( "user",          render_user,        { coloremoji="🙍‍♂️", nerdfonts2={""," "} } )
