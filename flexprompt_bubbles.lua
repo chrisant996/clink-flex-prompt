@@ -716,8 +716,11 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             if which == "detached" and (icon == "" or flexprompt.get_flow() == "fluent") then
                 icon = make_fluent_text("detached", fg_status, fg_muted)
             end
-            if info.refreshing and icon and console.cellcount(icon) == 1 then
-                icon = flexprompt.get_symbol("refresh")
+            if info.refreshing and icon then
+                local refresh = flexprompt.get_icon("refresh")
+                if refresh and console.cellcount(refresh) == console.cellcount(icon) then
+                    icon = refresh
+                end
             end
 
             local branch
