@@ -308,8 +308,12 @@ local function addtext(segments, new_fg, text, padding)
     end
 end
 
+local function can_use_powerline()
+    return flexprompt.settings.powerline_font and not flexprompt.settings.no_graphics
+end
+
 local function addosep(segments, sep, new_bg)
-    if flexprompt.settings.no_graphics then
+    if not can_use_powerline() then
         table.insert(segments, new_bg.." ")
     elseif new_bg == segments.bg then
         table.insert(segments, segments.bg..fg_black..sep.sep[2]..fg_default)
@@ -320,7 +324,7 @@ local function addosep(segments, sep, new_bg)
 end
 
 local function addcsep(segments, sep, new_bg)
-    if flexprompt.settings.no_graphics then
+    if not can_use_powerline() then
         table.insert(segments, " "..new_bg)
     elseif new_bg == segments.bg then
         table.insert(segments, segments.bg..fg_black..sep.sep[1]..fg_default)
