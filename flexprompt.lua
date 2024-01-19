@@ -2928,21 +2928,8 @@ local function onbeginedit()
     insertmode_onbeginedit()
 
     if not offered_wizard then
-        local empty = true
-        for n,v in pairs(flexprompt.settings) do
-            if n == "symbols" then
-                for _ in pairs(v) do -- luacheck: ignore 512
-                    empty = false
-                    break
-                end
-            else
-                empty = false
-            end
-            if not empty then
-                break
-            end
-        end
-        if empty then
+        local settings = flexprompt.settings or {}
+        if not settings.top_prompt and not settings.left_prompt and not settings.right_prompt then
             clink.print("\n" .. sgr(1) .. "Flexprompt has not yet been configured." .. sgr())
             clink.print('Run "flexprompt configure" to configure the prompt.\n')
         end
