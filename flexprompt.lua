@@ -769,16 +769,25 @@ local function maybe_apply_tilde(dir, force)
     return dir
 end
 
+local function get_default_prompts()
+    local style = get_style()
+    local prompts = flexprompt.choices.prompts[style]["both"]
+    local left_prompt = prompts[1]
+    local right_prompt = prompts[2]
+    if flexprompt.default_prompt_append then
+        left_prompt = left_prompt .. (flexprompt.default_prompt_append.left_prompt or "")
+        right_prompt = (flexprompt.default_prompt_append.right_prompt or "") .. right_prompt
+    end
+    return left_prompt, right_prompt
+end
+
 local function is_module_in_prompt(name)
     local pattern = "{" .. name .. "[:}]"
     local top_prompt = flexprompt.settings.top_prompt
     local left_prompt = flexprompt.settings.left_prompt
     local right_prompt = flexprompt.settings.right_prompt
     if not top_prompt and not left_prompt and not right_prompt then
-        local style = get_style()
-        local prompts = flexprompt.choices.prompts[style]["both"]
-        left_prompt = prompts[1]
-        right_prompt = prompts[2]
+        left_prompt, right_prompt = get_default_prompts()
     end
 
     local is = 0
@@ -1624,9 +1633,7 @@ local function render_prompts(render_settings, need_anchors, condense)
     local left_prompt = flexprompt.settings.left_prompt
     local right_prompt = flexprompt.settings.right_prompt
     if not top_prompt and not left_prompt and not right_prompt then
-        local prompts = flexprompt.choices.prompts[style]["both"]
-        left_prompt = prompts[1]
-        right_prompt = prompts[2]
+        left_prompt, right_prompt = get_default_prompts()
     end
 
     local can_condense = nil
