@@ -203,7 +203,7 @@ local function write_settings(settings)
 
     local errors
     for n,v in spairs(settings) do
-        if n ~= "wizard" then
+        if n ~= "wizard" and n ~= "width" then
             local msg = write_var(file, line, "flexprompt.settings."..n, v)
             if msg then
                 errors = errors or {}
@@ -308,6 +308,7 @@ end
 local function replace_modules(s)
     if not s then return end
 
+    s = s:gsub("{histlabel[^}]*}", "")
     s = apply_time_format(s)
     return s
 end
@@ -1249,7 +1250,7 @@ local function run_demo()
                 settings[k] = v
             end
         else
-            for k, v in pairs(remember.fields) do
+            for k, _ in pairs(remember.fields) do
                 settings[k] = remember[k]
             end
             remember = nil
