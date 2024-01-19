@@ -4,6 +4,7 @@ tags
 *.exe
 *.patch
 flexprompt_autoconfig.lua
+flexprompt_config.lua
 luaexec.lua
 modules/dumpvar.lua
 *.zip
