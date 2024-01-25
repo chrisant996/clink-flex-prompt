@@ -1,11 +1,15 @@
--- luacheck: globals flexprompt flexprompt_git
+-- luacheck: globals flexprompt flexprompt_git flexprompt_bubbles
 if not flexprompt or not flexprompt.add_module then
     log.info("flexprompt_bubbles requires flexprompt.")
     return
 end
 
 local function sgr(code)
-    return "\x1b["..(code or "").."m"
+    if code:find("^\x1b") then
+        return code
+    else
+        return "\x1b["..(code or "").."m"
+    end
 end
 
 local show_fluent_color_contrast
@@ -48,12 +52,14 @@ local fg_white = sgr("38;5;255")
 local fg_green_prompt_char = sgr("92")
 local fg_red_prompt_char = sgr("91")
 local fg_vpn = sgr("38;5;117")
-local fg_vyprvpn = sgr("38;5;135")
 local fg_muted = sgr("38;5;248")
 local fg_fluent = fg_black
 
 local fg_histlabel = "38;5;169"
 local bg_blendmute = "48;2;0;0;0"
+
+flexprompt_bubbles = flexprompt_bubbles or {}
+flexprompt_bubbles.vpn_colors = flexprompt_bubbles.vpn_colors or {}
 
 -- luacheck: pop
 --------------------------------------------------------------------------------
@@ -862,11 +868,8 @@ local function render_rbubble(args)
             if text ~= "" then
                 text = text..fg_muted..","
             end
-            if v.type == "vypr" then
-                text = text..fg_vyprvpn..v.name
-            else
-                text = text..fg_vpn..v.name
-            end
+            local vpn_color = sgr(flexprompt_bubbles.vpn_colors[v.type] or fg_vpn)
+            text = text..vpn_color..v.name
         end
         if include_icons then
             text = flexprompt.append_text(text, flexprompt.get_icon("vpn_module"))
