@@ -71,6 +71,12 @@ The script will look something like this:
 
 **flexprompt_config.lua**
 ```lua
+-- This pattern is in case this script runs before flexprompt.lua is loaded,
+-- for example if they're in different directories.
+flexprompt = flexprompt or {}
+flexprompt.settings = flexprompt.settings or {}
+
+-- Apply your settings here.
 flexprompt.settings.style = "classic"
 flexprompt.settings.heads = "pointed"
 flexprompt.settings.lines = "two"
