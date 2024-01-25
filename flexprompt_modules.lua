@@ -986,7 +986,7 @@ local function collect_git_info(no_untracked, includeSubmodules)
     git_dir = git_dir and git_dir:lower()
     wks_dir = wks_dir and wks_dir:lower()
 
-    local submodule = git_dir and git_dir:find(path.join(wks_dir, "modules\\")) == 1
+    local submodule = git_dir and git_dir:find(path.join(wks_dir, "modules\\"), 1, true) == 1
 
     maybe_git_fetch({ type="git", root=git_dir })
 
@@ -2133,7 +2133,7 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
             info.remote = flexprompt.get_git_remote()
         end
         if not flexprompt.settings.no_submodules then
-            info.submodule = info.git_dir and info.git_dir:find(path.join(info.wks_dir, "modules\\")) == 1
+            info.submodule = info.git_dir and info.git_dir:find(path.join(info.wks_dir, "modules\\"), 1, true) == 1
         end
     end
     info.type = "git"
