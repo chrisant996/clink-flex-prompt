@@ -335,11 +335,13 @@ end
 
 local pad_right_edge = " "
 
-local function sgr(args)
-    if args then
-        return "\x1b["..tostring(args).."m"
-    else
+local function sgr(code)
+    if not code then
         return "\x1b[m"
+    elseif string.byte(code) == 0x1b then
+        return code
+    else
+        return "\x1b["..code.."m"
     end
 end
 

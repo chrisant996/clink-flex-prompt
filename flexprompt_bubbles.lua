@@ -5,10 +5,12 @@ if not flexprompt or not flexprompt.add_module then
 end
 
 local function sgr(code)
-    if code:find("^\x1b") then
+    if not code then
+        return "\x1b[m"
+    elseif string.byte(code) == 0x1b then
         return code
     else
-        return "\x1b["..(code or "").."m"
+        return "\x1b["..code.."m"
     end
 end
 
