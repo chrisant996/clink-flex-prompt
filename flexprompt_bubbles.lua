@@ -31,9 +31,12 @@ local bg_softblue = sgr("48;2;60;90;180")
 local bg_softmagenta = sgr("48;2;100;60;160")
 local bg_softgreen = sgr("48;2;60;120;90")
 local bg_red = sgr("48;5;88")
-local bg_gray1 = sgr("48;5;244")
+local bg_gray1 = sgr("48;5;240")
 local bg_gray2 = sgr("48;5;238")
 local bg_gray3 = sgr("48;5;236")
+local bg_darkgray1 = sgr("48;5;238")
+local bg_darkgray2 = sgr("48;5;236")
+local bg_darkgray3 = sgr("48;5;234")
 
 local bg_git_default = sgr("48;2;0;120;240")
 local bg_nongit_default = sgr("48;2;125;95;225")
@@ -572,6 +575,13 @@ local function which_icon(info)
     end
 end
 
+local function get_grays(darker)
+    local gray1 = darker and bg_darkgray1 or bg_gray1
+    local gray2 = darker and bg_darkgray2 or bg_gray2
+    local gray3 = darker and bg_darkgray3 or bg_gray3
+    return gray1, gray2, gray3
+end
+
 local function get_info()
     local wizard = flexprompt.get_wizard_state()
     if wizard then
@@ -621,8 +631,10 @@ local function render_tbubble(args) -- luacheck: no unused
 end
 
 local function render_lbubble(args, shorten) -- luacheck: no unused
+    local darker = flexprompt.parse_arg_keyword(args, "d", "darker") or flexprompt_bubbles.darker
     local include_icons = flexprompt.parse_arg_keyword(args, "i", "icons")
     local use_battery_level_icon = flexprompt.parse_arg_keyword(args, "li", "levelicon")
+    local gray1, gray2, gray3 = get_grays(darker) -- luacheck: no unused
 
     local info = get_info()
 
@@ -648,7 +660,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
 
     local depth = flexprompt.get_dir_stack_depth()
     if #depth > 0 then
-        local bg_depth = blend_color(cwd_color, bg_blendmute, 0.66) or bg_gray3
+        local bg_depth = blend_color(cwd_color, bg_blendmute, 0.66) or gray3
         addosep(segments, sep, bg_depth)
         addtext(segments, fg_white, depth, space_after)
     end
@@ -708,14 +720,14 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
         fg_status = fg_green
     end
 
-    -- addcsep(segments, sep, bg_gray1)
+    -- addcsep(segments, sep, gray1)
 
     if info._error then
         addcsep(segments, sep, bg_red)
         addtext(segments, fg_white, "error", space_before)
-        addcsep(segments, sep, bg_gray3)
+        addcsep(segments, sep, gray3)
     else
-        addcsep(segments, sep, bg_gray2)
+        addcsep(segments, sep, gray2)
         if info.type or info.branch or info.working or info.detached then
             local which = which_icon(info)
             local icon = flexprompt.get_symbol(which)
@@ -756,7 +768,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             addtext(segments, fg_status, text, space_before)
         end
 
-        addcsep(segments, sep, info.conflict and bg_red or bg_gray3)
+        addcsep(segments, sep, info.conflict and bg_red or gray3)
         local ahead = info.ahead or "0"
         local behind = info.behind or "0"
         if info.working or info.staged or info.conflict or ahead ~= "0" or behind ~= "0" then
@@ -805,7 +817,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                     text = flexprompt.append_text(text, ab)
                 end
                 if info.conflict then
-                    addcsep(segments, sep, bg_gray3)
+                    addcsep(segments, sep, gray3)
                 end
                 addtext(segments, fg, text, space_before)
             end
@@ -843,6 +855,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
 end
 
 local function render_rbubble(args)
+    local darker = flexprompt.parse_arg_keyword(args, "d", "darker") or flexprompt_bubbles.darker
     local include_icons = flexprompt.parse_arg_keyword(args, "i", "icons")
     local duration_colon = flexprompt.parse_arg_keyword(args, "c", "colons")
     local hex = flexprompt.parse_arg_keyword(args, "h", "hex")
@@ -851,6 +864,7 @@ local function render_rbubble(args)
         format = "%a %H:%M"
     end
 
+    local gray1, gray2, gray3 = get_grays(darker) -- luacheck: no unused
     local info = get_info()
 
     local segments = {}
@@ -880,13 +894,13 @@ local function render_rbubble(args)
         addtext(segments, "", text, space_after)
     end
 
-    addosep(segments, sep, bg_gray3)
+    addosep(segments, sep, gray3)
     addtext(segments, fg_red, get_exit_code(include_icons, hex), space_after)
 
-    addosep(segments, sep, bg_gray2)
+    addosep(segments, sep, gray2)
     addtext(segments, fg_orange, get_duration(include_icons, duration_colon), space_after)
 
-    -- addosep(segments, sep, bg_gray1)
+    -- addosep(segments, sep, gray1)
 
     addosep(segments, sep, bg_softgreen)
     addtext(segments, fg_white, get_time(format, include_icons))
