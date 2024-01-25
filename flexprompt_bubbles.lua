@@ -931,15 +931,48 @@ clink.onbeginedit(function()
     end
 
     if show_fluent_color_contrast then
-        local bgs = { bg_default, bg_softblue, bg_softgreen, bg_softmagenta, bg_red, bg_gray1, bg_gray2, bg_gray3 }
-        for _, bg in ipairs(flexprompt.settings.cwd_colors) do
-            table.insert(bgs, sgr(bg.color))
+        local bgs = { bg_softblue, bg_softgreen, bg_softmagenta, bg_git_default, bg_nongit_default, bg_red }
+        if type(flexprompt.settings.cwd_colors) == "table" then
+            for _, bg in ipairs(flexprompt.settings.cwd_colors) do
+                table.insert(bgs, sgr(bg.color))
+            end
         end
-        for _, color in pairs(flexprompt.settings.scm_colors) do
-            table.insert(bgs, sgr(color))
+        if type(flexprompt.settings.scm_colors) == "table" then
+            for _, color in pairs(flexprompt.settings.scm_colors) do
+                table.insert(bgs, sgr(color))
+            end
         end
+
         for _, bg in ipairs(bgs) do
             clink.print(bg.." "..fg_white.."hello/"..fg_fluent.."xyz"..fg_white.."/world "..sgr())
+        end
+
+        local grays = { bg_gray1, bg_gray2, bg_gray3 }
+        local fgs = { fg_red, fg_orange, fg_yellow, fg_green, fg_cyan, fg_magenta, fg_lavender }
+        for i, bg in ipairs(grays) do
+            local s = ""
+            for j = 0, 1 do
+                if j > 0 then
+                    s = s.." "
+                end
+                if j > 0 then
+                    local dark_grays = { get_grays(true) }
+                    bg = dark_grays[i]
+                end
+                local additional = " "
+                for k, f in ipairs(fgs) do
+                    additional = additional..f..tostring(k)..string.char(96 + k).." "
+                end
+                s = s..bg.." "..fg_white.."abc "..fg_muted.."mno"..fg_white.." xyz "..additional..sgr()
+            end
+            clink.print(s)
+        end
+
+        clink.print(sgr()..bg_default..fg_vpn.." vpn connection "..sgr())
+        if flexprompt_bubbles.vpn_colors then
+            for vpn, fg in pairs(flexprompt_bubbles.vpn_colors) do
+                clink.print(sgr()..bg_default..fg.." "..vpn.." connection "..sgr())
+            end
         end
     end
 end)
