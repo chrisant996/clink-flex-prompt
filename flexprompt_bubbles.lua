@@ -14,9 +14,6 @@ local function sgr(code)
     end
 end
 
-local show_fluent_color_contrast
-show_fluent_color_contrast = false
-
 --------------------------------------------------------------------------------
 
 local sep_shape = "round"   -- FUTURE: Maybe allow a way to override the shape?
@@ -69,57 +66,7 @@ flexprompt_bubbles.vpn_colors = flexprompt_bubbles.vpn_colors or {}
 -- luacheck: pop
 --------------------------------------------------------------------------------
 
-local cube_series = { 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff }
-local function blend_color(code1, code2, opacity1)
-    opacity1 = opacity1 or 0.5
-    if opacity1 < 0 or opacity1 > 1 then
-        return
-    end
-    local inner1 = code1:match("^\x1b%[(.*)m$") or code1
-    local inner2 = code2:match("^\x1b%[(.*)m$") or code2
-    if inner1:find("\x1b") or inner2:find("\x1b") then
-        return
-    end
-    local pro1, r1, g1, b1, epi1 = inner1:match("^([34]8;2;)(%d+);(%d+);(%d+)(.*)$")
-    if not pro1 or not r1 or not g1 or not b1 then
-        local cube
-        cube, epi1 = inner1:match("^[34]8;5;(%d+)(.*)$")
-        if not cube then
-            return
-        end
-        cube = tonumber(cube)
-        if cube <= 15 or cube > 255 then
-            return
-        elseif cube >= 232 and cube <= 255 then
-            r1 = 8 + ((cube - 232) * 10)
-            g1 = r1
-            b1 = r1
-        else
-            cube = cube - 16
-            r1 = math.floor(cube / 36)
-            cube = cube - r1 * 36
-            g1 = math.floor(cube / 6)
-            cube = cube - g1 * 6
-            b1 = cube
-            r1 = cube_series[r1 + 1]
-            g1 = cube_series[g1 + 1]
-            b1 = cube_series[b1 + 1]
-        end
-        pro1 = inner1:sub(1, 1).."8;2;"
-    end
-    local r2, g2, b2 = inner2:match("^"..pro1.."(%d+);(%d+);(%d+)")
-    if not r2 or not g2 or not b2 then
-        return
-    end
-    local r = math.floor((tonumber(r1) * opacity1) + (tonumber(r2) * (1 - opacity1)))
-    local g = math.floor((tonumber(g1) * opacity1) + (tonumber(g2) * (1 - opacity1)))
-    local b = math.floor((tonumber(b1) * opacity1) + (tonumber(b2) * (1 - opacity1)))
-    local ret = pro1..string.format("%u;%u;%u", r, g, b)..(epi1 or "")
-    if inner1 ~= code1 then
-        ret = sgr(ret)
-    end
-    return ret
-end
+local blend_color = flexprompt.blend_color
 
 local function extract_bg(color, as_fg)
     if string.byte(color) ~= 0x1b then
@@ -913,6 +860,8 @@ local function render_rbubble(args)
     return prompt, "black", "black"
 end
 
+local show_color_contrast = os.getenv("flexprompt_bubbles_color_contrast")
+
 clink.onbeginedit(function()
     local cwd = os.getcwd()
     local detect = flexprompt.detect_scm() or {}
@@ -932,7 +881,9 @@ clink.onbeginedit(function()
         }
     end
 
-    if show_fluent_color_contrast then
+    if show_color_contrast then
+        show_color_contrast = nil
+
         local bgs = { bg_softblue, bg_softgreen, bg_softmagenta, bg_git_default, bg_nongit_default, bg_red }
         if type(flexprompt.settings.cwd_colors) == "table" then
             for _, bg in ipairs(flexprompt.settings.cwd_colors) do
@@ -973,7 +924,7 @@ clink.onbeginedit(function()
         clink.print(sgr()..bg_default..fg_vpn.." vpn connection "..sgr())
         if flexprompt_bubbles.vpn_colors then
             for vpn, fg in pairs(flexprompt_bubbles.vpn_colors) do
-                clink.print(sgr()..bg_default..fg.." "..vpn.." connection "..sgr())
+                clink.print(sgr()..bg_default..sgr(fg).." "..vpn.." connection "..sgr())
             end
         end
     end

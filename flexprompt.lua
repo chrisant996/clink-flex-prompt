@@ -345,6 +345,69 @@ local function sgr(code)
     end
 end
 
+local cube_series = { 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff }
+local function resolve_color_cube(inner)
+    local cube, r, g, b
+    cube, epi = inner:match("^[34]8;5;(%d+)(.*)$")
+    if not cube then
+        return
+    end
+    cube = tonumber(cube)
+    if cube <= 15 or cube > 255 then
+        return
+    elseif cube >= 232 and cube <= 255 then
+        r = 8 + ((cube - 232) * 10)
+        g = r
+        b = r
+    else
+        cube = cube - 16
+        r = math.floor(cube / 36)
+        cube = cube - r * 36
+        g = math.floor(cube / 6)
+        cube = cube - g * 6
+        b = cube
+        r = cube_series[r + 1]
+        g = cube_series[g + 1]
+        b = cube_series[b + 1]
+    end
+    pro = inner:sub(1, 1).."8;2;"
+    return pro, r, g, b, epi
+end
+
+local function blend_color(code1, code2, opacity1)
+    opacity1 = opacity1 or 0.5
+    if opacity1 < 0 or opacity1 > 1 then
+        return
+    end
+    local inner1 = code1:match("^\x1b%[(.*)m$") or code1
+    local inner2 = code2:match("^\x1b%[(.*)m$") or code2
+    if inner1:find("\x1b") or inner2:find("\x1b") then
+        return
+    end
+    local pro1, r1, g1, b1, epi1 = inner1:match("^([34]8;2;)(%d+);(%d+);(%d+)(.*)$")
+    if not pro1 or not r1 or not g1 or not b1 then
+        pro1, r1, g1, b1, epi1 = resolve_color_cube(inner1)
+        if not pro1 or not r1 or not g1 or not b1 then
+            return
+        end
+    end
+    local r2, g2, b2 = inner2:match("^[34]8;2;(%d+);(%d+);(%d+)")
+    if not r2 or not g2 or not b2 then
+        _, r2, g2, b2 = resolve_color_cube(inner2)
+        if not r2 or not g2 or not b2 then
+            return
+        end
+    end
+    local r = math.floor((tonumber(r1) * opacity1) + (tonumber(r2) * (1 - opacity1)))
+    local g = math.floor((tonumber(g1) * opacity1) + (tonumber(g2) * (1 - opacity1)))
+    local b = math.floor((tonumber(b1) * opacity1) + (tonumber(b2) * (1 - opacity1)))
+    local ret = pro1..string.format("%u;%u;%u", r, g, b)..(epi1 or "")
+    if inner1 ~= code1 then
+        ret = sgr(ret)
+    end
+    return ret
+end
+
 local _can_use_extended_colors = nil
 local function can_use_extended_colors(force)
     if _can_use_extended_colors == nil or force then
@@ -2425,6 +2488,9 @@ function flexprompt.prompt_info(cache_container, root, branch, collect_func)
 
     return info, refreshing
 end
+
+-- Function to perform alpha blending of two SGR codes.
+flexprompt.blend_color = blend_color
 
 --------------------------------------------------------------------------------
 -- Internal helpers.
