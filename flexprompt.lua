@@ -345,33 +345,127 @@ local function sgr(code)
     end
 end
 
+local function is_legacy_console()
+    -- Windows Terminal's conhost replacement has a bug in
+    -- GetConsoleScreenBufferInfoEx() which swaps the Red and Blue bytes, so
+    -- Clink's console.getcolortable() can't get accurate color information.
+    local _, nativehost = clink.getansihost()
+    return nativehost and nativehost:find("^winconsole") and true
+end
+
+local getcolortable = console.getcolortable
+if not getcolortable or not is_legacy_console() then
+    getcolortable = function()
+        return {
+            "#0c0c0c", "#da3700", "#0ea113", "#dd963a",
+            "#1f0fc5", "#981788", "#009cc1", "#cccccc",
+            "#767676", "#ff783b", "#0cc616", "#d6d661",
+            "#5648e7", "#9e00b4", "#a5f1f9", "#f2f2f2",
+            foreground=8, background=1, default=true,
+        }
+    end
+end
+
+local function rgb_from_colortable(num)
+    local colortable = getcolortable()
+    if not colortable or not colortable[num + 1] then
+        return
+    end
+    local r, g, b = colortable[num + 1]:match("^#(%x%x)(%x%x)(%x%x)$")
+    if not r or not g or not b then
+        return
+    end
+    r = tonumber(r, 16)
+    g = tonumber(g, 16)
+    b = tonumber(b, 16)
+    return r, g, b
+end
+
 local cube_series = { 0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff }
-local function resolve_color_cube(inner)
-    local cube, r, g, b
-    cube, epi = inner:match("^[34]8;5;(%d+)(.*)$")
-    if not cube then
+local function rgb_from_color(inner)
+    local pro, r, g, b, epi = inner:match("^([34]8;2;)(%d+);(%d+);(%d+)(.*)$")
+    if pro and r and g and b and epi then
+        return pro, r, g, b, epi
+    end
+    local cube
+    pro, cube, epi = inner:match("^([34]8;5;)(%d+)(.*)$") -- luacheck: no unused
+    if cube then
+        cube = tonumber(cube)
+        if cube < 0 or cube > 255 then
+            return
+        elseif cube <= 15 then
+            cube = cube
+            r, g, b = rgb_from_colortable(cube)
+            if not r or not g or not b then
+                return
+            end
+        elseif cube >= 232 and cube <= 255 then
+            r = 8 + ((cube - 232) * 10)
+            g = r
+            b = r
+        else
+            cube = cube - 16
+            r = math.floor(cube / 36)
+            cube = cube - r * 36
+            g = math.floor(cube / 6)
+            cube = cube - g * 6
+            b = cube
+            r = cube_series[r + 1]
+            g = cube_series[g + 1]
+            b = cube_series[b + 1]
+        end
+        pro = inner:sub(1, 1).."8;2;"
+        return pro, r, g, b, epi
+    end
+    local n = 0
+    local bold = false
+    local tag = 0
+    epi = ""
+    for i = 1, #inner + 1 do
+        local x = inner:byte(i)
+        if x == 0x3b or not x then
+            if n == 1 then
+                bold = true
+            elseif (n >= 30 and n <= 37) or
+                    (n >= 40 and n <= 47) or
+                    (n >= 90 and n <= 97) or
+                    (n >= 100 and n <= 107) or
+                    n == 39 or n == 49 then
+                if tag == 0 then
+                    tag = n
+                end
+            else
+                if #epi > 0 then
+                    epi = epi..";"
+                end
+                epi = epi..tostring(n)
+            end
+            if not x then
+                break
+            end
+            n = 0
+        elseif x >= 0x30 and x <= 0x39 then
+            n = (n * 10) + (x - 0x30)
+        elseif x == 0x6d then
+            break
+        else
+            return
+        end
+    end
+    if tag == 0 then
+        tag = 39
+    end
+    if tag >= 90 then
+        bold = true
+        tag = tag - 60
+    end
+    local fore = (tag >= 30 and tag < 40)
+    tag = math.fmod(tag, 10) + (bold and 8 or 0)
+    r, g, b = rgb_from_colortable(tag)
+    if not r or not g or not b then
         return
     end
-    cube = tonumber(cube)
-    if cube <= 15 or cube > 255 then
-        return
-    elseif cube >= 232 and cube <= 255 then
-        r = 8 + ((cube - 232) * 10)
-        g = r
-        b = r
-    else
-        cube = cube - 16
-        r = math.floor(cube / 36)
-        cube = cube - r * 36
-        g = math.floor(cube / 6)
-        cube = cube - g * 6
-        b = cube
-        r = cube_series[r + 1]
-        g = cube_series[g + 1]
-        b = cube_series[b + 1]
-    end
-    pro = inner:sub(1, 1).."8;2;"
-    return pro, r, g, b, epi
+    return (fore and "38;2;" or "48;2;"), r, g, b, epi
 end
 
 local function blend_color(code1, code2, opacity1)
@@ -384,24 +478,18 @@ local function blend_color(code1, code2, opacity1)
     if inner1:find("\x1b") or inner2:find("\x1b") then
         return
     end
-    local pro1, r1, g1, b1, epi1 = inner1:match("^([34]8;2;)(%d+);(%d+);(%d+)(.*)$")
+    local pro1, r1, g1, b1, epi1 = rgb_from_color(inner1)
     if not pro1 or not r1 or not g1 or not b1 then
-        pro1, r1, g1, b1, epi1 = resolve_color_cube(inner1)
-        if not pro1 or not r1 or not g1 or not b1 then
-            return
-        end
+        return
     end
-    local r2, g2, b2 = inner2:match("^[34]8;2;(%d+);(%d+);(%d+)")
+    local _, r2, g2, b2 = rgb_from_color(inner2)
     if not r2 or not g2 or not b2 then
-        _, r2, g2, b2 = resolve_color_cube(inner2)
-        if not r2 or not g2 or not b2 then
-            return
-        end
+        return
     end
     local r = math.floor((tonumber(r1) * opacity1) + (tonumber(r2) * (1 - opacity1)))
     local g = math.floor((tonumber(g1) * opacity1) + (tonumber(g2) * (1 - opacity1)))
     local b = math.floor((tonumber(b1) * opacity1) + (tonumber(b2) * (1 - opacity1)))
-    local ret = pro1..string.format("%u;%u;%u", r, g, b)..(epi1 or "")
+    local ret = pro1..string.format("%u;%u;%u", r, g, b)..epi1
     if inner1 ~= code1 then
         ret = sgr(ret)
     end
