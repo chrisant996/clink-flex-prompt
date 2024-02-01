@@ -578,7 +578,7 @@ local function get_nerdfonts_version()
             _nerdfonts_version = "nerdfonts" .. ver
         end
     end
-    return not flexprompt.settings.no_graphics and _nerdfonts_version
+    return not flexprompt.settings.no_graphics and _nerdfonts_version or nil
 end
 
 local _nerdfonts_width
@@ -3061,7 +3061,7 @@ function flexprompt.get_vpn_info()
             end
         end
     end
-    return connections[1] and connections
+    return connections[1] and connections or nil
 end
 
 --------------------------------------------------------------------------------
