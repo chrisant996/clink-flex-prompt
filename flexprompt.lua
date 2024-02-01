@@ -736,7 +736,7 @@ local function get_symbol(name, fallback)
     if not symbol then
         symbol = resolve_symbol_table(symbols[name] or fallback or "")
     end
-    return symbol
+    return symbol or ""
 end
 
 local function get_icon(name)
@@ -2377,18 +2377,18 @@ flexprompt.get_symbol = get_symbol
 -- Function to get customizable symbol for current module (only gets the symbol
 -- if flexprompt.settings.use_icons is true).
 function flexprompt.get_module_symbol(refreshing)
-    local s = ""
+    local s
     if segmenter and segmenter._current_module then
         local name = segmenter._current_module .. "_module"
         s = flexprompt.get_icon(name)
     end
-    if refreshing and s and s ~= "" then
+    if refreshing and s ~= "" then
         local ref_sym = flexprompt.get_icon("refresh")
         if ref_sym and ref_sym ~= "" then
             s = ref_sym
         end
     end
-    return s
+    return s or ""
 end
 
 -- Function to retrieve a string of "+" corresponding to the pushd stack depth
