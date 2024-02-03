@@ -2314,7 +2314,7 @@ flexprompt.add_module( "python",        render_python,      { nerdfonts2={"",
 flexprompt.add_module( "scm",           render_scm,         { "scm" }       ) -- Placeholder to check icon config.
 flexprompt.add_module( "svn",           render_svn                          )
 flexprompt.add_module( "time",          render_time,        { coloremoji="🕒", nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Note: nerdfonts are always mono width for this.
-flexprompt.add_module( "user",          render_user,        { coloremoji="🙍‍♂️", nerdfonts2={""," "} } )
+flexprompt.add_module( "user",          render_user,        { coloremoji="🙍", nerdfonts2={""," "} } )
 flexprompt.add_module( "vpn",           render_vpn,         { coloremoji="☁️", nerdfonts2={""," "} } )
 
 if os.isuseradmin then
