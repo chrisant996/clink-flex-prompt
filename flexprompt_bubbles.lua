@@ -881,6 +881,8 @@ clink.onbeginedit(function()
         }
     end
 
+    battery_coroutine = nil
+
     if show_color_contrast then
         show_color_contrast = nil
 
