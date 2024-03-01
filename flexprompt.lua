@@ -345,28 +345,30 @@ local function sgr(code)
     end
 end
 
-local function is_legacy_console()
-    -- Windows Terminal's conhost replacement has a bug in
-    -- GetConsoleScreenBufferInfoEx() which swaps the Red and Blue bytes, so
-    -- Clink's console.getcolortable() can't get accurate color information.
-    local _, nativehost = clink.getansihost()
-    return nativehost and nativehost:find("^winconsole") and true
-end
-
 local getcolortable = console.getcolortable
-if not getcolortable or not is_legacy_console() then
+if not getcolortable then
     getcolortable = function()
         return {
-            "#0c0c0c", "#da3700", "#0ea113", "#dd963a",
-            "#1f0fc5", "#981788", "#009cc1", "#cccccc",
-            "#767676", "#ff783b", "#0cc616", "#d6d661",
-            "#5648e7", "#9e00b4", "#a5f1f9", "#f2f2f2",
+            "#0c0c0c", "#0037da", "#13a10e", "#3a96dd",
+            "#c50f1f", "#881798", "#c19c00", "#cccccc",
+            "#767676", "#3b78ff", "#16c60c", "#61d6d6",
+            "#e74856", "#b4009e", "#f9f1a5", "#f2f2f2",
             foreground=8, background=1, default=true,
         }
     end
 end
 
+local ansi_to_vga =
+{
+    0,  4,  2,  6,  1,  5,  3,  7,
+    8, 12, 10, 14,  9, 13, 11, 15,
+}
+
 local function rgb_from_colortable(num)
+    num = num and ansi_to_vga[num + 1]
+    if not num then
+        return
+    end
     local colortable = getcolortable()
     if not colortable or not colortable[num + 1] then
         return
