@@ -303,21 +303,28 @@ local function ellipsify(text, limit, fluent_restore_color)
     local s = ""
     local truncate = 0
     local total = 0
-    for i in unicode.iter(text) do
-        if total + ellipsis_char_width <= limit then
-            truncate = #s
-        end
-        total = total + console.cellcount(i)
-        if total > limit then
-            s = s:sub(1, truncate + 1)
-            if fluent_restore_color then
-                s = s..make_fluent_text(ellipsis_char, fluent_restore_color)
-            else
-                s = s..ellipsis_char
+    local strings = console.explodeansi and console.explodeansi(text) or { text }
+    for _,t in ipairs(strings) do
+        if t:byte() == 27 then
+            s = s .. t
+        else
+            for i in unicode.iter(t) do
+                if total + ellipsis_char_width <= limit then
+                    truncate = #s
+                end
+                total = total + console.cellcount(i)
+                if total > limit then
+                    s = s:sub(1, truncate)
+                    if fluent_restore_color then
+                        s = s..make_fluent_text(ellipsis_char, fluent_restore_color)
+                    else
+                        s = s..ellipsis_char
+                    end
+                    break
+                end
+                s = s..i
             end
-            break
         end
-        s = s..i
     end
     return s
 end
@@ -713,7 +720,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 if shorten then
                     local target = math.max(console.getwidth() / 4, 20)
                     if console.cellcount(branch) > target then
-                        branch = ellipsify(branch, target - 1 - 4, fg_status) .. branch:sub(-4)
+                        branch = ellipsify(branch, target - 4, fg_status) .. branch:sub(-4)
                     end
                 end
             end
