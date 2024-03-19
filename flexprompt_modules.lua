@@ -1343,8 +1343,9 @@ local function collect_k8s_info()
         local any_lines
         for line in p:lines() do
             any_lines = true
-            ns = line:match(" *namespace: +(.+)$")
-            if ns then
+            local x = line:match(" *namespace: +(.+)$")
+            if x then
+                ns = x
                 break
             end
         end
