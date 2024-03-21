@@ -1337,7 +1337,7 @@ local function collect_k8s_info()
     repeat
         p = flexprompt.popenyield("kubectl.exe config view --minify 2>nul", "rt")
         if not p then
-            return { text = "error running kubectl.exe" }
+            return { text="(error)" }
         end
 
         local any_lines
@@ -1351,7 +1351,7 @@ local function collect_k8s_info()
         end
         p:close()
         if not any_lines then
-            return { text = "error running kubectl.exe" }
+            return { text="(error)" }
         end
 
         p = flexprompt.popenyield("kubectl.exe config current-context 2>nul", "rt")
