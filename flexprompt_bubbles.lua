@@ -562,6 +562,7 @@ local function get_info()
 
     local info = flexprompt.promptcoroutine(collect_info)
     if info then
+        info.refreshing = nil
         info.ready = true
         cached = info
     else
