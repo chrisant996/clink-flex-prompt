@@ -84,7 +84,8 @@ flexprompt.settings.left_prompt = "{battery}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{overtype}{vpn}{duration}{time}"
 ```
 
-> **Tip:**  By making your manual customizations modify settings (rather than replacing them), your customizations can adapt according to the options you've chosen in the flexprompt configuration wizard.
+> [!TIP]
+> By making your manual customizations modify settings (rather than replacing them), your customizations can adapt according to the options you've chosen in the flexprompt configuration wizard.
 >
 > For example:
 > ```lua
@@ -131,7 +132,18 @@ flexprompt.settings.left_prompt = "{battery}{user}{cwd}{git}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-- [ ] _TBD: details about configuring the modules.  In the meantime, you can search for "MODULE:" in `flexprompt_modules.lua` to find the available options for each module (including colors)._
+## Configuring Options for Modules
+
+> [!TIP]
+> You can search for "MODULE:" in [flexprompt_modules.lua](flexprompt_modules.lua) to find the available options for each module (including colors).
+
+Some examples:
+```lua
+flexprompt.settings.left_prompt = "{battery:onlyicon}{user:type=computer}{cwd:color=magenta:type=folder}{git:nountracked:staged=blue}"
+flexprompt.settings.right_prompt = "{exit:always}{duration:format=colons:tenths}{time:format=%a %h %e %R}"
+```
+
+- [ ] _TBD: details about configuring the modules._
 
 ## Style
 - `"lean"` shows prompt modules using only colored text.
@@ -186,7 +198,7 @@ For the "classic" style:
 - `"dot"` is a dot (requires Unicode).
 - `"updiagonal"` is a small slash from bottom left to top right (requires Unicode).
 - `"downdiagonal"` is a small slash from top left to bottom right (requires Unicode).
-- (See flexprompt.lua for the most up to date list.)
+- (See [flexprompt.lua](flexprompt.lua) for the most up to date list.)
 - Custom separators can be provided as a table with two values, for the left and right separators.
 
 For the "rainbow" style:
@@ -393,7 +405,8 @@ segments.
 Put your prompt module code in a Lua file whose name starts with `flexprompt_`
 in the same directory as the `flexprompt.lua` file.
 
-> **Advanced:**  Since scripts are loaded in alphabetical order, the easiest thing to do is name your script something that follows after `flexprompt_` alphabetically.  But another more advanced option is to defer making use of `flexprompt.` until the first [onbeginedit](https://chrisant996.github.io/clink/clink.html#clink.onbeginedit) event, and then the script name wouldn't have the alphabetical order limitation.
+> [!TIP]
+> Since scripts are loaded in alphabetical order, the easiest thing to do is name your script something that follows after `flexprompt_` alphabetically.  But another more advanced option is to defer making use of `flexprompt.` until the first [onbeginedit](https://chrisant996.github.io/clink/clink.html#clink.onbeginedit) event, and then the script name wouldn't have the alphabetical order limitation.
 
 Here is a basic example of a prompt module, which we'll call "mfm" as an
 abbreviation for "my first module":
@@ -689,11 +702,17 @@ end
 
 ## Customizable Styling
 
-- [ ] _TBD: there is a lot of styling available, but it's poorly documented, sorry.  You can reverse engineer details from reading `flexprompt.lua` and the configuration option tables near the beginning of it._
+> [!TIP]
+> There is a lot of styling available, but it's poorly documented, sorry.  You can reverse engineer details from reading [flexprompt.lua](flexprompt.lua) and the configuration option tables near the beginning of it.
+
+- [ ] _TBD: add more documentation about available styling._
 
 ### Customizing Icons
 
-- [ ] _TBD: for now this section just has a quick example showing the structure for icon definitions in flexprompt._
+> [!NOTE]
+> For now this section just has a quick example showing the structure for icon definitions in flexprompt.
+
+- [ ] _TBD: add more documentation about customizing icons._
 
 ```lua
 flexprompt.settings.symbol["icon_name_here"] =
