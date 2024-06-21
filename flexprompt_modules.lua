@@ -406,7 +406,7 @@ local function get_battery_status(levelicon, onlyicon)
         if series then
             series = series[flexprompt.get_nerdfonts_version()]
             if series then
-                batt_symbol = series[math.floor(level * (#series - 1) / 100)]
+                batt_symbol = series[math.floor(level * (#series - 1) / 100) + 1]
                 if flexprompt.get_nerdfonts_width() == 2 then
                     batt_symbol = batt_symbol .. " "
                 end
