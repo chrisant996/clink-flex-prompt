@@ -1151,7 +1151,7 @@ end
 local hg_colors =
 {
     clean       = { "c",  "clean",  "vcs_clean" },
-    dirty       = { "d",  "dirty",  "vcs_conflict" },
+    dirty       = { "d",  "dirty",  "vcs_dirty" },
 }
 
 local hg = {}
