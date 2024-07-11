@@ -2165,10 +2165,12 @@ local function info_hg(dir) -- luacheck: no unused
         local pipe = io.popenyield("2>&1 hg status -amrd -v")
         if pipe then
             info.status = { add=0, modify=0, delete=0, untracked=0 }
+            local dirty = false
             for line in pipe:lines() do
                 local s = line:match("^([AMR!?]) ")
                 if s then
                     -- Report file status.
+                    dirty = true
                     if s == "A" then
                         info.status.add = info.status.add + 1
                     elseif s == "M" then
@@ -2182,6 +2184,13 @@ local function info_hg(dir) -- luacheck: no unused
                     -- Report unfinished states as conflict.
                     info.conflict = true
                 end
+            end
+            if dirty then
+                local working = {}
+                for k, v in pairs(info.status) do
+                    working[k] = v
+                end
+                info.status.working = working
             end
             pipe:close()
         else
@@ -2219,9 +2228,11 @@ local function info_svn(dir) -- luacheck: no unused
         local pipe = io.popenyield("2>nul svn status -q")
         if pipe then
             info.status = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
+            local dirty = false
             for line in pipe:lines() do
                 local s = line:match("^([AMDCRE!~])")
                 if s then
+                    dirty = true
                     if s == "A" then
                         info.status.add = info.status.add + 1
                     elseif s == "M" then
@@ -2236,6 +2247,13 @@ local function info_svn(dir) -- luacheck: no unused
                 end
             end
             pipe:close()
+            if dirty then
+                local working = {}
+                for k,v in pairs(info.status) do
+                    working[k] = info.status[k]
+                end
+                info.status.working = working
+            end
         else
             info._error = true
         end
