@@ -2148,49 +2148,56 @@ end
 local function info_hg(dir) -- luacheck: no unused
     local info = {}
     info.type = "hg"
-    -- Get branch name.
+    -- Get branch name and file status.
     do
-        local pipe = io.popenyield("2>&1 hg identify -b")
+        local pipe = io.popenyield("2>&1 hg summary")
         if pipe then
-            info.branch = pipe:read()
-            info.branch = info.branch:gsub("^ +", ""):gsub(" +$", "")
-            pipe:close()
-        end
-        if not info.branch or info.branch == "" then
-            info.branch = "<unidentified>"
-        end
-    end
-    -- Get file status.
-    do
-        local pipe = io.popenyield("2>&1 hg status -amrd -v")
-        if pipe then
-            info.status = { add=0, modify=0, delete=0, untracked=0 }
+            local status = { add=0, modify=0, delete=0, untracked=0 }
             local dirty = false
             for line in pipe:lines() do
-                local s = line:match("^([AMR!?]) ")
-                if s then
-                    -- Report file status.
-                    dirty = true
-                    if s == "A" then
-                        info.status.add = info.status.add + 1
-                    elseif s == "M" then
-                        info.status.modify = info.status.modify + 1
-                    elseif s == "R" then
-                        info.status.delete = info.status.delete + 1
-                    else
-                        info.status.untracked = info.status.untracked + 1
+                local m = line:match("^branch: +(.*)")
+                if m then
+                    info.branch = m
+                elseif line:match("^commit: ") then
+                    m = line:match("(%d+) modified")
+                    if m then
+                        status.modify = tonumber(m)
+                        dirty = true
                     end
-                elseif s:match("#.* repo.* unfinished ") then
-                    -- Report unfinished states as conflict.
-                    info.conflict = true
+                    m = line:match("(%d+) added")
+                    if m then
+                        status.add = tonumber(m)
+                        dirty = true
+                    end
+                    m = line:match("(%d+) deleted")
+                    if m then
+                        status.delete = tonumber(m)
+                        dirty = true
+                    end
+                    m = line:match("(%d+) renamed")
+                    if m then
+                        status.add = status.add + tonumber(m)
+                        status.delete = status.delete + tonumber(m)
+                        dirty = true
+                    end
+                    m = line:match("(%d+) unknown")
+                    if m then
+                        status.untracked = tonumber(m)
+                        dirty = true
+                    end
+                    m = line:match("(%d+) unresolved")
+                    if m then
+                        info.conflict = true
+                    end
+                    info.status = status
+                    if dirty then
+                        local working = {}
+                        for k, v in pairs(status) do
+                            working[k] = v
+                        end
+                        status.working = working
+                    end
                 end
-            end
-            if dirty then
-                local working = {}
-                for k, v in pairs(info.status) do
-                    working[k] = v
-                end
-                info.status.working = working
             end
             pipe:close()
         else
