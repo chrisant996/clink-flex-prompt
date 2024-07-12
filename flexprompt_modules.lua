@@ -2244,7 +2244,7 @@ local function info_svn(dir) -- luacheck: no unused
         if pipe then
             local working = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
             for line in pipe:lines() do
-                local s = line:match("^([AMDCRE!~])")
+                local s = line:match("^([AMDCR?!~])")
                 if s then
                     if s == "A" then
                         working.add = working.add + 1
@@ -2254,8 +2254,15 @@ local function info_svn(dir) -- luacheck: no unused
                         working.delete = working.delete + 1
                     elseif s == "C" then
                         working.conflict = working.conflict + 1
-                    else
+                    elseif s == "R" then
+                        working.add = working.add + 1
+                        working.delete = working.delete + 1
+                    elseif s == "?" then
                         working.untracked = working.untracked + 1
+                    elseif s == "!" then
+                        working.delete = working.delete + 1
+                    elseif s == "~" then
+                        working.modify = working.modify + 1
                     end
                 end
             end
