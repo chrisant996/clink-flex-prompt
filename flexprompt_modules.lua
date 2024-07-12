@@ -2164,7 +2164,7 @@ local function info_hg(dir) -- luacheck: no unused
     do
         local pipe = io.popenyield("2>&1 hg summary")
         if pipe then
-            local working = { add=0, modify=0, delete=0, untracked=0 }
+            local working = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
             for line in pipe:lines() do
                 local m = line:match("^branch:%s+(.*)")
                 if m then
@@ -2193,7 +2193,7 @@ local function info_hg(dir) -- luacheck: no unused
                     end
                     m = line:match("(%d+) unresolved")
                     if m then
-                        info.conflict = tonumber(m)
+                        working.conflict = tonumber(m)
                     end
                 end
             end
