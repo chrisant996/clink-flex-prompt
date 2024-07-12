@@ -2162,28 +2162,52 @@ local function info_hg(dir) -- luacheck: no unused
     end
     -- Get file status.
     do
-        local pipe = io.popenyield("2>&1 hg status -amrd -v")
+        local pipe = io.popenyield("2>&1 hg summary")
         if pipe then
-            info.status = { add=0, modify=0, delete=0, untracked=0 }
+            local working = { add=0, modify=0, delete=0, untracked=0 }
             for line in pipe:lines() do
-                local s = line:match("^([AMR!?]) ")
-                if s then
-                    -- Report file status.
-                    if s == "A" then
-                        info.status.add = info.status.add + 1
-                    elseif s == "M" then
-                        info.status.modify = info.status.modify + 1
-                    elseif s == "R" then
-                        info.status.delete = info.status.delete + 1
-                    else
-                        info.status.untracked = info.status.untracked + 1
+                local m = line:match("^branch:%s+(.*)")
+                if m then
+                    info.branch = m
+                elseif line:match("^commit:%s") then
+                    m = line:match("(%d+) modified")
+                    if m then
+                        working.modify = tonumber(m)
                     end
-                elseif s:match("#.* repo.* unfinished ") then
-                    -- Report unfinished states as conflict.
-                    info.conflict = true
+                    m = line:match("(%d+) added")
+                    if m then
+                        working.add = tonumber(m)
+                    end
+                    m = line:match("(%d+) deleted")
+                    if m then
+                        working.delete = tonumber(m)
+                    end
+                    m = line:match("(%d+) renamed")
+                    if m then
+                        working.add = working.add + tonumber(m)
+                        working.delete = working.delete + tonumber(m)
+                    end
+                    m = line:match("(%d+) unknown")
+                    if m then
+                        working.untracked = tonumber(m)
+                    end
+                    m = line:match("(%d+) unresolved")
+                    if m then
+                        info.conflict = tonumber(m)
+                    end
                 end
             end
             pipe:close()
+            if working and working.conflict > 0 then
+                info.unresolved = working.conflict
+            end
+            for _,v in pairs(working) do
+                if v > 0 then
+                    info.status = info.status or {}
+                    info.status.working = working
+                    break
+                end
+            end
         else
             info._error = true
         end
@@ -2218,24 +2242,34 @@ local function info_svn(dir) -- luacheck: no unused
     if not info._error then
         local pipe = io.popenyield("2>nul svn status -q")
         if pipe then
-            info.status = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
+            local working = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
             for line in pipe:lines() do
                 local s = line:match("^([AMDCRE!~])")
                 if s then
                     if s == "A" then
-                        info.status.add = info.status.add + 1
+                        working.add = working.add + 1
                     elseif s == "M" then
-                        info.status.modify = info.status.modify + 1
+                        working.modify = working.modify + 1
                     elseif s == "D" then
-                        info.status.delete = info.status.delete + 1
+                        working.delete = working.delete + 1
                     elseif s == "C" then
-                        info.status.conflict = info.status.conflict + 1
+                        working.conflict = working.conflict + 1
                     else
-                        info.status.untracked = info.status.untracked + 1
+                        working.untracked = working.untracked + 1
                     end
                 end
             end
             pipe:close()
+            if working and working.conflict > 0 then
+                info.unresolved = working.conflict
+            end
+            for _,v in pairs(working) do
+                if v > 0 then
+                    info.status = info.status or {}
+                    info.status.working = working
+                    break
+                end
+            end
         else
             info._error = true
         end
