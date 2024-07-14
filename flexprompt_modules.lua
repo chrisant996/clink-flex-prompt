@@ -1688,11 +1688,7 @@ local cached_scm = {}
 -- Collects SCM status info.
 --
 -- Uses async coroutine calls.
-local function collect_scm_info(detected_info, no_untracked, no_submodules)
-    local flags = {}
-    flags.no_untracked = no_untracked
-    flags.no_submodules = no_submodules
-
+local function collect_scm_info(detected_info, flags)
     local info = flexprompt.get_scm_info(detected_info, flags)
 
     maybe_git_fetch(info)
@@ -2120,20 +2116,20 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
     else
         info.branch, info.detached, info.commit = flexprompt.get_git_branch()
     end
-    info.status = flexprompt.get_git_status()
+    info.status = flexprompt.get_git_status(flags.no_untracked, not flags.no_submodules)
     if info.status and info.status.errmsg then
         info._error = true
     else
-        if not flexprompt.settings.no_ahead_behind then
+        if not flags.no_ahead_behind then
             info.ahead, info.behind = flexprompt.get_git_ahead_behind()
         end
-        if not flexprompt.settings.no_conflict then
+        if not flags.no_conflict then
             info.conflict = flexprompt.get_git_conflict()
         end
-        if not flexprompt.settings.no_remote then
+        if not flags.no_remote then
             info.remote = flexprompt.get_git_remote()
         end
-        if not flexprompt.settings.no_submodules then
+        if not flags.no_submodules then
             info.submodule = info.git_dir and info.git_dir:find(path.join(info.wks_dir, "modules\\"), 1, true) == 1
         end
     end
@@ -2145,7 +2141,7 @@ local function test_hg(dir)
     return flexprompt.has_dir(dir, ".hg")
 end
 
-local function info_hg(dir) -- luacheck: no unused
+local function info_hg(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
     info.type = "hg"
     -- Get branch name.
@@ -2198,8 +2194,13 @@ local function info_hg(dir) -- luacheck: no unused
                 end
             end
             pipe:close()
-            if working and working.conflict > 0 then
-                info.unresolved = working.conflict
+            if working then
+                if working.conflict > 0 then
+                    info.unresolved = working.conflict
+                end
+                if flags.no_untracked then
+                    working.untracked = 0
+                end
             end
             for _,v in pairs(working) do
                 if v > 0 then
@@ -2219,7 +2220,7 @@ local function test_svn(dir)
     return flexprompt.has_dir(dir, ".svn")
 end
 
-local function info_svn(dir) -- luacheck: no unused
+local function info_svn(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
     info.type = "svn"
     -- Get branch name.
@@ -2240,7 +2241,11 @@ local function info_svn(dir) -- luacheck: no unused
     end
     -- Get file status.
     if not info._error then
-        local pipe = io.popenyield("2>nul svn status -q")
+        local command = "2>nul svn status"
+        if not flags.no_untracked then
+            command = command .. " -q"
+        end
+        local pipe = io.popenyield(command)
         if pipe then
             local working = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
             for line in pipe:lines() do

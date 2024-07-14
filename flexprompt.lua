@@ -2975,7 +2975,7 @@ function flexprompt.detect_scm()
     end)
 end
 
-function flexprompt.get_scm_info(detected_info)
+function flexprompt.get_scm_info(detected_info, flags)
     if not detected_info or not detected_info.info_func or not detected_info.root then
         detected_info = flexprompt.detect_scm()
         if not detected_info or not detected_info.info_func or not detected_info.root then
@@ -2983,7 +2983,7 @@ function flexprompt.get_scm_info(detected_info)
         end
     end
 
-    local info = detected_info.info_func(detected_info.root, detected_info)
+    local info = detected_info.info_func(detected_info.root, detected_info, flags)
     if not info then
         return
     end
