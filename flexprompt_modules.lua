@@ -2111,6 +2111,7 @@ end
 
 local function info_git(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
+    flags = flags or {}
     if tested_info and tested_info.branch then
         info.branch, info.detached, info.commit = tested_info.branch, tested_info.detached, tested_info.commit
     else
