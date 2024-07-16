@@ -2243,7 +2243,7 @@ local function info_svn(dir, tested_info, flags) -- luacheck: no unused
     -- Get file status.
     if not info._error then
         local command = "2>nul svn status"
-        if not flags.no_untracked then
+        if flags.no_untracked then
             command = command .. " -q"
         end
         local pipe = io.popenyield(command)
