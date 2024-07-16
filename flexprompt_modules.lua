@@ -2159,7 +2159,11 @@ local function info_hg(dir, tested_info, flags) -- luacheck: no unused
     end
     -- Get file status.
     do
-        local pipe = io.popenyield("2>&1 hg summary")
+        -- Using `hg summary` is reported as a little faster than `hg status`.
+        -- But the latter is machine readable, and the former is human readable.
+        -- So set LC_MESSAGES=C to force English output, so that parsing can
+        -- work reliably.
+        local pipe = io.popenyield("set LC_MESSAGES=C& 2>&1 hg summary")
         if pipe then
             local working = { add=0, modify=0, delete=0, conflict=0, untracked=0 }
             for line in pipe:lines() do
