@@ -2145,19 +2145,7 @@ end
 local function info_hg(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
     info.type = "hg"
-    -- Get branch name.
-    do
-        local pipe = io.popenyield("2>&1 hg identify -b")
-        if pipe then
-            info.branch = pipe:read()
-            info.branch = info.branch:gsub("^ +", ""):gsub(" +$", "")
-            pipe:close()
-        end
-        if not info.branch or info.branch == "" then
-            info.branch = "<unidentified>"
-        end
-    end
-    -- Get file status.
+    -- Get summary info from Mercurial.
     do
         -- Using `hg summary` is reported as a little faster than `hg status`.
         -- But the latter is machine readable, and the former is human readable.
