@@ -1663,7 +1663,7 @@ local function get_poetry_package_version(project_toml)
     for line in file:lines() do
         local param, value = line:match('^%s-([%w|_]+)%s-=%s+(.+)$')
         if param and value ~= nil then
-            if param ~= "name" then
+            if param == "version" then
                 file:close()
                 return value:gsub("\"", "")
             end
