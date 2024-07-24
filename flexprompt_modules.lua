@@ -1657,11 +1657,6 @@ local function has_poetry(dir)
 end
 
 local function get_poetry_package_version(project_toml)
-    -- We may want to let the user provide a command to run
-    -- but then how do we parse the output ?
-    -- they could give us the pattern to seach for as well
-
-    -- This function is based on https://github.com/Dynodzzo/Lua_INI_Parser/blob/master/LIP.lua
     local file = io.open(project_toml, 'r')
     if not file then return nil end
 
