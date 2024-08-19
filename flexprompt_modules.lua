@@ -390,14 +390,17 @@ local function get_battery_status(levelicon, onlyicon)
     acpower = status.acpower
     charging = status.charging
 
-    if not level or level < 0 or (acpower and not charging) then
+    if not level or level < 0 then
         return "", 0
     end
 
     local batt_symbol
     if charging then
         batt_symbol = flexprompt.get_symbol("charging")
-    else
+    elseif acpower then
+        batt_symbol = flexprompt.get_symbol("smartcharging")
+    end
+    if not batt_symbol or batt_symbol == "" then
         batt_symbol = flexprompt.get_symbol("battery")
     end
 

@@ -296,6 +296,7 @@ local symbols =
 
     battery         = { "%" },
     charging        = { "++",   nerdfonts2={""," "}, nerdfonts3={"󱐋","󱐋 "} },
+    smartcharging   = { "%",    unicode="♥" },
 
                                 -- Note: coloremoji for exit_zero requires Clink v1.4.28 or higher.
     exit_zero       = {         coloremoji="✔️", nerdfonts2={"\x1b[92m\002","\x1b[92m \002"}, nerdfonts3={"\x1b[92m\002","\x1b[92m \002"} },
