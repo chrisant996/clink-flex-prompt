@@ -48,7 +48,7 @@ local fg_yellow = sgr("38;5;220")
 local fg_green = sgr("38;5;40")
 local fg_cyan = sgr("38;5;45")
 local fg_magenta = sgr("38;5;171")
-local fg_lavender = sgr("38;5;99")
+local fg_lavender = sgr("38;2;160;130;255")
 local fg_white = sgr("38;5;255")
 
 local fg_green_prompt_char = sgr("92")
@@ -342,6 +342,7 @@ local function collect_info()
     if info.status then
         info.working = info.status.working
         info.staged = info.status.staged
+        info.unpublished = info.status.unpublished
     end
     return info
 end
