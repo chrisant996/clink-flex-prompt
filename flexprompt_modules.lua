@@ -246,9 +246,10 @@ local function collect_anyconnect_info()
         --  >> state: Disconnected
         --  >> state: Disconnected
         --  >> notice: Ready to connect.
-        if candidate and #candidate > 0 and candidate:find("state") and not candidate:find("Disconnected") then
-            -- If at least one "state" line doesn't say "Disconnected", then
-            -- consider it to be connected.
+        if candidate and #candidate > 0 and candidate:find("state") and
+                not candidate:find("Disconnected") and not candidate:find("Unknown") then
+            -- If at least one "state" line doesn't say "Disconnected" or
+            -- "Unknown", then consider it to be connected.
             connected = true
         end
     end
@@ -2056,7 +2057,7 @@ local function collect_vpn_info()
             line = line .. "..."
             break
         end
-        line = line .. c
+        line = line .. c.name
     end
     return { connection=line }
 end
