@@ -627,7 +627,11 @@ local function get_connector()
 end
 
 local function lookup_color(args)
-    if not args or type(args) == "table" then
+    if not args then
+        return args
+    end
+
+    if type(args) == "table" then
         return args[get_style()] or args
     end
 
@@ -1525,7 +1529,10 @@ local function promptcoroutine(func)
         if async then
             -- Create the prompt coroutine manager if needed.
             if not _cached_state.has_promptcoroutine then
-                clink.promptcoroutine(promptcoroutine_manager)
+                -- Passing "flexprompt" for the cookie (new in Clink v1.7.0)
+                -- enables other *.clinkprompt files to use flexprompt's
+                -- modules directly without any special integration code.
+                clink.promptcoroutine(promptcoroutine_manager, "flexprompt")
                 _cached_state.has_promptcoroutine = true
             end
         else
@@ -1536,9 +1543,10 @@ local function promptcoroutine(func)
                 entry.func(false--[[async]])
             end)
 
-            -- Run the coroutine synchronously.
-            local max_iter = 25
-            for iteration = 1, max_iter + 1, 1 do
+            -- Run the coroutine synchronously.  Cap the duration when running
+            -- synchronously, in case it's poorly behaved.
+            local began = os.clock()
+            while true do
                 -- Pass false to let it know it is not async.
                 local result, _ = coroutine.resume(c)
                 if result then
@@ -1551,12 +1559,10 @@ local function promptcoroutine(func)
                     end
                     break
                 end
-                -- Cap iterations when running synchronously, in case it's
-                -- poorly behaved.
-                if iteration >= max_iter then
-                    -- Ideally this could print an error message about
-                    -- abandoning a misbehaving coroutine, but that would mess
-                    -- up the prompt and input line display.
+                -- Ideally this could print an error message when abandoning a
+                -- misbehaving coroutine, but that would mess up the prompt and
+                -- input line display.
+                if os.clock() - began > 10 then
                     break
                 end
             end
@@ -1970,7 +1976,7 @@ end
 local function render_transient_prompt(wizard)
     local s
     _wizard = wizard
-    s = get_prompt_symbol_color() .. get_transient_prompt_symbol() .. sgr() .. " "
+    s = sgr() .. get_prompt_symbol_color() .. get_transient_prompt_symbol() .. sgr() .. " "
     _wizard = nil
     return s
 end
@@ -2007,37 +2013,68 @@ if CMDER_SESSION then
     prompt_includeVersionControl = false
 end
 
+local disable
+local function detect_disable()
+    disable = nil
+    if clink.getclinkprompt then
+        local name, _, _, dependson = clink.getclinkprompt()
+        disable = (name and name ~= "" and not dependson["flexprompt"])
+    end
+end
+
 local right
 
 function pf:filter(prompt) -- luacheck: no unused
+    detect_disable()
+    if disable then
+        return
+    end
     prompt, right = render_prompts()
+    if prompt then
+        prompt = sgr()..prompt
+    end
+    if right then
+        right = sgr()..right
+    end
     return prompt
 end
 
 function pf:rightfilter(prompt) -- luacheck: no unused
+    if disable then
+        return
+    end
     return right or "", continue_filtering
 end
 
 function pf:transientfilter(prompt) -- luacheck: no unused
+    detect_disable()
+    if disable then
+        return
+    end
     return render_transient_prompt()
 end
 
 function pf:transientrightfilter(prompt) -- luacheck: no unused
+    if disable then
+        return
+    end
     return "", continue_filtering
 end
 
 -- Capture the $+ dir stack depth if present at the beginning of PROMPT.
-local plus_capture = clink.promptfilter(1)
-function plus_capture:filter(prompt) -- luacheck: no unused
-    local plusBegin, plusEnd = prompt:find("^[+]+")
-    if plusBegin == nil then
-        plusBegin, plusEnd = prompt:find("[\n][+]+")
-        if plusBegin then
-            plusBegin = plusBegin + 1
+if not os.getpushddepth then
+    local plus_capture = clink.promptfilter(1)
+    function plus_capture:filter(prompt) -- luacheck: no unused
+        local plusBegin, plusEnd = prompt:find("^[+]+")
+        if plusBegin == nil then
+            plusBegin, plusEnd = prompt:find("[\n][+]+")
+            if plusBegin then
+                plusBegin = plusBegin + 1
+            end
         end
-    end
-    if plusBegin ~= nil then
-        _cached_state.dirStackDepth = prompt:sub(plusBegin, plusEnd)
+        if plusBegin ~= nil then
+            _cached_state.dirStackDepth = prompt:sub(plusBegin, plusEnd)
+        end
     end
 end
 
@@ -2079,6 +2116,9 @@ end
 -- The prompt text "{xyz:args}" would call xyz_render("args").
 -- The symbol is optional, and is the default symbol for the module.
 function flexprompt.add_module(name, func, symbol)
+    if name:find("[^%w]") then
+        error("invalid flexprompt module name '"..name.."'; module names may only contain alphabetic characters.")
+    end
     modules[string.lower(name)] = func
     symbols[name .. "_module"] = symbol
 end
@@ -2397,7 +2437,11 @@ end
 -- Function to retrieve a string of "+" corresponding to the pushd stack depth
 -- if %PROMPT% begins with "$+".
 function flexprompt.get_dir_stack_depth()
-    return _cached_state.dirStackDepth or ""
+    if os.getpushddepth then
+        return string.rep("+", os.getpushddepth())
+    else
+        return _cached_state.dirStackDepth or ""
+    end
 end
 
 -- Function that takes (dir, subdir) and returns "dir\subdir" if the subdir
@@ -3088,7 +3132,7 @@ local function onbeginedit()
 
     insertmode_onbeginedit()
 
-    if not offered_wizard then
+    if not offered_wizard and (not clink.getclinkprompt or clink.getclinkprompt() == "") then
         local settings = flexprompt.settings or {}
         if not settings.top_prompt and not settings.left_prompt and not settings.right_prompt then
             clink.print("\n" .. sgr(1) .. "Flexprompt has not yet been configured." .. sgr())
