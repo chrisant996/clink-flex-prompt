@@ -2589,6 +2589,23 @@ function flexprompt.set_scm_color(scm_type, color)
     flexprompt.settings.scm_colors[scm_type:lower()] = color
 end
 
+-- Function to ask a module to render its content.
+flexprompt.render_module = function(name, args, try_condense)
+    local old_segmenter = segmenter
+    segmenter = {}
+    segmenter._current_module = name
+
+    local results = render_module(name, args, try_condense)
+
+    segmenter._current_module = nil
+    segmenter = old_segmenter
+    return results
+end
+
+-- Functions to translate flexprompt bg and fg colors.
+flexprompt.get_best_bg = get_best_bg
+flexprompt.get_best_fg = get_best_fg
+
 -- Function to register a module's prompt coroutine.
 -- IMPORTANT:  Use this instead of clink.promptcoroutine()!
 flexprompt.promptcoroutine = promptcoroutine
