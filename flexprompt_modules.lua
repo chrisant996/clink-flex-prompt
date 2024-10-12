@@ -960,7 +960,7 @@ local function add_details(text, details, include_counts)
         if rename > 0 then
             text = flexprompt.append_text(text, flexprompt.get_symbol("renamecount") .. rename)
         end
-    else
+    elseif (add + modify + delete + rename) > 0 then
         text = flexprompt.append_text(text, flexprompt.get_symbol("summarycount") .. (add + modify + delete + rename))
     end
     if untracked > 0 then
