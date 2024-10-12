@@ -295,7 +295,7 @@ local symbols =
     staged          = { "#",    unicode="↗" },
 
     battery         = { "%" },
-    charging        = { "++",   nerdfonts2={""," "}, nerdfonts3={"󱐋","󱐋 "} },
+    charging        = { "++",   nerdfonts2={""," "}, nerdfonts3={""," "} },
     smartcharging   = { "%",    unicode="♥" },
 
                                 -- Note: coloremoji for exit_zero requires Clink v1.4.28 or higher.
@@ -306,9 +306,9 @@ local symbols =
     overtype_prompt = { ">",    unicode="►" },
 
     admin           = {         powerline="" },
-    no_admin        = {         nerdfonts2={""," "} },
+    no_admin        = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
 
-    vpn             = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3="󰖂 " },
+    vpn             = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3=" " },
     no_vpn          = {         coloremoji="🌎", nerdfonts2={""," "}, nerdfonts3={""," "} },
 
     refresh         = {         nerdfonts2="", nerdfonts3=" " },  --   

@@ -2343,14 +2343,14 @@ clink.onbeginedit(builtin_modules_onbeginedit)
 flexprompt.add_module( "anyconnect",    render_anyconnect                   )
 flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
-flexprompt.add_module( "conda",         render_conda,       { nerdfonts2={"🅒","🅒"} } )
-flexprompt.add_module( "cwd",           render_cwd,         { coloremoji="📁", nerdfonts2={""," "} } )
-flexprompt.add_module( "duration",      render_duration,    { coloremoji="⌛", nerdfonts2={""," "} } )
+flexprompt.add_module( "conda",         render_conda,       { nerdfonts2={"🅒","🅒"}, nerdfonts3={"🅒","🅒"} } )
+flexprompt.add_module( "cwd",           render_cwd,         { coloremoji="📁", nerdfonts2={""," "}, nerdfonts3={""," "} } )
+flexprompt.add_module( "duration",      render_duration,    { coloremoji="⌛", nerdfonts2={""," "}, nerdfonts3={""," "} } )
 flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
-flexprompt.add_module( "git",           render_git,         { nerdfonts2={""," "} } )
+flexprompt.add_module( "git",           render_git,         { nerdfonts2={""," "}, nerdfonts3={""," "} } )
 flexprompt.add_module( "hg",            render_hg                           )
-flexprompt.add_module( "histlabel",     render_histlabel,   { nerdfonts2={""," "} } )
+flexprompt.add_module( "histlabel",     render_histlabel,   { nerdfonts2={""," "}, nerdfonts3={""," "} } )
 flexprompt.add_module( "k8s",           render_k8s,         { nerdfonts2={"ﴱ","ﴱ "}, nerdfonts3={"󰠳","󰠳 "} } )
 flexprompt.add_module( "maven",         render_maven                        )
 flexprompt.add_module( "npm",           render_npm                          )
@@ -2358,15 +2358,15 @@ flexprompt.add_module( "python",        render_python,      { nerdfonts2={"",
 flexprompt.add_module( "scm",           render_scm,         { "scm" }       ) -- Placeholder to check icon config.
 flexprompt.add_module( "svn",           render_svn                          )
 flexprompt.add_module( "time",          render_time,        { coloremoji="🕒", nerdfonts2={"",""}, nerdfonts3={"",""} } ) -- Note: nerdfonts are always mono width for this.
-flexprompt.add_module( "user",          render_user,        { coloremoji="🙍", nerdfonts2={""," "} } )
-flexprompt.add_module( "vpn",           render_vpn,         { coloremoji="☁️", nerdfonts2={""," "} } )
+flexprompt.add_module( "user",          render_user,        { coloremoji="🙍", nerdfonts2={""," "}, nerdfonts3={""," "} } )
+flexprompt.add_module( "vpn",           render_vpn,         { coloremoji="☁️", nerdfonts2={""," "}, nerdfonts3={""," "} } )
 
 if os.isuseradmin then
 flexprompt.add_module( "admin",         render_admin                        )
 end
 
 if clink.onaftercommand then
-flexprompt.add_module( "keymap",        render_keymap,      { nerdfonts2={""," "} } )
+flexprompt.add_module( "keymap",        render_keymap,      { nerdfonts2={""," "}, nerdfonts3={""," "} } )
 end
 
 if rl.insertmode then
