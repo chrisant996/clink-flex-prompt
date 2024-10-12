@@ -351,6 +351,16 @@ local function collect_info()
         info.staged = info.status.staged
         info.unpublished = info.status.unpublished
     end
+    if info.type == "git" and git and type(git) == "table" and git.getaction then
+        local action, step, num_steps = git.getaction()
+        if action then
+            info.action = action
+            if step and num_steps then
+                info.step = step
+                info.num_steps = num_steps
+            end
+        end
+    end
     return info
 end
 
@@ -754,10 +764,16 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             addtext(segments, status_color, text, space_before)
         end
 
-        addcsep(segments, sep, info.conflict and bg_red or gray3)
+        addcsep(segments, sep, (info.action or info.conflict) and bc.bg_red or gray3)
         local ahead = info.ahead or "0"
         local behind = info.behind or "0"
-        if info.working or info.staged or info.conflict or ahead ~= "0" or behind ~= "0" then
+        if info.action then
+            local text = bc.fg_white..info.action
+            if info.working and info.working.conflict > 0 then
+                text = text.." !"..info.working.conflict
+            end
+            addtext(segments, status_color, text, space_before)
+        elseif info.working or info.staged or info.conflict or ahead ~= "0" or behind ~= "0" then
             if info.working or info.conflict then
                 local text = ""
                 if info.working and info.working.conflict > 0 then
