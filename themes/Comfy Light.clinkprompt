@@ -1,0 +1,307 @@
+-- luacheck: globals flexprompt
+
+-- Environment variables can be used to do a little fine tuning configuration:
+--
+--  COMFY_{name}_b=             Background color for {name} (RETVAL, HOST, USER, GIT, DIR, VENV, BAT, DATE, TIME).
+--  COMFY_{name}_f=             Foreground color for {name} (RETVAL, HOST, USER, GIT, DIR, VENV, BAT, DATE, TIME).
+--  COMFY_GITCLEAN_b=           Background color for GIT segment when the working tree is clean.
+--  COMFY_GITCLEAN_f=           Foreground color for GIT segment when the working tree is clean.
+--  COMFY_{name}_RANK=          Order in the prompt (positive are on the left, negative are on the right, and 0 omits).
+--  COMFY_FULL_DIR=             1 to show full directory, otherwise show relative path to git repo root.
+--  COMFY_RETVAL_NUMBER=        0 or 2 show symbol when exit code is non-zero, and 1 or 2 show the exit code number.
+--  COMFY_BATTERY_LOW=          Below this low charge icon is displayed (default is 15).
+--  COMFY_BATTERY_HIGH=         Above this high charge icon is displayed (default is 90).
+--  COMFY_CHARGING_ICON=        Text icon when charging.
+--  COMFY_HIGHCHARGE_ICON=      Text icon when battery level is above COMFY_BATTERY_HIGH.
+--  COMFY_MIDCHARGE_ICON=       Text icon when battery level is between COMFY_BATTERY_LOW and COMFY_BATTERY_HIGH.
+--  COMFY_LOWCHARGE_ICON=       Text icon when battery level is below COMFY_BATTERY_LOW.
+--
+-- Changing most of the variables won't take effect until the next time the
+-- script is reloaded.  You can force them to take effect by using the
+-- `clink-reload` key binding (which is Ctrl-X,Ctrl-R by default).
+
+--------------------------------------------------------------------------------
+if not flexprompt then
+    error("flexprompt is not loaded")
+end
+
+local default_colors = {
+    RETVAL_b="#8a8bd8",
+    RETVAL_f="#61355c",
+    HOST_b="#b3b5fb",
+    HOST_f="#4a4b87",
+    USER_b="#f8bbe5",
+    USER_f="#874c80",
+    GIT_b="#f6b3b3",
+    GIT_f="#d95353",
+    GIT_CLEAN_b="#b3f58c",
+    GIT_CLEAN_f="#568459",
+    DIR_b="#e1bff2",
+    DIR_f="#844189",
+    VENV_b="#a8ddf9",
+    VENV_f="#0066a4",
+    BAT_b="#b3b5fb",
+    BAT_f="#4a4b87",
+    DATE_b="#f8bbe5",
+    DATE_f="#874c80",
+    TIME_b="#e1bff2",
+    TIME_f="#844189",
+}
+
+local ranks = {
+    RETVAL=1,
+    HOST=2,
+    USER=3,
+    DIR=4,
+    GIT=5,
+    VENV=6,
+    BAT=-3,
+    DATE=-2,
+    TIME=-1,
+}
+
+local modules = {
+    RETVAL="comfyretval",
+    HOST="comfyhost",
+    USER="comfyuser",
+    GIT="comfygit",
+    DIR="cwd",
+    VENV="comfyvenv",
+    BAT="comfybat",
+    DATE="comfydate",
+    TIME="comfytime",
+}
+
+local colors = {}
+for k,v in pairs(default_colors) do
+    local c = os.getenv("COMFY_"..k) or v
+    colors[k] = (settings.parsecolor(string.format("%s%s", k:find("_b$") and "on " or "", c)) or ""):gsub("^0;", "")
+end
+
+--------------------------------------------------------------------------------
+local function create_segment(name, args)
+    local m = modules[name]
+    local a = ""
+    if m == "cwd" then
+        if tonumber(os.getenv("COMFY_FULL_DIR") or "0") == 1 then
+            a = a..":type=full"
+        else
+            a = a..":type=smart"
+        end
+        a = a..":color="..colors[name.."_b"]..","..colors[name.."_f"]
+    end
+    args = args or ""
+    return "{"..m..a..":"..args.."}"
+end
+
+local function sranks(t)
+    local keys = {}
+    for k in pairs(t) do
+        table.insert(keys, k)
+        local r = os.getenv("COMFY_"..k.."_RANK")
+        if r then
+            ranks[k] = tonumber(r or "0")
+        end
+    end
+
+    table.sort(keys, function(a,b)
+        return (ranks[a] or 999) < (ranks[b] or 999)
+    end)
+
+    local i = 0
+    return function()
+        i = i + 1
+        if keys[i] then
+            return ranks[keys[i]] or 999, keys[i]
+        end
+    end
+end
+
+flexprompt.add_module("comfyretval", function()
+    local mode = tonumber(os.getenv("COMFY_RETVAL_NUMBER") or "0")
+    local sym = (mode ~= 1) and (os.geterrorlevel() > 0) and "✘" or nil
+    local text = (mode ~= 0) and tostring(os.geterrorlevel()) or ""
+    text = flexprompt.append_text(sym, text)
+    if text == "" then
+        text = "\x1b[7m\x1b[27m"
+    end
+    return text, colors.RETVAL_b, colors.RETVAL_f
+end)
+
+--------------------------------------------------------------------------------
+flexprompt.add_module("comfyhost", function()
+    return os.getenv("COMPUTERNAME"), colors.HOST_b, colors.HOST_f
+end)
+
+flexprompt.add_module("comfyuser", function()
+    return os.getenv("USERNAME"), colors.USER_b, colors.USER_f
+end)
+
+local last_status
+flexprompt.add_module("comfygit", function()
+    local COMFY_GIT_PROMPT_ADDED=" +"
+    local COMFY_GIT_PROMPT_MODIFIED=" ±"
+    local COMFY_GIT_PROMPT_DELETED=" -"
+    local COMFY_GIT_PROMPT_UNTRACKED=" ?"
+    local COMFY_GIT_PROMPT_UNMERGED=" !"
+    local COMFY_GIT_PROMPT_AHEAD=" ↑"
+    local COMFY_GIT_PROMPT_BEHIND=" ↓"
+
+    local status = clink.promptcoroutine(git.getstatus)
+    local refreshing = not status
+    if status then
+        last_status = status
+    else
+        status = last_status or {}
+    end
+
+    if status.branch then
+        local iconname = (status.detached and "detached") or (status.unpublished and "unpublished") or "branch"
+        local text = flexprompt.format_branch_name(status.branch, iconname, refreshing, status.submodule)
+        local b, f = colors.GIT_CLEAN_b, colors.GIT_CLEAN_f
+
+        if status.working then
+            local w = status.working
+            if (w.conflict or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_UNMERGED..tostring(w.conflict)
+            end
+            if (w.add or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_ADDED..tostring(w.add)
+            end
+            if (w.modify or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_MODIFIED..tostring(w.modify)
+            end
+            if (w.delete or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_DELETED..tostring(w.delete)
+            end
+            if (w.untracked or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_UNTRACKED..tostring(w.untracked)
+            end
+            if (status.ahead or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_AHEAD..tostring(status.ahead)
+            end
+            if (status.behind or 0) > 0 then
+                text = text..COMFY_GIT_PROMPT_BEHIND..tostring(status.behind)
+            end
+            b, f = colors.GIT_b, colors.GIT_f
+        end
+
+        return text, b, f
+    end
+end)
+
+flexprompt.add_module("comfyvenv", function()
+    local venv = os.getenv("VIRTUAL_ENV")
+    if venv then
+        return venv, colors.VENV_b, colors.VENV_f
+    end
+end)
+
+local function format_battery()
+    local text
+    local status = os.getbatterystatus()
+    if status.level >= 0 then
+        local COMFY_BATTERY_LOW=tonumber(os.getenv("COMFY_BATTERY_LOW") or "15")
+        local COMFY_BATTERY_HIGH=tonumber(os.getenv("COMFY_BATTERY_HIGH") or "90")
+        local COMFY_CHARGING_ICON=os.getenv("COMFY_CHARGING_ICON") or ""
+        local COMFY_HIGHCHARGE_ICON=os.getenv("COMFY_HIGHCHARGE_ICON") or "󰁹"
+        local COMFY_MIDCHARGE_ICON=os.getenv("COMFY_MIDCHARGE_ICON") or "󰁽"
+        local COMFY_LOWCHARGE_ICON=os.getenv("COMFY_LOWCHARGE_ICON") or "󰂎"
+        if status.charging then
+            text = COMFY_CHARGING_ICON
+        elseif status.level >= COMFY_BATTERY_HIGH then
+            text = COMFY_HIGHCHARGE_ICON
+        elseif status.level > COMFY_BATTERY_LOW then
+            text = COMFY_MIDCHARGE_ICON
+        elseif status.level >= 0 then
+            text = COMFY_LOWCHARGE_ICON
+        end
+        if status.level >= 0 then
+            text = flexprompt.append_text(tostring(status.level), text)
+        end
+    end
+    return text
+end
+
+flexprompt.add_module("comfybat", function()
+    local text = format_battery()
+    if text then
+        return text, colors.BAT_b, colors.BAT_f
+    end
+end)
+
+flexprompt.add_module("comfydate", function()
+    --local def_format = "%A, %d %B %Y" -- Why is %e not working in place of %d?
+    local def_format = "%a, %d %b %Y" -- Why is %e not working in place of %d?
+    return os.date(os.getenv("COMFY_DATE_FORMAT") or def_format), colors.DATE_b, colors.DATE_f
+end)
+
+flexprompt.add_module("comfytime", function()
+    local def_format = "%I:%M %p"
+    return os.date(os.getenv("COMFY_TIME_FORMAT") or def_format), colors.TIME_b, colors.TIME_f
+end)
+
+local last_cwd
+local last_gitdir
+clink.onbeginedit(function()
+    local cwd = os.getcwd()
+    if cwd ~= last_cwd then
+        local gitdir = git.getgitdir()
+        if gitdir ~= last_gitdir then
+            last_status = nil
+            last_gitdir = gitdir
+        end
+        last_cwd = cwd
+    end
+end)
+
+--------------------------------------------------------------------------------
+local old_settings
+
+local function onactivate()
+    old_settings = flexprompt.settings
+
+    local s = {}
+    s.symbols = old_settings.symbols
+    s.symbols.detached = s.symbols.detached or { nerdfonts2={"ﰖ", " "}, nerdfonts3={"󰜘", " "} }
+
+    s.charset = "unicode"
+    s.powerline_font = true
+    s.use_color_emoji = true
+    s.use_8bit_color = true
+    s.nerdfonts_version = tostring(os.getenv("COMFY_NERD_FONTS_VERSION") or "3")
+
+    s.style = "rainbow"
+    s.heads = "round"
+    s.tails = "round"
+    s.lines = (tonumber(os.getenv("COMFY_NO_START") or "0") > 0) and "two" or "one"
+
+    s.left_prompt = ""
+    s.right_prompt = ""
+    for rank, name in sranks(modules) do
+        if rank > 0 then
+            s.left_prompt = s.left_prompt..create_segment(name)
+        elseif rank < 0 then
+            s.right_prompt = create_segment(name)..s.right_prompt
+        end
+    end
+
+    s.prompt_symbol_color = os.getenv("COMFY_NEXT_LINE_CHAR_COLOR") or "white" -- TODO: test this
+    s.prompt_symbol_char = os.getenv("COMFY_NEXT_LINE_CHAR") or "➟ " -- TODO: test this
+
+    flexprompt.settings = s
+end
+
+local function ondeactivate()
+    flexprompt.settings = old_settings
+end
+
+local exports =
+{
+    onactivate = onactivate,
+    ondeactivate = ondeactivate,
+    dependson = "flexprompt",
+}
+
+return exports
+

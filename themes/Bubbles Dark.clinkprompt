@@ -1,0 +1,40 @@
+-- Name: Bubbles Dark
+-- Uses the Bubbles flexprompt modules.
+
+-- luacheck: globals flexprompt
+
+local old_settings
+
+if not flexprompt then
+    error("flexprompt is not loaded")
+end
+
+local function onactivate()
+    old_settings = flexprompt.settings
+
+    local s = {}
+    for k,v in pairs(old_settings) do
+        s[k] = v
+    end
+    s.top_prompt = "{tbubble}"
+    s.left_prompt = "{admin}{lbubble}"
+    s.right_prompt = "{keymap}{rbubble}"
+    s.style = "lean"
+    s.separators = "none"
+    s.connection = "none"
+
+    flexprompt.settings = s
+end
+
+local function ondeactivate()
+    flexprompt.settings = old_settings
+end
+
+local exports =
+{
+    onactivate = onactivate,
+    ondeactivate = ondeactivate,
+    dependson = "flexprompt",
+}
+
+return exports

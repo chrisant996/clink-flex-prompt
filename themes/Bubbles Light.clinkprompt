@@ -1,0 +1,62 @@
+-- Name: Bubbles Light
+-- Uses the Bubbles flexprompt modules, adjusted for Light terminal background.
+
+-- luacheck: globals flexprompt flexprompt_bubbles
+
+local old_settings
+local old_bubble_colors
+
+if not flexprompt then
+    error("flexprompt is not loaded")
+end
+if not flexprompt_bubbles or not flexprompt_bubbles.bubble_colors then
+    error("flexprompt_bubbles.bubble_colors is not defined (maybe you need a newer version of flexprompt?)")
+end
+
+local function onactivate()
+    old_settings = flexprompt.settings
+    old_bubble_colors = flexprompt_bubbles.bubble_colors
+
+    local s = {}
+    for k,v in pairs(old_settings) do
+        s[k] = v
+    end
+    s.top_prompt = "{tbubble}"
+    s.left_prompt = "{admin}{lbubble}"
+    s.right_prompt = "{keymap}{rbubble}"
+    s.style = "lean"
+    s.separators = "none"
+    s.connection = "none"
+
+    local bc = {}
+    for k,v in pairs(flexprompt_bubbles.bubble_colors) do
+        bc[k] = v
+    end
+    bc.bg_gray1 = bc.sgr("48;2;216;216;216")
+    bc.bg_gray2 = bc.sgr("48;2;228;228;228")
+    bc.bg_gray3 = bc.sgr("48;2;240;240;240")
+    bc.fg_red = bc.sgr("38;2;224;0;0")
+    bc.fg_orange = bc.sgr("38;2;240;124;0")
+    bc.fg_yellow = bc.sgr("38;2;210;140;0")
+    bc.fg_green = bc.sgr("38;2;0;148;0")
+    bc.fg_cyan = bc.sgr("38;2;0;160;200")
+    bc.fg_magenta = bc.sgr("38;2;150;0;190")
+    bc.fg_lavender = bc.sgr("38;2;160;130;255")
+
+    flexprompt.settings = s
+    flexprompt_bubbles.bubble_colors = bc
+end
+
+local function ondeactivate()
+    flexprompt.settings = old_settings
+    flexprompt_bubbles.bubble_colors = old_bubble_colors
+end
+
+local exports =
+{
+    onactivate = onactivate,
+    ondeactivate = ondeactivate,
+    dependson = "flexprompt",
+}
+
+return exports
