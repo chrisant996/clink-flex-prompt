@@ -304,32 +304,59 @@ local ellipsis_char = ".."
 local ellipsis_char_width = console.cellcount(ellipsis_char)
 
 local function ellipsify(text, limit, fluent_restore_color)
-    if console.cellcount(text) <= limit then
+    if not console.explodeansi or console.cellcount(text) <= limit then
         return text
+    elseif console.ellipsify then
+        return console.ellipsify(text, limit, "right", ellipsis_char..(fluent_restore_color or ""))
     end
     local s = ""
     local truncate = 0
     local total = 0
-    local strings = console.explodeansi and console.explodeansi(text) or { text }
-    for _,t in ipairs(strings) do
-        if t:byte() == 27 then
-            s = s .. t
-        else
-            for i in unicode.iter(t) do
-                if total + ellipsis_char_width <= limit then
-                    truncate = #s
-                end
-                total = total + console.cellcount(i)
-                if total > limit then
-                    s = s:sub(1, truncate)
-                    if fluent_restore_color then
-                        s = s..make_fluent_text(ellipsis_char, fluent_restore_color)
-                    else
-                        s = s..ellipsis_char
+    local strings = console.explodeansi(text)
+    if console.cellcountiter then
+        for _,t in ipairs(strings) do
+            if t:byte() == 27 then
+                s = s .. t
+            else
+                for i, width in console.cellcountiter(t) do
+                    if total + ellipsis_char_width <= limit then
+                        truncate = #s
                     end
-                    break
+                    total = total + width
+                    if total > limit then
+                        s = s:sub(1, truncate)
+                        if fluent_restore_color then
+                            s = s..make_fluent_text(ellipsis_char, fluent_restore_color)
+                        else
+                            s = s..ellipsis_char
+                        end
+                        break
+                    end
+                    s = s..i
                 end
-                s = s..i
+            end
+        end
+    else
+        for _,t in ipairs(strings) do
+            if t:byte() == 27 then
+                s = s .. t
+            else
+                for i in unicode.iter(t) do
+                    if total + ellipsis_char_width <= limit then
+                        truncate = #s
+                    end
+                    total = total + console.cellcount(i)
+                    if total > limit then
+                        s = s:sub(1, truncate)
+                        if fluent_restore_color then
+                            s = s..make_fluent_text(ellipsis_char, fluent_restore_color)
+                        else
+                            s = s..ellipsis_char
+                        end
+                        break
+                    end
+                    s = s..i
+                end
             end
         end
     end
