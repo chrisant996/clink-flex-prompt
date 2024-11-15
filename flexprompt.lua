@@ -311,6 +311,9 @@ local symbols =
     vpn             = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3=" " },
     no_vpn          = {         coloremoji="🌎", nerdfonts2={""," "}, nerdfonts3={""," "} },
 
+    az_connected    = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3=" " },
+    az_disconnected = {         coloremoji="🌎", nerdfonts2={""," "}, nerdfonts3={""," "} },
+
     refresh         = {         nerdfonts2="", nerdfonts3=" " },  --   
 }
 

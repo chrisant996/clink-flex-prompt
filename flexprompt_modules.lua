@@ -333,6 +333,184 @@ local function render_anyconnect(args)
 end
 
 --------------------------------------------------------------------------------
+-- AZ Azure cloud module:  {az:novars:forcetext:text=conn,noconn:color_options}
+--
+-- Shows Azure Cloud information, the account name and whether you're logged in or not.
+--
+--  - 'novars' omits checking the environment variables.
+--  - 'forcetext' forces show connection status text even when icons are
+--    enabled.  The 'text=' argument can override what text is used.
+--  - 'text=conn,noconn,unknown' overrides the text for the connection status,
+--    which is shown when icons are disabled.
+--      - conn = Text to show when connected (default "Connected").
+--      - noconn = Text to show when disconnected (default "Disconnected").
+--  - color_options override status colors as follows:
+--      - connected=color_name,alt_color_name       When connected
+--      - disconnected=color_name,alt_color_name    When disconnected.
+
+local azurecloud_cached_info = {}
+
+local azurecloud_colors =
+{
+    connected       = { "c",   "connected",     fg="white",    bg="104",   extfg="white",    extbg="38;5;252",    },
+    disconnected    = { "d",   "disconnected",  fg="red",    bg="102",   extfg="red",     extbg="48;5;2",     },
+}
+
+local function parse_inline_color(args, colors)
+    local parsed_colors = flexprompt.parse_arg_token(args, colors[1], colors[2])
+    local color = flexprompt.use_best_color(colors.fg, colors.extfg or colors.fg)
+    local altcolor = flexprompt.use_best_color(colors.bg, colors.extbg or colors.bg)
+    return flexprompt.parse_colors(parsed_colors, color, altcolor)
+end
+
+-- Collects connection info.
+--
+-- Uses async coroutine calls.
+local function collect_azurecloud_info()
+    local file, pclose = flexprompt.popenyield("az account show 2>nul")
+    if not file then return end
+
+    local conns = {}
+    for line in file:lines() do
+        -- Strip the lines of any whitespaces
+        line = line:match( "^%s*(.-)%s*$" )
+        -- If we have something left add it
+        if line ~= "" and #line > 0 then
+          table.insert(conns, line)
+        end
+    end
+
+    local ok, msg, code -- luacheck: no unused
+    if type(pclose) == "function" then
+        ok, msg, code = pclose()
+        ok = ok and #conns > 0
+    else
+        file:close()
+        ok = #conns > 0
+    end
+    if not ok then
+        return { failed=true, finished=true }
+    end
+
+
+    local connected = false
+    local name, id, environmentName, tenantDefaultDomain, tenantDisplayName
+
+    for _,candidate in ipairs(conns) do
+        --{
+        --  "environmentName": "AzureCloud",
+        --  "homeTenantId": "uuid",
+        --  "id": "uuid",
+        --  "isDefault": true,
+        --  "managedByTenants": [],
+        --  "name": "name here",
+        --  "state": "Enabled",
+        --  "tenantDefaultDomain": "tenant domain name",
+        --  "tenantDisplayName": "tenant display name",
+        --  "tenantId": "uuid",
+        --  "user": {
+        --    "name": "user email",
+        --    "type": "user"
+        --  }
+        --}
+
+        if candidate and #candidate > 0 then
+            -- parsing json by hand
+            -- we should use a library to parse the JSON and this will be a lot easier
+            -- and we'll have access to all properties
+            start, stop = candidate:find("\"environmentName\"")
+            if start or stop then
+                environmentName = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            start, stop = candidate:find("\"id\"")
+            if start or stop then
+                id = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            start, stop = candidate:find("name")
+            if start or stop then
+                name = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            start, stop = candidate:find("\"state\"")
+            if start or stop then
+                state = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            start, stop = candidate:find("\"tenantDefaultDomain\"")
+            if start or stop then
+                tenantDefaultDomain = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            start, stop = candidate:find("\"tenantDisplayName\"")
+            if start or stop then
+                tenantDisplayName = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            start, stop = candidate:find("\"tenantId\"")
+            if start or stop then
+                tenantId = candidate:sub(stop + 4, -2):gsub("\"", "")
+            end
+            if (candidate:find("\"user\"")) then
+                -- we have name and user.name, and it will break parsing
+                -- we don't care about user.name so just break here
+                break
+            end
+
+            connected = true
+        end
+    end
+
+    return {
+        connection=connected,
+        environmentName=environmentName, 
+        id=id,
+        state=state,
+        name=name,
+        tenantDefaultDomain=tenantDefaultDomain,
+        tenantDisplayName=tenantDisplayName,
+        tenantId=tenantId,
+        finished=true }
+end
+
+local function render_azurecloud(args)
+    local info
+    local refreshing
+    local wizard = flexprompt.get_wizard_state()
+
+    if wizard then
+        info = { connection=false, environmentName="", id="", state="", name="", tenantDefaultDomain="", tenantDisplayName="", finished=true }
+    else
+        -- Get connection status.
+        info, refreshing = flexprompt.prompt_info(azurecloud_cached_info, nil, nil, collect_azurecloud_info)
+    end
+
+    -- Decide on the colors based on the connection state
+    local color, altcolor
+    local novars = flexprompt.parse_arg_keyword(args, "n", "novars")
+    if not info.finished or info.failed then
+        color, altcolor = parse_inline_color(args, azurecloud_colors.disconnected)
+    elseif info.connection then
+        color, altcolor = parse_inline_color(args, azurecloud_colors.connected)
+    else
+        color, altcolor = parse_inline_color(args, azurecloud_colors.disconnected)
+    end
+
+    local icon = refreshing and flexprompt.get_icon("refresh") or nil
+    if not icon then
+        x = info.connection and "az_connected" or "az_disconnected"
+        icon = flexprompt.get_icon(x)
+        if icon == "" then
+            icon = nil
+        end
+    end
+
+    local text
+    if info.connection then
+        text = info.name
+    end
+
+    text = flexprompt.append_text(icon, text)
+
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- BATTERY MODULE:  {battery:show=show_level:breakleft:breakright:levelicon:onlyicon}
 --  - show_level shows the battery module unless the battery level is greater
 --    than show_level.
@@ -2340,6 +2518,7 @@ clink.onbeginedit(builtin_modules_onbeginedit)
 --------------------------------------------------------------------------------
 -- Initialize the built-in modules.
 
+flexprompt.add_module( "az",            render_azurecloud                   )
 flexprompt.add_module( "anyconnect",    render_anyconnect                   )
 flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
