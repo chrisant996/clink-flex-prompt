@@ -311,7 +311,7 @@ local symbols =
     vpn             = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3=" " },
     no_vpn          = {         coloremoji="🌎", nerdfonts2={""," "}, nerdfonts3={""," "} },
 
-    refresh         = {         nerdfonts2="", nerdfonts3=" " },  --   
+    refresh         = {         nerdfonts2={""," "}, nerdfonts3={""," "} },  --   
 }
 
 if ((clink.version_encoded) or 0) < 10040028 then
@@ -2428,7 +2428,10 @@ function flexprompt.get_module_symbol(refreshing)
     if refreshing and s ~= "" then
         local ref_sym = flexprompt.get_icon("refresh")
         if ref_sym and ref_sym ~= "" then
-            s = ref_sym
+            local s_cells = console.cellcount(s)
+            local r_cells = console.cellcount(ref_sym)
+            local padding = (s_cells > r_cells) and string.rep(" ", s_cells - r_cells) or ""
+            s = ref_sym .. padding
         end
     end
     return s or ""
