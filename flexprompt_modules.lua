@@ -48,15 +48,15 @@ end
 
 --------------------------------------------------------------------------------
 -- ADMIN MODULE:  {admin:always:forcetext:text_options:icon_options:color_options}
---  - 'always' shows the module even when not running as an Adminstrator.
+--  - 'always' shows the module even when not running as an Administrator.
 --  - 'forcetext' shows text even if an icon is shown.
 --  - 'admintext=abc' sets admin mode text to 'abc' ('admintext=' for none).
 --  - 'normaltext=xyz' sets normal mode text to 'xyz' ('normaltext=' for none).
 --  - 'adminicon=X' sets the admin mode icon to 'X'.
 --  - 'normalicon=Y' sets the normal mode icon to 'Y'.
 --  - color_options override status colors as follows:
---      - normal=color_name,alt_color_name      When not running as an Adminstrator.
---      - admin=color_name,alt_color_name       When running as an Adminstrator.
+--      - normal=color_name,alt_color_name      When not running as an Administrator.
+--      - admin=color_name,alt_color_name       When running as an Administrator.
 --
 -- By default, it uses just an icon if icons are enabled and the font supports
 -- powerline characters.
@@ -208,7 +208,7 @@ end
 local function collect_anyconnect_info()
     -- We may want to let the user provide a command to run
     -- but then how do we parse the output ?
-    -- they could give us the pattern to seach for as well
+    -- they could give us the pattern to search for as well
     local file, pclose = flexprompt.popenyield("vpncli state 2>nul")
     if not file then return end
 
