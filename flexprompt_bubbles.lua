@@ -175,7 +175,7 @@ local function abbrev_child(parent, child)
 end
 
 local function abbrev_path(dir, fluent, all, relative, notrim)
-    -- Removeable drives could be floppy disks or CD-ROMs, which are slow.
+    -- Removable drives could be floppy disks or CD-ROMs, which are slow.
     -- Network drives are slow.  Invalid drives are unknown.  If the drive
     -- type might be slow then don't abbreviate.
     local tilde, tilde_len = dir:find("^~[/\\]+")
