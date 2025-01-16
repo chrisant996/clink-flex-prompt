@@ -491,7 +491,8 @@ local function render_battery(args)
         -- The "22;" defeats the color parsing that would normally generate
         -- corresponding fg and bg colors even though only an explicit bg color
         -- was provided (versus a usual {fg=x,bg=y} color table).
-        color = "22;" .. color.bg .. ";30"
+        local c = flexprompt.lookup_color(color)
+        color = "22;" .. c.bg .. ";30"
     end
 
     local segments = {}
