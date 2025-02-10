@@ -133,6 +133,9 @@ flexprompt.colors =
 --------------------------------------------------------------------------------
 -- Configuration.
 
+local open_blur  = "░▒▓"
+local close_blur = "▓▒░"
+
 flexprompt.choices = {}
 
 flexprompt.choices.charsets =
@@ -182,7 +185,7 @@ flexprompt.choices.caps =
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
     round       = { "",    ""     },
-    blurred     = { "░▒▓",  "▓▒░"   },
+    blurred     = { open_blur, close_blur },
 }
 
 -- Only if style == classic.
@@ -366,15 +369,29 @@ local ansi_to_vga =
 }
 
 local function rgb_from_colortable(num)
-    num = num and ansi_to_vga[num + 1]
-    if not num then
-        return
+    if num ~= 39 and num ~= 49 then
+        num = num and ansi_to_vga[num + 1]
+        if not num then
+            return
+        end
     end
     local colortable = getcolortable()
-    if not colortable or not colortable[num + 1] then
+    if not colortable then
         return
     end
-    local r, g, b = colortable[num + 1]:match("^#(%x%x)(%x%x)(%x%x)$")
+    if num == 39 then
+        num = colortable.foreground
+        -- BUGBUG:  When colortable.default is true, it's a fake placeholder.
+    elseif num == 49 then
+        num = colortable.background
+        -- BUGBUG:  When colortable.default is true, it's a fake placeholder.
+    else
+        num = num + 1
+    end
+    if not colortable[num] then
+        return
+    end
+    local r, g, b = colortable[num]:match("^#(%x%x)(%x%x)(%x%x)$")
     if not r or not g or not b then
         return
     end
@@ -463,7 +480,9 @@ local function rgb_from_color(inner)
         tag = tag - 60
     end
     local fore = (tag >= 30 and tag < 40)
-    tag = math.fmod(tag, 10) + (bold and 8 or 0)
+    if tag ~= 39 and tag ~= 49 then
+        tag = math.fmod(tag, 10) + (bold and 8 or 0)
+    end
     r, g, b = rgb_from_colortable(tag)
     if not r or not g or not b then
         return
@@ -1336,23 +1355,54 @@ local function color_segment_transition(color, symbol, close)
 
     local primary = swap and color or segmenter.back_color
     local secondary = swap and segmenter.back_color or color
-
     local out
-    if segmenter.style == "rainbow" then
-        if get_best_bg(segmenter.back_color) == get_best_bg(color) and segmenter.altseparator then
-            out = sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
-        elseif not symbol:find("^\x1b") then
-            if primary == flexprompt.colors.default then
-                out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary) .. ";7") .. symbol .. sgr("27")
+
+    if symbol == open_blur or symbol == close_blur then
+        if flexprompt.settings.dark_blur or flexprompt.settings.light_blur then
+            local pri_bg
+            local sec_bg
+            if primary.bg == "49" then
+                pri_bg = flexprompt.settings.dark_blur and "48;5;232" or "48;5;255"
+            else
+                pri_bg = get_best_bg(primary)
+            end
+            if secondary.bg == "49" then
+                sec_bg = flexprompt.settings.dark_blur and "48;5;232" or "48;5;255"
+            else
+                sec_bg = get_best_bg(secondary)
+            end
+            local width = math.max(flexprompt.settings.blur_width or 3, 1)
+            local slice = 1 / (width + 1)
+            out = ""
+            if symbol == open_blur then
+                for i = 1, width do
+                    out = out .. sgr(flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))) .. " "
+                end
+            else
+                for i = width, 1, -1 do
+                    out = out .. sgr(flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))) .. " "
+                end
             end
         end
     end
 
     if not out then
         if segmenter.style == "rainbow" then
-            out = sgr(get_best_fg(primary) .. ";" .. get_best_bg(secondary)) .. symbol
-        else
-            out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary)) .. symbol
+            if get_best_bg(segmenter.back_color) == get_best_bg(color) and segmenter.altseparator then
+                out = sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
+            elseif not symbol:find("^\x1b") then
+                if primary == flexprompt.colors.default then
+                    out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary) .. ";7") .. symbol .. sgr("27")
+                end
+            end
+        end
+
+        if not out then
+            if segmenter.style == "rainbow" then
+                out = sgr(get_best_fg(primary) .. ";" .. get_best_bg(secondary)) .. symbol
+            else
+                out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary)) .. symbol
+            end
         end
     end
 
