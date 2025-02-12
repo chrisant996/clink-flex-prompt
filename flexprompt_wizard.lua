@@ -6,6 +6,7 @@ local normal = "\x1b[m"
 local bold = "\x1b[1m"
 local brightgreen = "\x1b[92m"
 local brightyellow = "\x1b[93m"
+local brightblue = "\x1b[94m"
 local static_cursor = "\x1b[7m " .. normal
 
 local _transient
@@ -35,6 +36,14 @@ local function spairs(t, order)
             return keys[i], t[keys[i]]
         end
     end
+end
+
+local function make_hyperlink(display, address)
+    local hyperlink = ""
+    if display then
+        hyperlink = brightblue .. "\x1b]8;;" .. address .. "\a" .. display .. "\x1b]8;;\a" .. normal
+    end
+    return hyperlink
 end
 
 local function readinput()
@@ -422,7 +431,10 @@ local function choose_setting(settings, title, choices_name, setting_name, subse
     return s
 end
 
-local function choose_blur_effect(settings, title)
+local function choose_blur_effect(settings, title, end_name, callout)
+    local target = settings.fade_target
+
+::again::
     local choices = "" -- luacheck: ignore 311
     local preview
 
@@ -431,25 +443,32 @@ local function choose_blur_effect(settings, title)
     clear_screen()
     display_title(title)
     clink.print()
-    display_centered("Which blur effect looks better?")
-    clink.print("\n")
 
-    choices = "123"
+    choices = "12bw"
 
-    clink.print("(1)  Block graphics.\n")
-    display_preview(settings)
+    clink.print("(1)  No fade.\n")
+    preview = copy_table(settings)
+    preview.fade_target = target
+    display_preview(preview, nil, nil, callout)
     clink.print()
 
-    clink.print("(2)  Fade to black at the ends.\n")
+    clink.print("(2)  Fade.\n")
     preview = copy_table(settings)
-    preview.dark_blur = true
+    preview["fade_" .. end_name] = true
+    preview.fade_target = target
     display_preview(preview)
     clink.print()
 
-    clink.print("(3)  Fade to white at the ends.\n")
-    preview = copy_table(settings)
-    preview.light_blur = true
-    display_preview(preview)
+    if settings.style == "rainbow" then
+        clink.print()
+        clink.print("    " .. brightyellow .. "NOTE:" .. normal .. "  When using the Rainbow style with Windows Terminal, the fade")
+        clink.print("           colors may be inaccurate (see " .. make_hyperlink("Windows Terminal issue 10639", "https://github.com/microsoft/terminal/issues/10639") .. ").")
+        clink.print()
+        clink.print()
+    end
+
+    clink.print("(b)  Assume background is black when fading.")
+    clink.print("(w)  Assume background is white when fading.")
     clink.print()
 
     choices = display_restart(choices)
@@ -460,15 +479,22 @@ local function choose_blur_effect(settings, title)
 
     if s == "r" then -- luacheck: ignore 542
     elseif s == "q" then -- luacheck: ignore 542
-    elseif s == "2" then
-        settings.dark_blur = true
-    elseif s == "3" then
-        settings.light_blur = true
+    elseif s == "b" then
+        target = "48;5;232"
+        goto again
+    elseif s == "w" then
+        target = "48;5;255"
+        goto again
+    else
+        if s == "2" then
+            settings["fade_" .. end_name] = true
+        end
+        settings.fade_target = target
     end
     return s
 end
 
-local function choose_blur_width(settings, title)
+local function choose_fade_width(settings, title)
     local choices = "" -- luacheck: ignore 311
     local preview
 
@@ -477,38 +503,36 @@ local function choose_blur_width(settings, title)
     clear_screen()
     display_title(title)
     clink.print()
-    display_centered("Which blur width looks better?")
-    clink.print("\n")
 
     choices = "12345"
 
     clink.print("(1)  Very small.\n")
     preview = copy_table(settings)
-    preview.blur_width = 1
+    preview.fade_width = 1
     display_preview(preview)
     clink.print()
 
     clink.print("(2)  Small.\n")
     preview = copy_table(settings)
-    preview.blur_width = 2
+    preview.fade_width = 2
     display_preview(preview)
     clink.print()
 
     clink.print("(3)  Medium.\n")
     preview = copy_table(settings)
-    preview.blur_width = 3
+    preview.fade_width = 3
     display_preview(preview)
     clink.print()
 
     clink.print("(4)  Large.\n")
     preview = copy_table(settings)
-    preview.blur_width = 4
+    preview.fade_width = 4
     display_preview(preview)
     clink.print()
 
     clink.print("(5)  Very large.\n")
     preview = copy_table(settings)
-    preview.blur_width = 5
+    preview.fade_width = 5
     display_preview(preview)
     clink.print()
 
@@ -521,7 +545,7 @@ local function choose_blur_width(settings, title)
     if s == "r" then -- luacheck: ignore 542
     elseif s == "q" then -- luacheck: ignore 542
     elseif tonumber(s) then
-        settings.blur_width = tonumber(s)
+        settings.fade_width = tonumber(s)
     end
     return s
 end
@@ -1197,13 +1221,27 @@ local function config_wizard()
 
         -- Ask whether to use colored blur.
         if preview.use_8bit_color and console.getcolortable and
-                (preview.heads == "blurred" or preview.tails == "blurred") then
-            s = choose_blur_effect(preview, "Blur Style")
-            if not s or s == "q" then break end
-            if s == "r" then goto continue end
-
-            if preview.dark_blur or preview.light_blur then
-                s = choose_blur_width(preview, "Blur Width")
+                (preview.style == "classic" or preview.style == "rainbow") then
+            if flexprompt.is_powerline_cap(flexprompt.choices.caps[preview.heads]) then
+                callout = { 4, 2, "\x1b[1;33m↓\x1b[A\x1b[2Dhead\x1b[m" }
+                s = choose_blur_effect(preview, "Fade for Heads", "head", callout)
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
+            if flexprompt.is_powerline_cap(flexprompt.choices.caps[preview.tails]) then
+                callout = { 4, 3, "\x1b[1;33m↓\x1b[A\x1b[2Dtail\x1b[m" }
+                s = choose_blur_effect(preview, "Fade for Tails", "tail", callout)
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
+            if preview.style == "rainbow" and
+                    flexprompt.is_powerline_cap(flexprompt.choices.caps[preview.separators]) then
+                s = choose_blur_effect(preview, "Fade for Separators", "sep")
+                if not s or s == "q" then break end
+                if s == "r" then goto continue end
+            end
+            if preview.fade_head or preview.fade_sep or preview.fade_tail then
+                s = choose_fade_width(preview, "Fade Width")
                 if not s or s == "q" then break end
                 if s == "r" then goto continue end
             end

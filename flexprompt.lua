@@ -133,9 +133,6 @@ flexprompt.colors =
 --------------------------------------------------------------------------------
 -- Configuration.
 
-local open_blur  = "░▒▓"
-local close_blur = "▓▒░"
-
 flexprompt.choices = {}
 
 flexprompt.choices.charsets =
@@ -185,8 +182,25 @@ flexprompt.choices.caps =
     slant       = { "",    ""     },
     backslant   = { "",    ""     },
     round       = { "",    ""     },
-    blurred     = { open_blur, close_blur },
+    blurred     = { "░▒▓",  "▓▒░"   },
 }
+
+local powerline_open_caps = {}
+local powerline_close_caps = {}
+powerline_open_caps[flexprompt.choices.caps.pointed[1]]     = 1
+powerline_open_caps[flexprompt.choices.caps.slant[1]]       = 1
+powerline_open_caps[flexprompt.choices.caps.backslant[1]]   = 1
+powerline_open_caps[flexprompt.choices.caps.round[1]]       = 1
+powerline_open_caps[flexprompt.choices.caps.blurred[1]]     = 2
+powerline_open_caps[""]                                     = 3
+powerline_open_caps[" "]                                    = 3
+powerline_close_caps[flexprompt.choices.caps.pointed[2]]    = 1
+powerline_close_caps[flexprompt.choices.caps.slant[2]]      = 1
+powerline_close_caps[flexprompt.choices.caps.backslant[2]]  = 1
+powerline_close_caps[flexprompt.choices.caps.round[2]]      = 1
+powerline_close_caps[flexprompt.choices.caps.blurred[2]]    = 2
+powerline_close_caps[""]                                    = 3
+powerline_close_caps[" "]                                   = 3
 
 -- Only if style == classic.
 flexprompt.choices.separators =
@@ -1338,17 +1352,40 @@ local function init_segmenter(side, frame_color)
     segmenter.altseparator = resolve_separator(altseparators, altsep_index)
 end
 
-local function color_segment_transition(color, symbol, close)
+local function is_powerline_cap(symbol)
+    if type(symbol) == "table" then
+        return powerline_open_caps[symbol[1]] or powerline_close_caps[symbol[2]]
+    else
+        return powerline_open_caps[symbol] or powerline_close_caps[symbol]
+    end
+end
+
+local function get_fade_target_color()
+    local target = flexprompt.settings.fade_target
+    local color = (target == "light") and "48;5;255" or nil
+    if not color and type(target) == "string" and not target:find("[^0-9;]") then
+        color = target
+    end
+    return color or "48;5;232"
+end
+
+local function color_segment_transition(color, symbol, close, do_fade, breaking)
     if not symbol or symbol == "" then
-        return ""
+        if not do_fade then
+            return ""
+        end
     end
 
     local swap
-    if segmenter.style == "classic" then
+    local classic = segmenter.style == "classic"
+    local rainbow = segmenter.style == "rainbow"
+    if classic then
         swap = close
-    elseif segmenter.style == "rainbow" then
+    elseif rainbow then
         swap = not close
-        if not segmenter.open_cap and not close and segmenter.side == 0 then
+        if not segmenter.open_cap and not close and
+                ((segmenter.side == 0 and not breaking) or
+                 (segmenter.side == 1 and breaking)) then
             swap = false
         end
     end
@@ -1357,37 +1394,92 @@ local function color_segment_transition(color, symbol, close)
     local secondary = swap and segmenter.back_color or color
     local out
 
-    if symbol == open_blur or symbol == close_blur then
-        if flexprompt.settings.dark_blur or flexprompt.settings.light_blur then
-            local pri_bg
-            local sec_bg
-            if primary.bg == "49" then
-                pri_bg = flexprompt.settings.dark_blur and "48;5;232" or "48;5;255"
-            else
-                pri_bg = get_best_bg(primary)
-            end
-            if secondary.bg == "49" then
-                sec_bg = flexprompt.settings.dark_blur and "48;5;232" or "48;5;255"
-            else
-                sec_bg = get_best_bg(secondary)
-            end
-            local width = math.max(flexprompt.settings.blur_width or 3, 1)
-            local slice = 1 / (width + 1)
-            out = ""
-            if symbol == open_blur then
-                for i = 1, width do
-                    out = out .. sgr(flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))) .. " "
+    if do_fade then
+        if flexprompt.settings[do_fade] then
+            local captype = is_powerline_cap(symbol)
+            if captype then
+                local pri_bg, pri_bg_raw
+                local sec_bg, sec_bg_raw
+                pri_bg_raw = get_best_bg(primary)
+                sec_bg_raw = get_best_bg(secondary)
+                if primary.bg == "49" then
+                    pri_bg = get_fade_target_color()
+                else
+                    pri_bg = pri_bg_raw
                 end
-            else
-                for i = width, 1, -1 do
-                    out = out .. sgr(flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))) .. " "
+                if secondary.bg == "49" then
+                    sec_bg = get_fade_target_color()
+                else
+                    sec_bg = sec_bg_raw
+                end
+                if rainbow and not (do_fade == "fade_sep" and ((not breaking) ~= (segmenter.side == 1))) then
+                    local tmp
+                    tmp = pri_bg
+                    pri_bg = sec_bg
+                    sec_bg = tmp
+                    tmp = pri_bg_raw
+                    pri_bg_raw = sec_bg_raw
+                    sec_bg_raw = tmp
+                end
+                if captype >= 2 then
+                    -- 2 is the "blurred" cap style; 3 is a flat cap style.  Use a
+                    -- series of spaces with a gradient of background colors.
+                    local width = math.max(flexprompt.settings.fade_width or 3, 1)
+                    local slice = 1 / (width + 1)
+                    out = ""
+                    if not close or (rainbow and do_fade == "fade_sep") then
+                        for i = 1, width do
+                            out = out .. sgr("0;" .. flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))) .. " "
+                        end
+                    else
+                        for i = width, 1, -1 do
+                            out = out .. sgr("0;" .. flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))) .. " "
+                        end
+                    end
+                elseif captype == 1 then
+                    -- One of the powerline cap styles.  Use the cap character
+                    -- with a gradient of color transitions.
+                    local width = math.max(flexprompt.settings.fade_width or 3, 1)
+                    local slice = 1 / (width + 1)
+                    out = ""
+                    if rainbow and do_fade == "fade_sep" and ((segmenter.side == 0) == (not breaking)) then
+                        local prev_fg = pri_bg
+                        local lo, hi = 1, width + 1
+                        for i = lo, hi do
+                            local next_bg = flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))
+                            local next_bg_raw = (i == lo and pri_bg_raw == "49" and pri_bg_raw) or (i == hi and sec_bg_raw == "49" and sec_bg_raw) or next_bg
+                            prev_fg = prev_fg:gsub("^4", "3")
+                            out = out .. sgr("0;" .. prev_fg .. ";" .. next_bg_raw) .. symbol
+                            prev_fg = next_bg
+                        end
+                    elseif not close and not (breaking and segmenter.side == 1) then
+                        local prev_bg = pri_bg
+                        local lo, hi = 1, width + 1
+                        for i = lo, hi do
+                            local next_bg = flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))
+                            local next_fg = next_bg:gsub("^4", "3")
+                            prev_bg = (i == lo and pri_bg_raw == "49" and pri_bg_raw) or ((i == hi or breaking) and sec_bg_raw == "49" and sec_bg_raw) or prev_bg
+                            out = out .. sgr("0;" .. prev_bg .. ";" .. next_fg) .. symbol
+                            prev_bg = next_bg
+                        end
+                    else
+                        local prev_fg = sec_bg
+                        local hi, lo = width, 0
+                        for i = hi, lo, -1 do
+                            local next_bg = flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))
+                            local next_bg_raw = (i == hi and sec_bg_raw == "49" and sec_bg_raw) or (i == lo and pri_bg_raw == "49" and pri_bg_raw) or next_bg
+                            prev_fg = prev_fg:gsub("^4", "3")
+                            out = out .. sgr("0;" .. prev_fg .. ";" .. next_bg_raw) .. symbol
+                            prev_fg = next_bg
+                        end
+                    end
                 end
             end
         end
     end
 
     if not out then
-        if segmenter.style == "rainbow" then
+        if rainbow then
             if get_best_bg(segmenter.back_color) == get_best_bg(color) and segmenter.altseparator then
                 out = sgr(get_best_fg(segmenter.frame_color[fc_sep])) .. segmenter.altseparator
             elseif not symbol:find("^\x1b") then
@@ -1398,7 +1490,7 @@ local function color_segment_transition(color, symbol, close)
         end
 
         if not out then
-            if segmenter.style == "rainbow" then
+            if rainbow then
                 out = sgr(get_best_fg(primary) .. ";" .. get_best_bg(secondary)) .. symbol
             else
                 out = sgr(get_best_bg(primary) .. ";" .. get_best_fg(secondary)) .. symbol
@@ -1407,7 +1499,7 @@ local function color_segment_transition(color, symbol, close)
     end
 
     if flexprompt.debug_logging then
-        log.info(string.format('transition "%s", close %d, side %d, ', out, close, segmenter.side))
+        log.info(string.format('transition "%s", close %d, side %d', out, close, segmenter.side))
     end
     return out
 end
@@ -1435,8 +1527,26 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
     local classic = segmenter.style == "classic"
     local rainbow = segmenter.style == "rainbow"
 
-    if segmenter.open_cap then
-        sep = segmenter.open_cap
+    local opening = segmenter.open_cap
+    local closing = not text
+    local breaking = ((segmenter.side == 0 and wasbreak) or (segmenter.side == 1 and isbreak))
+    if opening or closing or breaking then
+        if opening then
+            sep = segmenter.open_cap
+        elseif closing then
+            sep = segmenter.close_cap
+        else
+            local charset = get_charset()
+            local available_caps = (charset == "ascii") and flexprompt.choices.ascii_caps or flexprompt.choices.caps
+            local cap = available_caps[flexprompt.settings.separators]
+            if cap then
+                local which = 2 - segmenter.side
+                if breaking then
+                    which = 3 - which
+                end
+                sep = cap[which]
+            end
+        end
         if not rainbow then
             transition_color = segmenter.frame_color[fc_back]
             back = get_best_bg(segmenter.frame_color[fc_back])
@@ -1459,17 +1569,6 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
         segmenter.override_style = nil
     end
 
-    local pad = (segmenter.style == "lean" -- Lean has no padding.
-                 or text == "") -- Segment with empty string has no padding.
-                 and "" or " "
-
-    if not text then
-        if segmenter.style ~= "lean" and not segmenter.open_cap then
-            out = out .. color_segment_transition(color, segmenter.close_cap, true)
-        end
-        return out
-    end
-
     local override_back_color
     if classic and text == "" then
         local charset = get_charset()
@@ -1486,22 +1585,70 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
         end
     end
 
+    local do_fade
+    if closing then
+        if breaking then
+            if flexprompt.settings.fade_sep then
+                do_fade = "fade_sep"
+            end
+        elseif segmenter.side == 0 then
+            if flexprompt.settings.fade_head then
+                do_fade = "fade_head"
+            end
+        elseif segmenter.side == 1 then
+            if flexprompt.settings.fade_tail then
+                do_fade = "fade_tail"
+            end
+        end
+    elseif opening then
+        if segmenter.side == 0 then
+            if flexprompt.settings.fade_tail then
+                do_fade = "fade_tail"
+            end
+        elseif segmenter.side == 1 then
+            if flexprompt.settings.fade_head then
+                do_fade = "fade_head"
+            end
+        end
+    else
+        if rainbow and flexprompt.settings.fade_sep then
+            do_fade = "fade_sep"
+        end
+    end
+    if do_fade then
+        do_fade = is_powerline_cap(sep) and do_fade
+    end
+
+    local pad = (segmenter.style == "lean" -- Lean has no padding.
+                 or text == "") -- Segment with empty string has no padding.
+                 and "" or " "
+
+    if closing then
+        if segmenter.style ~= "lean" and not opening then
+            out = out .. color_segment_transition(color, segmenter.close_cap, true, do_fade)
+        end
+        return out
+    end
+
+    -- breaking = do_fade and breaking
     if override_style then
         local restore_style = segmenter.style
         segmenter.style = override_style
-        out = out .. color_segment_transition(transition_color, sep)
+        out = out .. color_segment_transition(transition_color, sep, false, do_fade, breaking)
         segmenter.style = restore_style
     else
-        out = out .. color_segment_transition(transition_color, sep)
+        out = out .. color_segment_transition(transition_color, sep, false, do_fade, breaking)
     end
     if fore then
         out = out .. sgr(back .. ";" .. fore)
     end
 
     -- A module with an empty string is a segment break.  When there's no
-    -- separator, force a break by showing one connector character using the
-    -- frame color.
-    if text == "" and sep:gsub(" ", "") == "" then
+    -- separator or a blurred separator, force a break by showing one
+    -- connector character using the frame color.
+    if text == "" and sep and (sep:gsub(" ", "") == "" or
+            (sep == flexprompt.choices.caps.blurred[1] or
+             sep == flexprompt.choices.caps.blurred[2])) then
         local connector = get_connector()
         text = make_fluent_text(sgr(flexprompt.colors.default.bg .. ";" .. get_best_fg(segmenter.frame_color[fc_frame])) .. connector)
     end
@@ -1524,7 +1671,7 @@ local function next_segment(text, color, rainbow_text_color, isbreak, pending_se
 
     -- Add leading pad character.  Except in classic style if two segments are
     -- immediately adjacent; in that case it would look like double-padding.
-    if pad ~= "" and not (classic and not wasbreak and (sep == "" or sep == " ") and not segmenter.open_cap) then
+    if pad ~= "" and not (classic and not wasbreak and (sep == "" or sep == " ") and not opening) then
         out = out .. pad
     end
 
@@ -2431,6 +2578,9 @@ flexprompt.abbrev_path = abbrev_path
 -- between.  If either string is empty or nil, the other string is returned
 -- (without appending them).
 flexprompt.append_text = append_text
+
+-- Function that returns whether an end cap style supports 24-bit color fading.
+flexprompt.is_powerline_cap = is_powerline_cap
 
 -- Function that returns whether the prompt settings include the name module.
 -- Returns 1 if in left, 2 if in right, or 3 if in both.
