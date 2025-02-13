@@ -47,7 +47,7 @@ Here are some recommended fonts to consider:
 - [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
 - And there are many other fonts to have fun with -- enjoy!
 
-> **NOTE:**  Most Nerd Fonts have multiple variations of the font included.  The `flexprompt configure` wizard asks questions to figure out which variation of Nerd Font you're using (if any).
+> [!NOTE]  Most Nerd Fonts have multiple variations of the font included.  The `flexprompt configure` wizard asks questions to figure out which variation of Nerd Font you're using (if any).
 > - Variations named "Nerd Font Mono" or "NF Mono" have small icons that take up only 1 cell (e.g. "RobotoMono **Nerd Font Mono** Medium").
 > - Variations named just "Nerd Font" without "Mono" have larger double width icons that take up 2 cells (e.g. "RobotoMono **Nerd Font** Medium").
 
@@ -154,7 +154,8 @@ flexprompt.settings.right_prompt = "{exit:always}{duration:format=colons:tenths}
 flexprompt.settings.style = "classic"
 ```
 
-> **Note:** The `flexprompt configure` wizard lets you choose a "Bubbles" style.  The "Bubbles" style is designed for use with `flexprompt.settings.style = "lean"`; there is not a separate `"bubbles"` style.
+> [!NOTE]
+> The `flexprompt configure` wizard lets you choose a "Bubbles" style.  The "Bubbles" style is designed for use with `flexprompt.settings.style = "lean"`; there is not a separate `"bubbles"` style.
 
 ## Charset
 - `"ascii"` uses only ASCII characters, and is compatible with all fonts; text copy/pasted from the terminal display will look right everywhere.
@@ -230,6 +231,49 @@ flexprompt.settings.tails = "flat"
 flexprompt.settings.heads = "blurred"
 ```
 
+## Extended Colors
+Some terminal programs support 8-bit and 24-bit colors.
+
+When extended colors are available, then in addition to more colors being
+available it also becomes possible to add "fade" effects for separators,
+tails, or heads.
+
+If this isn't set, then it's assumed to be true only for Windows Terminal and
+the legacy conhost (when ConsoleV2 mode is enabled, which it is by default in
+Windows 10 and newer).
+
+```lua
+flexprompt.settings.use_8bit_color = true
+```
+
+## Fading Separators, Tails, or Heads
+When [extended colors](#extended-colors) are available, then "fade" effects
+can be applied to separators, tails or heads.
+
+```lua
+-- fade_target sets what color the fade effects fade out to.  Typically it
+-- makes sense to set this to indicate the terminal's background color.  If
+-- this isn't set, then black is assumed.  (Windows Terminal doesn't yet have
+-- a way to get the background color.)
+flexprompt.settings.fade_target = "light"   -- Assume white.
+flexprompt.settings.fade_target = "dark"    -- Assume black
+flexprompt.settings.fade_target = ...       -- An ANSI escape code SGR arguments string (e.g. `"31"` is red text).
+
+-- Fade heads from their segment's color to the fade_target color.
+flexprompt.settings.fade_head = true
+
+-- Fade tails from their segment's color to the fade_target color.
+flexprompt.settings.fade_tail = true
+
+-- Fade separators from the previous segment's color to the next segment's color.
+flexprompt.settings.fade_sep = true
+
+-- The width for the fade effect.  The fade effect uses this many character
+-- cells to fade from the segment's color to the fade_target color.  If this
+-- isn't set, then 3 is assumed.
+flexprompt.settings.fade_width = 2
+```
+
 ## Lines
 - `"one"` uses a single line.  Any right-side prompt modules are shown if there is room, and if the input text hasn't reached them.
 - `"two"` uses two lines.  The first line shows the prompt modules, and the second line is for input text.
@@ -280,7 +324,8 @@ flexprompt.settings.right_frame = { "═╗", "◄───╜" }
 flexprompt.settings.spacing = "sparse"
 ```
 
-> **Note:** Clink v1.6.1 and higher have built-in support for a [`prompt.spacing`](https://chrisant996.github.io/clink/clink.html#prompt_spacing) setting, so `flexprompt.settings.spacing` is deprecated and ignored now.  The `flexprompt configure` wizard will also automatically set Clink's `prompt.spacing` setting appropriately now.
+> [!NOTE]
+> Clink v1.6.1 and higher have built-in support for a [`prompt.spacing`](https://chrisant996.github.io/clink/clink.html#prompt_spacing) setting, so `flexprompt.settings.spacing` is deprecated and ignored now.  The `flexprompt configure` wizard will also automatically set Clink's `prompt.spacing` setting appropriately now.
 
 ## Flow
 - `"concise"` shows minimal text for each prompt module.
@@ -310,7 +355,8 @@ flexprompt.settings.left_prompt = "{battery}{cwd}{git}{k8s}{npm}"
 flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 ```
 
-> **Note:**  If the top prompt uses a different style and a module appears in both the top prompt and the left or right prompts, then the module's colors in the top prompt will be used for the module in the left or right prompt.  This happens because flexprompt only runs module's render function once, for efficiency, and the render function specifies the colors to use.  It's very unusual for a module to show up more than once, so generally it shouldn't be a problem.
+> [!NOTE]
+> If the top prompt uses a different style and a module appears in both the top prompt and the left or right prompts, then the module's colors in the top prompt will be used for the module in the left or right prompt.  This happens because flexprompt only runs each module's render function once, for efficiency, and the render function specifies the colors to use.  It's very unusual for a module to show up more than once, so generally it shouldn't be a problem.
 
 ## On Commands
 
@@ -327,11 +373,23 @@ flexprompt.settings.oncommands = "moduleA=command1,moduleA=command2,moduleB=comm
 ## Miscellaneous Settings
 
 ```lua
--- Use all available icons:
+-- Use Powerline icons for heads, tails, etc (the font must support them,
+-- otherwise this won't look right):
+flexprompt.settings.powerline_font = true
+
+-- Nerd Fonts version:  (e.g. NF version 3.0.0 and higher rearranged the icons)
+flexprompt.settings.nerdfonts_version = 3
+-- Nerd Fonts width:  (set to 1 to indicate font has mono width icons, or 2 to indicate double-width icons)
+flexprompt.settings.nerdfonts_width = 2
+
+-- Use all available module icons:
 flexprompt.settings.use_icons = true
 -- Use icons only for the time and exit modules, and specifically disable icons for git:
 -- This can be set in 2 ways, you can use ["key"] = true notation or key = true (no quotes)
 flexprompt.settings.use_icons = { time_module = true, ["exit_module"] = true, git = false }
+
+-- Override certain icons with color emoji in Windows Terminal:
+flexprompt.settings.use_color_emoji = true
 
 -- Enables battery level refresh in prompt:
 flexprompt.settings.battery_idle_refresh = 30 -- every 30 seconds
@@ -377,17 +435,6 @@ flexprompt.settings.take_optional_locks = true
 
 -- Disable detection of unpublished branches:
 flexprompt.settings.dont_check_unpublished = true
-
--- Nerd Fonts version:  (e.g. NF version 3.0.0 and higher rearranged the icons)
-flexprompt.settings.nerdfonts_version = 3
--- Nerd Fonts width:  (set to 1 to indicate font has mono width icons, or 2 to indicate double-width icons)
-flexprompt.settings.nerdfonts_width = 2
-
--- Override certain icons with color emoji in Windows Terminal:
-flexprompt.settings.use_color_emoji = true
-
--- Use Powerline icons (the font must support them):
-flexprompt.settings.powerline_font = true
 
 -- Supersede other settings and try to avoid displaying graphics that may not exist in all fonts.
 flexprompt.settings.no_graphics = true
