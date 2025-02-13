@@ -47,7 +47,8 @@ Here are some recommended fonts to consider:
 - [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
 - And there are many other fonts to have fun with -- enjoy!
 
-> [!NOTE]  Most Nerd Fonts have multiple variations of the font included.  The `flexprompt configure` wizard asks questions to figure out which variation of Nerd Font you're using (if any).
+> [!NOTE]
+> Most Nerd Fonts have multiple variations of the font included.  The `flexprompt configure` wizard asks questions to figure out which variation of Nerd Font you're using (if any).
 > - Variations named "Nerd Font Mono" or "NF Mono" have small icons that take up only 1 cell (e.g. "RobotoMono **Nerd Font Mono** Medium").
 > - Variations named just "Nerd Font" without "Mono" have larger double width icons that take up 2 cells (e.g. "RobotoMono **Nerd Font** Medium").
 
