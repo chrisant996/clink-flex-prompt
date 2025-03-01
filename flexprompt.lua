@@ -2382,6 +2382,9 @@ flexprompt.get_frame = get_frame
 -- Function to get the prompt style.
 flexprompt.get_style = get_style
 
+-- Function to get the prompt charset.
+flexprompt.get_charset = get_charset
+
 -- Function to get the prompt line count.
 flexprompt.get_lines = get_lines
 
