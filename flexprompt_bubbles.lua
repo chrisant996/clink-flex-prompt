@@ -775,7 +775,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                         branch = resolve_fluent_colors(modified, bc.fg_fluent, status_color)
                     end
                 end
-                if shorten then
+                if branch and shorten then
                     local target = math.max(console.getwidth() / 4, 20)
                     if console.cellcount(branch) > target then
                         branch = ellipsify(branch, target - 4, status_color) .. branch:sub(-4)
