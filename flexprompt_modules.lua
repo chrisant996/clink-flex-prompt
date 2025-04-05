@@ -1645,6 +1645,18 @@ local function get_virtual_env(env_var)
     return venv
 end
 
+local function get_python_version()
+    local version = clink.get_env("PYTHON_VERSION")
+    if not version then
+        local file = io.popen("python --version 2>&1")
+        if file then
+            version = file:read("*a") or ""
+            file:close()
+        end
+    end
+    return version and version:match("Python%s+([%d%.]+)") or nil
+end
+
 local function has_py_files(dir)
     return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
         for _ in pairs(os.globfiles(path.join(dir, "*.py"))) do -- luacheck: ignore 512
@@ -1661,6 +1673,11 @@ local function render_python(args)
     local always = flexprompt.parse_arg_keyword(args, "a", "always")
     if not always and not has_py_files() then return end
 
+    local python_version = get_python_version()
+    if python_version then
+        venv = venv .. " " .. python_version
+    end
+
     local text = "[" .. venv .. "]"
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
 
@@ -1669,12 +1686,14 @@ local function render_python(args)
 end
 
 --------------------------------------------------------------------------------
--- Golang MODULE:  {go:always:color=color_name,alt_color_name}
+-- Golang MODULE:  {go:always:mod:color=color_name,alt_color_name}
+--  - 'always' shows the golang module even if there are no go files.
+--  - 'module' shows the go.mod version number.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 --
 
-local function get_golan_version()
+local function get_golang_version()
     local version = clink.get_env("GOLANG_VERSION")
     if not version then
         local file = io.popen("go version 2>&1")
@@ -1683,28 +1702,57 @@ local function get_golan_version()
             file:close()
         end
     end
-    return version and version:match("go%s+version%s+(go[%d%.]+)") or nil
+    return version and version:match("go%s+version%s+go([%d%.]+)") or nil
+end
+
+local function get_gomod_version(dir)
+    local mod_filename = path.join(dir, "go.mod")
+    local file = io.open(mod_filename)
+    if file then
+        local mod_file = file:read("*a") or ""
+        file:close()
+        local version = mod_file:match("go%s+([%d%.]+)")
+        return version or true
+    end
 end
 
 local function has_go_files()
     return flexprompt.scan_upwards(os.getcwd(), function (dir) -- luacheck: ignore 432
-        for _ in pairs(os.globfiles(path.join(dir, "*.go"))) do -- luacheck: ignore 512
-            return true
+        local version = get_gomod_version(dir)
+        if version then
+            return version
         end
-        for _ in pairs(os.globfiles(path.join(dir, "go.mod"))) do -- luacheck: ignore 512
+        for _ in pairs(os.globfiles(path.join(dir, "*.go"))) do -- luacheck: ignore 512
             return true
         end
     end)
 end
 
-local function render_golang()
-    local always = flexprompt.parse_arg_keyword(args, "a", "always")
-    if not always and not has_go_files() then return end
+local function render_golang(args)
+    local always = flexprompt.parse_arg_keyword(args, "always")
+    local mod = flexprompt.parse_arg_keyword(args, "module")
+    local gomod_version = has_go_files()
 
-    local go_version = get_golan_version()
+    if not always and not gomod_version then return end
+
+    local go_version = get_golang_version()
     if not go_version then return end
 
-    local text = "{" .. go_version .. "}"
+    local text = ""
+
+   if flexprompt.get_flow() == "fluent" then
+        text = flexprompt.append_text(flexprompt.make_fluent_text("go"), go_version)
+        if mod and gomod_version and type(gomod_version) == "string" then
+            mod_text = flexprompt.append_text(flexprompt.make_fluent_text("mod"), gomod_version)
+            text = flexprompt.append_text(text, mod_text)
+        end
+    else
+        text = "{go" .. go_version .. "}"
+        if mod and gomod_version and type(gomod_version) == "string" then
+            text = text .. "-[mod" .. gomod_version .. "]"
+        end
+    end
+
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
 
     local color, altcolor = parse_color_token(args, { "c", "color", "mod_cyan" })
