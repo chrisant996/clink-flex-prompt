@@ -1669,6 +1669,49 @@ local function render_python(args)
 end
 
 --------------------------------------------------------------------------------
+-- Golang MODULE:  {go:always:color=color_name,alt_color_name}
+--  - color_name is a name like "green", or an sgr code like "38;5;60".
+--  - alt_color_name is optional; it is the text color in rainbow style.
+--
+
+local function get_golan_version()
+    local version = clink.get_env("GOLANG_VERSION")
+    if not version then
+        local file = io.popen("go version 2>&1")
+        if file then
+            version = file:read("*a") or ""
+            file:close()
+        end
+    end
+    return version and version:match("go%s+version%s+(go[%d%.]+)") or nil
+end
+
+local function has_go_files()
+    return flexprompt.scan_upwards(os.getcwd(), function (dir) -- luacheck: ignore 432
+        for _ in pairs(os.globfiles(path.join(dir, "*.go"))) do -- luacheck: ignore 512
+            return true
+        end
+        for _ in pairs(os.globfiles(path.join(dir, "go.mod"))) do -- luacheck: ignore 512
+            return true
+        end
+    end)
+end
+
+local function render_golang()
+    local always = flexprompt.parse_arg_keyword(args, "a", "always")
+    if not always and not has_go_files() then return end
+
+    local go_version = get_golan_version()
+    if not go_version then return end
+
+    local text = "{" .. go_version .. "}"
+    text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
+
+    local color, altcolor = parse_color_token(args, { "c", "color", "mod_cyan" })
+    return text, color, altcolor
+end
+
+--------------------------------------------------------------------------------
 -- SCM MODULE:  {scm:nostaged:noaheadbehind:counts:color_options}
 --  - 'noaheadbehind' omits the ahead/behind details.
 --  - 'noconflict' omits conflict info.
@@ -2350,6 +2393,7 @@ flexprompt.add_module( "duration",      render_duration,    { coloremoji="⌛", 
 flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
 flexprompt.add_module( "git",           render_git,         { nerdfonts2={""," "}, nerdfonts3={""," "} } )
+flexprompt.add_module( "go",            render_golang,      { nerdfonts2={"󰟓","󰟓 "}, nerdfonts3={""," "} } )
 flexprompt.add_module( "hg",            render_hg                           )
 flexprompt.add_module( "histlabel",     render_histlabel,   { nerdfonts2={""," "}, nerdfonts3={""," "} } )
 flexprompt.add_module( "k8s",           render_k8s,         { nerdfonts2={"ﴱ","ﴱ "}, nerdfonts3={"󰠳","󰠳 "} } )
