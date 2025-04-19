@@ -481,6 +481,7 @@ update_battery_prompt = function()
     while true do
         local level, _, _, acpower = get_battery_status()
         if prev_battery_level ~= level or prev_battery_acpower ~= acpower then
+            flexprompt.refilter_module("lbubble")
             clink.refilterprompt()
         end
         coroutine.yield()

@@ -148,6 +148,7 @@ local function admin_onbeginedit()
                     end
                     if is_admin ~= _cached_state.is_admin then
                         _cached_state.is_admin = is_admin
+                        flexprompt.refilter_module("admin")
                         clink.refilterprompt()
                     end
                 end
@@ -443,6 +444,7 @@ local function update_battery_prompt(levelicon, onlyicon)
     while true do
         local status,level = get_battery_status(levelicon, onlyicon)
         if prev_battery_status ~= status or prev_battery_level ~= level then
+            flexprompt.refilter_module("battery")
             clink.refilterprompt()
         end
         coroutine.yield()

@@ -873,8 +873,18 @@ end
 local _refilter_modules
 local _module_results = {}
 local function refilter_module(module)
-    _refilter_modules = _refilter_modules or {}
-    _refilter_modules[module] = true
+    if module then
+        _refilter_modules = _refilter_modules or {}
+        _refilter_modules[module] = true
+    else
+        _refilter_modules = nil
+    end
+end
+
+local function dont_refilter_module(module)
+    if _refilter_modules and not _refilter_modules[module] then
+        return true
+    end
 end
 
 local function reset_render_state(keep_results)
@@ -883,10 +893,6 @@ local function reset_render_state(keep_results)
     _nerdfonts_version = nil
     _nerdfonts_width = nil
     _wizard = nil
-    _refilter_modules = nil
-    if not keep_results then
-        _module_results = {}
-    end
 end
 
 local list_on_reset_render_state = {}
@@ -1702,6 +1708,7 @@ local function promptcoroutine_manager()
         for _,entry in pairs(_cached_state.coroutines) do
             entry.func(true--[[async]])
         end
+        flexprompt.refilter_module(nil) -- nil forces refiltering all modules.
     end
 end
 
@@ -1797,6 +1804,8 @@ local function normalize_segment_table(t)
     end
 end
 
+local _debug_refiltered
+
 local function render_module(name, args, try_condense)
     local key = string.lower(name)
     local results = _module_results[key]
@@ -1824,10 +1833,12 @@ local function render_module(name, args, try_condense)
         return results
     end
 
-    if _refilter_modules and not _refilter_modules[key] then
-        if results then
-            return results
-        end
+    if results and dont_refilter_module(key) then
+        return results
+    end
+
+    if _debug_refiltered then
+        table.insert(_debug_refiltered, key)
     end
 
     local func = modules[key]
@@ -1836,7 +1847,7 @@ local function render_module(name, args, try_condense)
         local a, b, c = func(args)
         log_cost(tick, key)
         if a == nil then
-            results = nil
+            results = {}
         elseif type(a) ~= "table" then
             -- Not a table means func() returned up to 3 strings.
             results = { { text=a, color=b, altcolor=c } }
@@ -1854,11 +1865,11 @@ local function render_module(name, args, try_condense)
             for _, t in ipairs(a) do
                 table.insert(results, normalize_segment_table(t))
             end
-            if #results == 0 then
-                results = nil
-            end
         end
         _module_results[key] = results
+        if #results == 0 then
+            results = nil
+        end
         return results
     end
 end
@@ -2022,6 +2033,11 @@ local function render_prompts(render_settings, need_anchors, condense)
     -- Padding around left/right segments for lean style.
     local pad_frame = (style == "lean") and " " or ""
 
+    _debug_refiltered = nil
+    if os.getenv("FLEXPROMPT_DEBUG_REFILTER") then
+        _debug_refiltered = {}
+    end
+
     -- Top -------------------------------------------------------------------
 
     if top_prompt then
@@ -2167,6 +2183,25 @@ local function render_prompts(render_settings, need_anchors, condense)
     if try_condense and can_condense and not condense then
         prompt, rprompt, anchors = render_prompts(render_settings, need_anchors, true--[[condense]])
     end
+
+    if not condense then
+        _refilter_modules = nil
+    end
+
+    if _debug_refiltered then
+        local msg
+        for _, m in ipairs(_debug_refiltered) do
+            if msg then
+                msg = msg .. ", "
+            else
+                msg = "REFILTERED: "
+            end
+            msg = msg .. m
+        end
+        clink.print("\x1b[s\x1b[H\x1b[0;41;97m" .. (msg or "") .. "\x1b[K\x1b[m\x1b[u", NONL)
+        _debug_refiltered = nil
+    end
+
     return prompt, rprompt, anchors
 end
 
@@ -3347,6 +3382,8 @@ local function onbeginedit()
     _cached_state = {}
 
     reset_render_state()
+    _refilter_modules = nil
+    _module_results = {}
 
     duration_onbeginedit()
     time_onbeginedit()
@@ -3372,6 +3409,7 @@ end
 local function oncommand(line_state, info) -- luacheck: no unused
     if flexprompt.settings.oncommands then
         _cached_state.command = path.getbasename(info.command):lower()
+        flexprompt.refilter_module(nil) -- nil forces refiltering all modules.
         clink.refilterprompt()
     end
 end
