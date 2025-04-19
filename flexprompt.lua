@@ -782,6 +782,7 @@ end
 local function get_icon(name)
     if flexprompt.settings.no_graphics or not flexprompt.settings.use_icons then return "" end
     if type(flexprompt.settings.use_icons) == "table" and not flexprompt.settings.use_icons[name] then return "" end
+    if flexprompt.settings.can_animate_refresh and name == "refresh" then return "" end
 
     return get_symbol(name)
 end
@@ -1712,6 +1713,79 @@ local function promptcoroutine_manager()
     end
 end
 
+local function refilter_if_refresh_icon()
+    local replace = flexprompt.get_icon("refresh")
+    if replace and replace ~= "" then
+        local any
+        for module, results in pairs(_module_results) do
+            for _, segment in ipairs(results) do
+                if segment.text and segment.text:find(replace, 1, true--[[plain]]) then
+                    flexprompt.refilter_module(module)
+                    any = true
+                end
+            end
+        end
+        return any
+    end
+end
+
+local _last_clock
+local _last_index
+local _animation_lists = {
+    ascii    = { "/", "-", "\\" },
+    unicode  = { "⠇", "⠋", "⠙", "⠸", "⠴", "⠦" }, -- Braille letters.
+    --firacode = { "", "", "", "", "", "" }, -- Fira Code progress circle.
+}
+local _animation_intervals = {
+    initial  = 0.1,
+    backoff  = 5,
+    delta    = 0.05,
+    max      = 0.5,
+    current  = nil,
+}
+local _animating
+local _animation_coroutine
+
+local function animate_refreshing_icons()
+    _animating = true
+    local started = os.clock()
+    local interval = _animation_intervals.current
+    while refilter_if_refresh_icon() do
+        clink.refilterprompt()
+        coroutine.yield()
+        if _animation_coroutine ~= coroutine.running() then
+            -- A different animation coroutine is active, so abandon this one.
+            -- Don't clear _animating because it's already been updated.
+            return
+        end
+        local elapsed = os.clock() - started
+        if elapsed > _animation_intervals.backoff then
+            interval = interval + _animation_intervals.delta
+            if interval <= _animation_intervals.max then
+                _animation_intervals.current = interval
+                clink.setcoroutineinterval(coroutine.running(), interval)
+                started = os.clock()
+            end
+        end
+    end
+    _animating = nil
+    _animation_intervals.current = nil
+end
+
+local function get_refreshing_animated_icon()
+    local now = os.clock()
+    local list = _animation_lists[flexprompt.get_charset() or "ascii"]
+    if not _last_clock or now - _last_clock >= _animation_intervals.current then
+        _last_clock = now
+        if _last_index then
+            _last_index = (_last_index + 1) % #list
+        else
+            _last_index = 0
+        end
+    end
+    return list[_last_index + 1]
+end
+
 local function promptcoroutine(func)
     if not segmenter._current_module then return end
 
@@ -1979,6 +2053,24 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
 
     if flexprompt.debug_logging then
         log.info('END render_modules')
+    end
+
+    if flexprompt.settings.can_animate_refresh then
+        local replace = flexprompt.get_icon("refresh")
+        if replace and replace ~= "" then
+            if not _animating and out:find(replace, 1, true--[[plain]]) then
+                _animating = true
+                _animation_coroutine = coroutine.create(animate_refreshing_icons)
+                _last_clock = nil
+                _last_index = nil
+                _animation_intervals.current = _animation_intervals.initial
+                clink.setcoroutineinterval(_animation_coroutine, _animation_intervals.current)
+            end
+            if _animating then
+                local with = get_refreshing_animated_icon()
+                out = out:gsub(replace, with)
+            end
+        end
     end
 
     return out, any_condense_callbacks
@@ -3382,6 +3474,9 @@ local function onbeginedit()
     _cached_state = {}
 
     reset_render_state()
+    _animating = nil
+    _animation_intervals.current = nil
+    _animation_coroutine = nil
     _refilter_modules = nil
     _module_results = {}
 
