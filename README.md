@@ -138,10 +138,17 @@ flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 > [!TIP]
 > You can search for "MODULE:" in [flexprompt_modules.lua](flexprompt_modules.lua) to find the available options for each module (including colors).
 
-Some examples:
+Example 1, with various config options:
 ```lua
 flexprompt.settings.left_prompt = "{battery:onlyicon}{user:type=computer}{cwd:color=magenta:type=folder}{git:nountracked:staged=blue}"
 flexprompt.settings.right_prompt = "{exit:always}{duration:format=colons:tenths}{time:format=%a %h %e %R}"
+```
+
+Example 2, with various color config options:
+```lua
+flexprompt.settings.style = "rainbow"
+flexprompt.settings.left_prompt = "{cwd:color=38;5;42,black}{git:clean=green:conflict=red:dirty=yellow:remote=38;5;135:staged=38;5;27:}"
+flexprompt.settings.right_prompt = "{duration:color=yellow,black}{time:color=38;5;27,brightwhite}"
 ```
 
 - [ ] _TBD: details about configuring the modules._
@@ -388,6 +395,9 @@ flexprompt.settings.use_icons = true
 -- Use icons only for the time and exit modules, and specifically disable icons for git:
 -- This can be set in 2 ways, you can use ["key"] = true notation or key = true (no quotes)
 flexprompt.settings.use_icons = { time_module = true, ["exit_module"] = true, git = false }
+
+-- Animate the "refreshing" icon, e.g. while retrieving git status:
+flexprompt.settings.can_animate_refresh = true
 
 -- Override certain icons with color emoji in Windows Terminal:
 flexprompt.settings.use_color_emoji = true
