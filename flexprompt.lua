@@ -322,8 +322,8 @@ local symbols =
     prompt          = { ">" },
     overtype_prompt = { ">",    unicode="►" },
 
-    admin           = {         powerline="" },
-    no_admin        = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
+    admin           = {         coloremoji=nil--[["🔒"]], powerline="" },
+    no_admin        = {         coloremoji=nil--[["🟢"]], nerdfonts2={""," "}, nerdfonts3={""," "} },
 
     vpn             = {         coloremoji="☁️", nerdfonts2={"",""}, nerdfonts3=" " },
     no_vpn          = {         coloremoji="🌎", nerdfonts2={""," "}, nerdfonts3={""," "} },
