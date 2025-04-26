@@ -2032,7 +2032,7 @@ local function render_user(args)
 end
 
 --------------------------------------------------------------------------------
--- VPN MODULE:  {vpn:color=color_name,alt_color_name}
+-- VPN MODULE:  {color=color_name,alt_color_name}
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 

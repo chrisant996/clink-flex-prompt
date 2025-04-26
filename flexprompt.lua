@@ -871,36 +871,6 @@ local function connect(lhs, rhs, frame, sgr_frame_color)
     return lhs..rhs..frame, dropped
 end
 
-local _refilter_modules
-local _module_results = {}
-local function refilter_module(module)
-    if module then
-        _refilter_modules = _refilter_modules or {}
-        _refilter_modules[module] = true
-    else
-        _refilter_modules = nil
-    end
-end
-
-local function dont_refilter_module(module)
-    if _refilter_modules and not _refilter_modules[module] then
-        return true
-    end
-end
-
-local function reset_render_state(keep_results)
-    _can_use_extended_colors = nil
-    _charset = nil
-    _nerdfonts_version = nil
-    _nerdfonts_width = nil
-    _wizard = nil
-end
-
-local list_on_reset_render_state = {}
-local function add_on_reset_render_state(func)
-    table.insert(list_on_reset_render_state, func)
-end
-
 --------------------------------------------------------------------------------
 -- Other helpers.
 
@@ -1165,42 +1135,6 @@ if clink.onaftercommand then
 
     clink.onaftercommand(insertmode_aftercommand)
 end
-
---------------------------------------------------------------------------------
--- Helpers for duration, exit code, and time.
-
-local duration_modules
-local endedit_time
-local last_duration
-local last_time
-
--- Clink v1.2.30 has a fix for Lua's os.clock() implementation failing after the
--- program has been running more than 24 days.  Without that fix, os.time() must
--- be used instead, but the resulting duration can be off by up to +/- 1 second.
-local duration_clock = ((clink.version_encoded or 0) >= 10020030) and os.clock or os.time
-
-local function duration_onbeginedit()
-    last_duration = nil
-    duration_modules = nil
-    flexprompt.settings.force_duration = nil
-    if endedit_time then
-        local beginedit_time = duration_clock()
-        local elapsed = beginedit_time - endedit_time
-        if elapsed >= 0 then
-            last_duration = elapsed
-        end
-    end
-end
-
-local function duration_onendedit()
-    endedit_time = duration_clock()
-end
-
-local function time_onbeginedit()
-    last_time = nil
-end
-
-add_on_reset_render_state(time_onbeginedit)
 
 --------------------------------------------------------------------------------
 -- Segments.
@@ -1713,21 +1647,7 @@ local function promptcoroutine_manager()
     end
 end
 
-local function refilter_if_refresh_icon()
-    local replace = flexprompt.get_icon("refresh")
-    if replace and replace ~= "" then
-        local any
-        for module, results in pairs(_module_results) do
-            for _, segment in ipairs(results) do
-                if segment.text and segment.text:find(replace, 1, true--[[plain]]) then
-                    flexprompt.refilter_module(module)
-                    any = true
-                end
-            end
-        end
-        return any
-    end
-end
+local refilter_if_refresh_icon -- forward declaration.
 
 local _last_clock
 local _last_index
@@ -1738,8 +1658,8 @@ local _animation_lists = {
 }
 local _animation_intervals = {
     initial  = 0.1,
-    backoff  = 5,
-    delta    = 0.05,
+    backoff  = nil,     -- nil applies delta each time.
+    delta    = 0.001,
     max      = 0.5,
     current  = nil,
 }
@@ -1759,7 +1679,7 @@ local function animate_refreshing_icons()
             return
         end
         local elapsed = os.clock() - started
-        if elapsed > _animation_intervals.backoff then
+        if elapsed >= (_animation_intervals.backoff or interval) then
             interval = interval + _animation_intervals.delta
             if interval <= _animation_intervals.max then
                 _animation_intervals.current = interval
@@ -1868,6 +1788,63 @@ local function log_cost(tick, module)
     cost.count = (cost.count or 0) + 1
     cost.total = (cost.total or 0) + elapsed
     _module_costs[module] = cost
+end
+
+local _refilter_modules
+local function refilter_module(module)
+    if module then
+        _refilter_modules = _refilter_modules or {}
+        _refilter_modules[module] = true
+    else
+        _refilter_modules = nil
+    end
+end
+
+local _module_results = {}
+refilter_if_refresh_icon = function()
+    local replace = flexprompt.get_icon("refresh")
+    if replace and replace ~= "" then
+        local any
+        for module, results in pairs(_module_results) do
+            for _, segment in ipairs(results) do
+                if segment.text and segment.text:find(replace, 1, true--[[plain]]) then
+                    flexprompt.refilter_module(module)
+                    any = true
+                end
+            end
+        end
+        return any
+    end
+end
+
+local function dont_refilter_module(module)
+    if _refilter_modules and not _refilter_modules[module] then
+        return true
+    end
+end
+
+local list_on_reset_render_state = {}
+local function add_on_reset_render_state(func)
+    table.insert(list_on_reset_render_state, func)
+end
+
+local function reset_render_state(full)
+    _can_use_extended_colors = nil
+    _charset = nil
+    _nerdfonts_version = nil
+    _nerdfonts_width = nil
+    _wizard = nil
+
+    if full then
+        for _, func in ipairs(list_on_reset_render_state) do
+            func()
+        end
+        _animating = nil
+        _animation_intervals.current = nil
+        _animation_coroutine = nil
+        _refilter_modules = nil
+        _module_results = {}
+    end
 end
 
 local function normalize_segment_table(t)
@@ -2077,13 +2054,13 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
 end
 
 local function render_prompts(render_settings, need_anchors, condense)
-    reset_render_state(condense)
+    reset_render_state()
 
     local old_settings = flexprompt.settings
     if render_settings then
         flexprompt.settings = render_settings
         if render_settings.wizard then
-            reset_render_state(condense)
+            reset_render_state()
             _wizard = render_settings.wizard
             local screenwidth = _wizard.screenwidth or console.getwidth()
             _wizard.width = _wizard.width or (screenwidth - 8)
@@ -2306,6 +2283,7 @@ local function render_transient_prompt(wizard)
 end
 
 function flexprompt.render_wizard(settings, need_anchors)
+    reset_render_state(true--[[full]])
     local left, right, anchors = render_prompts(settings, need_anchors)
     local col
     if not right or right == "" then
@@ -2430,6 +2408,42 @@ local function spacing_onbeginedit()
         end
     end
 end
+
+--------------------------------------------------------------------------------
+-- Helpers for duration, exit code, and time.
+
+local duration_modules
+local endedit_time
+local last_duration
+local last_time
+
+-- Clink v1.2.30 has a fix for Lua's os.clock() implementation failing after the
+-- program has been running more than 24 days.  Without that fix, os.time() must
+-- be used instead, but the resulting duration can be off by up to +/- 1 second.
+local duration_clock = ((clink.version_encoded or 0) >= 10020030) and os.clock or os.time
+
+local function duration_onbeginedit()
+    last_duration = nil
+    duration_modules = nil
+    flexprompt.settings.force_duration = nil
+    if endedit_time then
+        local beginedit_time = duration_clock()
+        local elapsed = beginedit_time - endedit_time
+        if elapsed >= 0 then
+            last_duration = elapsed
+        end
+    end
+end
+
+local function duration_onendedit()
+    endedit_time = duration_clock()
+end
+
+local function time_onbeginedit()
+    last_time = nil
+end
+
+add_on_reset_render_state(time_onbeginedit)
 
 --------------------------------------------------------------------------------
 -- Public API.
@@ -2726,10 +2740,7 @@ flexprompt.refilter_module = refilter_module
 -- Function that resets all rendering state and forces rerunning all prompt
 -- modules the next time the prompt is filtered.
 function flexprompt.reset_render_state()
-    reset_render_state()
-    for _, func in ipairs(list_on_reset_render_state) do
-        func()
-    end
+    reset_render_state(true--[[full]])
 end
 
 function flexprompt.on_reset_render_state(func)
@@ -3473,12 +3484,7 @@ local function onbeginedit()
 
     _cached_state = {}
 
-    reset_render_state()
-    _animating = nil
-    _animation_intervals.current = nil
-    _animation_coroutine = nil
-    _refilter_modules = nil
-    _module_results = {}
+    reset_render_state(true--[[full]])
 
     duration_onbeginedit()
     time_onbeginedit()
