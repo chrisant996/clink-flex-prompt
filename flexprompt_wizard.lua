@@ -58,11 +58,19 @@ local function readinput()
     end
 end
 
-local function readchoice(choices)
+local function readchoice(choices, onidle, timeout)
     if not choices then error("missing choices") end
 
     repeat
         clink.print("Choice [" .. choices .. "]: ", NONL)
+
+        while onidle and timeout do
+            if console.checkinput(timeout) then
+                break
+            end
+            onidle()
+        end
+
         local s = readinput()
         clink.print("\x1b[G\x1b[K", NONL)
 
@@ -842,6 +850,60 @@ local function choose_icons(settings, title)
     return s
 end
 
+local function choose_animate(settings, title)
+    local choices = "" -- luacheck: ignore 311
+    local preview
+
+    if not console.checkinput then
+        return
+    end
+
+    refresh_width(settings)
+
+    clear_screen()
+    display_title(title)
+    clink.print()
+
+    choices = "yn"
+
+    local col, row = console.getcursorpos()
+    col = 14
+
+    local index = 1
+    local anim_list = flexprompt.get_refreshing_icon_animation_list()
+    local anim_count = #anim_list
+    local function get_animated_icon()
+        local icon = anim_list[index]
+        index = (index % anim_count) + 1
+        return icon
+    end
+
+    clink.print("(y)  Yes.    "..brightgreen..get_animated_icon()..normal.."\n")
+    clink.print("(n)  No.     "..brightgreen..flexprompt.get_icon("refresh")..normal.."\n")
+
+    choices = display_restart(choices)
+    choices = display_quit(choices)
+
+    local prolog = string.format("\x1b[s\x1b[%d;%dH", row, col)..brightgreen
+    local epilog = normal.."\x1b[u"
+    local function onidle()
+        clink.print(prolog..get_animated_icon()..epilog, NONL)
+    end
+
+    local s = readchoice(choices, onidle, 0.15)
+    if not s then return end
+
+    if s == "r" then -- luacheck: ignore 542
+    elseif s == "q" then -- luacheck: ignore 542
+    else
+        settings.can_animate_refresh = nil
+        if s == "y" then
+            settings.can_animate_refresh = true
+        end
+    end
+    return s
+end
+
 local function choose_transient(settings, title)
     local choices = "" -- luacheck: ignore 311
 
@@ -1285,6 +1347,12 @@ local function config_wizard()
 
         if hasicons and preview.charset == "unicode" and preview.style ~= "bubbles" then
             s = choose_icons(preview, "Icons")
+            if not s or s == "q" then break end
+            if s == "r" then goto continue end
+        end
+
+        if preview.charset == "unicode" then
+            s = choose_animate(preview, "Animated 'Refreshing' Icon")
             if not s or s == "q" then break end
             if s == "r" then goto continue end
         end

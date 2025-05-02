@@ -1706,6 +1706,10 @@ local function get_refreshing_animated_icon()
     return list[_last_index + 1]
 end
 
+local function get_refreshing_icon_animation_list()
+    return _animation_lists[flexprompt.get_charset() or "ascii"]
+end
+
 local function promptcoroutine(func)
     if not segmenter._current_module then return end
 
@@ -2777,6 +2781,8 @@ function flexprompt.get_module_symbol(refreshing)
     end
     return s or ""
 end
+
+flexprompt.get_refreshing_icon_animation_list = get_refreshing_icon_animation_list
 
 -- Function to retrieve a string of "+" corresponding to the pushd stack depth
 -- if %PROMPT% begins with "$+".
