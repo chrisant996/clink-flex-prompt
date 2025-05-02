@@ -3507,7 +3507,7 @@ local function onendedit()
     duration_onendedit()
 end
 
-local function oncommand(line_state, info) -- luacheck: no unused
+local function oncommand(_, info)
     if flexprompt.settings.oncommands then
         _cached_state.command = path.getbasename(info.command):lower()
         flexprompt.refilter_module(nil) -- nil forces refiltering all modules.
