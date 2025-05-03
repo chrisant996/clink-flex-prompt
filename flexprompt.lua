@@ -51,8 +51,8 @@ local clink_prompt_spacing = (settings.get("prompt.spacing") ~= nil)
 --------------------------------------------------------------------------------
 -- Color codes.
 
-local realblack = { fg="30", bg="40", extfg="38;5;0", extbg="48;5;0" }
-local realwhite = { fg="37", bg="47", extfg="38;5;7", extbg="48;5;7", altcolor=realblack }
+local realblack = { fg="30", bg="40", extfg="38;5;16", extbg="48;5;16" }
+local realwhite = { fg="37", bg="47", extfg="38;5;250", extbg="48;5;250", altcolor=realblack }
 local nearlywhite = { fg="37", bg="47", extfg="38;5;252", extbg="48;5;252" }
 
 flexprompt.colors =
@@ -90,24 +90,25 @@ flexprompt.colors =
     darkcyan        = { fg="36",    bg="46",    },
     darkwhite       = { fg="37",    bg="47",    },
 
-    -- Real colors.  These use the real color (vs console theme color) when
-    -- extended colors are available.
+    -- Real colors.  When extended colors are available, these use the
+    -- corresponding standard default terminal colors.  Otherwise they use the
+    -- corresponding current terminal color.
     realblack           = realblack,
-    realred             = { fg="31", bg="41",   extfg="38;5;1",     extbg="48;5;1"  },
-    realgreen           = { fg="32", bg="42",   extfg="38;5;2",     extbg="48;5;2"  },
-    realyellow          = { fg="33", bg="43",   extfg="38;5;3",     extbg="48;5;3"  },
-    realblue            = { fg="34", bg="44",   extfg="38;5;4",     extbg="48;5;4"  },
-    realmagenta         = { fg="35", bg="45",   extfg="38;5;5",     extbg="48;5;5"  },
-    realcyan            = { fg="36", bg="46",   extfg="38;5;6",     extbg="48;5;6"  },
+    realred             = { fg="31", bg="41",   extfg="38;2;128;0;0",   extbg="48;2;128;0;0"   },
+    realgreen           = { fg="32", bg="42",   extfg="38;2;0;128;0",   extbg="48;2;0;128;0"   },
+    realyellow          = { fg="33", bg="43",   extfg="38;2;128;128;0", extbg="48;2;128;128;0" },
+    realblue            = { fg="34", bg="44",   extfg="38;2;0;0;128",   extbg="48;2;0;0;128"   },
+    realmagenta         = { fg="35", bg="45",   extfg="38;2;128;0;128", extbg="48;2;128;0;128" },
+    realcyan            = { fg="36", bg="46",   extfg="38;2;0;128;128", extbg="48;2;0;128;128" },
     realwhite           = realwhite,
-    realbrightblack     = { fg="91", bg="101",  extfg="38;5;8",     extbg="48;5;8"  },
-    realbrightred       = { fg="91", bg="101",  extfg="38;5;9",     extbg="48;5;9"  },
-    realbrightgreen     = { fg="92", bg="102",  extfg="38;5;10",    extbg="48;5;10" },
-    realbrightyellow    = { fg="93", bg="103",  extfg="38;5;11",    extbg="48;5;11" },
-    realbrightblue      = { fg="94", bg="104",  extfg="38;5;12",    extbg="48;5;12" },
-    realbrightmagenta   = { fg="95", bg="105",  extfg="38;5;13",    extbg="48;5;13" },
-    realbrightcyan      = { fg="96", bg="106",  extfg="38;5;14",    extbg="48;5;14" },
-    realbrightwhite     = { fg="97", bg="107",  extfg="38;5;15",    extbg="48;5;15" },
+    realbrightblack     = { fg="91", bg="101",  extfg="38;5;244",       extbg="48;5;244" },
+    realbrightred       = { fg="91", bg="101",  extfg="38;5;196",       extbg="48;5;196" },
+    realbrightgreen     = { fg="92", bg="102",  extfg="38;5;46",        extbg="48;5;46"  },
+    realbrightyellow    = { fg="93", bg="103",  extfg="38;5;226",       extbg="48;5;226" },
+    realbrightblue      = { fg="94", bg="104",  extfg="38;5;21",        extbg="48;5;21"  },
+    realbrightmagenta   = { fg="95", bg="105",  extfg="38;5;201",       extbg="48;5;201" },
+    realbrightcyan      = { fg="96", bg="106",  extfg="38;5;51",        extbg="48;5;51"  },
+    realbrightwhite     = { fg="97", bg="107",  extfg="38;5;231",       extbg="48;5;231" },
 
     -- Default text color in rainbow style.
     rainbow_text    = nearlywhite,
