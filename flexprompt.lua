@@ -1385,31 +1385,42 @@ local function color_segment_transition(color, symbol, close, do_fade, breaking)
                     local slice = 1 / (width + 1)
                     out = ""
                     if rainbow and do_fade == "fade_sep" and ((segmenter.side == 0) == (not breaking)) then
+                        -- Fade for rainbow separators in the left side.
                         local prev_fg = pri_bg
                         local lo, hi = 1, width + 1
                         for i = lo, hi do
                             local next_bg = flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))
-                            local next_bg_raw = (i == lo and pri_bg_raw == "49" and pri_bg_raw) or (i == hi and sec_bg_raw == "49" and sec_bg_raw) or next_bg
+                            local next_bg_raw = ((i == lo and pri_bg_raw == "49" and pri_bg_raw) or
+                                                 (i == hi and sec_bg_raw) or
+                                                 next_bg)
                             prev_fg = prev_fg:gsub("^4", "3")
                             out = out .. sgr("0;" .. prev_fg .. ";" .. next_bg_raw) .. symbol
                             prev_fg = next_bg
                         end
                     elseif not close and not (breaking and segmenter.side == 1) then
+                        -- Fade for the left end of a series of segments, or for
+                        -- rainbow separators in the right side.
                         local prev_bg = pri_bg
                         local lo, hi = 1, width + 1
                         for i = lo, hi do
                             local next_bg = flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))
-                            local next_fg = next_bg:gsub("^4", "3")
-                            prev_bg = (i == lo and pri_bg_raw == "49" and pri_bg_raw) or ((i == hi or breaking) and sec_bg_raw == "49" and sec_bg_raw) or prev_bg
+                            local next_bg_raw = (i == hi) and sec_bg_raw or next_bg
+                            local next_fg = next_bg_raw:gsub("^4", "3")
+                            prev_bg = ((i == lo and pri_bg_raw == "49" and pri_bg_raw) or
+                                       ((i == hi or breaking) and sec_bg_raw == "49" and sec_bg_raw) or
+                                       prev_bg)
                             out = out .. sgr("0;" .. prev_bg .. ";" .. next_fg) .. symbol
                             prev_bg = next_bg
                         end
                     else
+                        -- Fade for the right end of a series of segments.
                         local prev_fg = sec_bg
                         local hi, lo = width, 0
                         for i = hi, lo, -1 do
                             local next_bg = flexprompt.blend_color(pri_bg, sec_bg, 1 - (i * slice))
-                            local next_bg_raw = (i == hi and sec_bg_raw == "49" and sec_bg_raw) or (i == lo and pri_bg_raw == "49" and pri_bg_raw) or next_bg
+                            local next_bg_raw = ((i == hi and sec_bg_raw == "49" and sec_bg_raw) or
+                                                 (i == lo and pri_bg_raw) or
+                                                 next_bg)
                             prev_fg = prev_fg:gsub("^4", "3")
                             out = out .. sgr("0;" .. prev_fg .. ";" .. next_bg_raw) .. symbol
                             prev_fg = next_bg
