@@ -852,7 +852,6 @@ end
 
 local function choose_animate(settings, title)
     local choices = "" -- luacheck: ignore 311
-    local preview
 
     if not console.checkinput then
         return
@@ -866,8 +865,8 @@ local function choose_animate(settings, title)
 
     choices = "yn"
 
-    local col, row = console.getcursorpos()
-    col = 14
+    local _, row = console.getcursorpos()
+    local col = 14
 
     local index = 1
     local anim_list = flexprompt.get_refreshing_icon_animation_list()
