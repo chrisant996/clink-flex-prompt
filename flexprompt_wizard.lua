@@ -298,9 +298,9 @@ end
 local function apply_time_format(s)
     if not s then return end
 
-    if _striptime then
+    if _striptime or _timeformat == "1" then
         s = s:gsub("{time[^}]*}", "")
-        s = replace_arg(s, "rbubble", "format", nil)
+        s = replace_arg(s, "rbubble", "format", "")
     elseif _timeformat then
         if _timeformat == "2" then
             s = replace_arg(s, "time", "format", "%%H:%%M:%%S")
