@@ -2351,7 +2351,7 @@ function pf:filter(prompt) -- luacheck: no unused
     if prompt then
         prompt = sgr()..prompt
     end
-    if right then
+    if right and #right > 0 then
         right = sgr()..right
     end
     return prompt
