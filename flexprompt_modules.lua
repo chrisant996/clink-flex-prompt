@@ -2151,6 +2151,7 @@ end
 
 local function info_hg(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
+    flags = flags or {}
     info.type = "hg"
     -- Get summary info from Mercurial.
     do
@@ -2222,6 +2223,7 @@ end
 
 local function info_svn(dir, tested_info, flags) -- luacheck: no unused
     local info = {}
+    flags = flags or {}
     info.type = "svn"
     -- Get branch name.
     if not info._error then
