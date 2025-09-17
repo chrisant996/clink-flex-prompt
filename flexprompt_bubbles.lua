@@ -1,8 +1,9 @@
 --------------------------------------------------------------------------------
--- LBUBBLE MODULE:  {lbubble:darker:icons:levelicon}
+-- LBUBBLE MODULE:  {lbubble:darker:icons:levelicon:stashes}
 --  - 'darker' uses darker gray colors (compensate for monitor gamma).
 --  - 'icons' shows icon for current directory segment.
 --  - 'levelicon' shows icons for battery level.
+--  - 'stashes' shows a count of stashes.
 --
 --------------------------------------------------------------------------------
 -- RBUBBLE MODULE:  {rbubble:darker:icons:colons:hex:format=format_string}
@@ -387,7 +388,7 @@ local function ellipsify(text, limit, fluent_restore_color)
     return s
 end
 
-local function collect_info()
+local function collect_info(context)
     local info = {}
     local scm_info = flexprompt.get_scm_info()
     info.cwd = os.getcwd()
@@ -401,13 +402,21 @@ local function collect_info()
         info.staged = info.status.staged
         info.unpublished = info.status.unpublished
     end
-    if info.type == "git" and git and type(git) == "table" and git.getaction then
-        local action, step, num_steps = git.getaction()
-        if action then
-            info.action = action
-            if step and num_steps then
-                info.step = step
-                info.num_steps = num_steps
+    if info.type == "git" and git and type(git) == "table" then
+        if git.getaction then
+            local action, step, num_steps = git.getaction()
+            if action then
+                info.action = action
+                if step and num_steps then
+                    info.step = step
+                    info.num_steps = num_steps
+                end
+            end
+        end
+        if context and context.stashes and git.getstashcount then
+            local count = git.getstashcount()
+            if count and count > 0 then
+                info.stashcount = count
             end
         end
     end
@@ -631,7 +640,7 @@ local function get_grays(darker)
     return gray1, gray2, gray3
 end
 
-local function get_info()
+local function get_info(context)
     local wizard = flexprompt.get_wizard_state()
     if wizard then
         return {
@@ -644,7 +653,9 @@ local function get_info()
         }
     end
 
-    local info = flexprompt.promptcoroutine(collect_info)
+    local info = flexprompt.promptcoroutine(function()
+        return collect_info(context)
+    end)
     if info then
         info.refreshing = nil
         info.ready = true
@@ -705,11 +716,12 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
     local bc = flexprompt_bubbles.bubble_colors
 
     local darker = flexprompt.parse_arg_keyword(args, "d", "darker") or flexprompt_bubbles.darker
+    local stashes = flexprompt.parse_arg_keyword(args, "s", "stashes")
     local include_icons = flexprompt.parse_arg_keyword(args, "i", "icons")
     local use_battery_level_icon = flexprompt.parse_arg_keyword(args, "li", "levelicon")
     local gray1, gray2, gray3 = get_grays(darker) -- luacheck: no unused
 
-    local info = get_info()
+    local info = get_info({ stashes=stashes })
 
     local segments = {}
     segments.bg = bc.bg_default
@@ -850,7 +862,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 text = text.." !"..info.working.conflict
             end
             addtext(segments, status_color, text, space_before)
-        elseif info.working or info.staged or info.conflict or ahead ~= "0" or behind ~= "0" then
+        elseif info.working or info.staged or info.conflict or info.stashcount or ahead ~= "0" or behind ~= "0" then
             if info.working or info.conflict then
                 local text = ""
                 if info.working and info.working.conflict > 0 then
@@ -899,6 +911,14 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                     addcsep(segments, sep, gray3)
                 end
                 addtext(segments, fg, text, space_before)
+            end
+            if info.stashcount then
+                local icon = flexprompt.get_symbol("stashcount")
+                if icon ~= "" then
+                    local text = icon..info.stashcount
+                    fg = bc.fg_muted
+                    addtext(segments, fg, text, space_before)
+                end
             end
         end
     end

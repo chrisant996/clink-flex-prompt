@@ -307,6 +307,7 @@ local symbols =
     renamecount     = { "" },   -- Empty string counts renames as modified.
     summarycount    = { "*",    unicode="±" },
     untrackedcount  = { "?" },
+    stashcount      = { "&",    unicode="≡", --[[ nerdfonts2={"", " "}, nerdfonts3={"", " "} ]] },
     aheadbehind     = { "" },   -- Optional symbol preceding ahead/behind counts.
     aheadcount      = { ">>",   unicode="↓" },
     behindcount     = { "<<",   unicode="↑" },
