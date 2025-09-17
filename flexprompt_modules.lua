@@ -918,10 +918,11 @@ local function render_exit(args)
 end
 
 --------------------------------------------------------------------------------
--- GIT MODULE:  {git:nostaged:noaheadbehind:counts:color_options}
+-- GIT MODULE:  {git:nostaged:noaheadbehind:nostashes:counts:color_options}
 --  - 'nountracked' omits untracked files.
 --  - 'nostaged' omits the staged details.
 --  - 'noaheadbehind' omits the ahead/behind details.
+--  - 'nostashes' omits the count of stashes.
 --  - 'showremote' shows the branch and its remote.
 --  - 'submodules' includes status for submodules.
 --  - 'counts' shows the count of added/modified/etc files.
@@ -931,14 +932,14 @@ end
 --      - dirty=color_name,alt_color_name           When status is dirty.
 --      - remote=color_name,alt_color_name          For ahead/behind details.
 --      - staged=color_name,alt_color_name          For staged details.
---      - unknown=color_name,alt_color_name         When status is unknown.
+--      - unknown=color_name,alt_color_name         When status is unknown (also the stash count).
 --      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
 
 -- luacheck: globals flexprompt_git
 flexprompt_git = flexprompt_git or {}
 --  .postprocess_branch = function(string), returns string, can modify the branch name string.
 
-local git = {}
+local git_info = {}
 local fetched_repos = {}
 
 -- Add status details to the segment text.
@@ -988,7 +989,7 @@ end
 -- Collects git status info.
 --
 -- Uses async coroutine calls.
-local function collect_git_info(no_untracked, includeSubmodules)
+local function collect_git_info(no_untracked, no_stashes, includeSubmodules)
     local git_dir, wks_dir = flexprompt.get_git_dir()
     git_dir = git_dir and git_dir:lower()
     wks_dir = wks_dir and wks_dir:lower()
@@ -1000,7 +1001,14 @@ local function collect_git_info(no_untracked, includeSubmodules)
     local status = flexprompt.get_git_status(no_untracked, includeSubmodules)
     local conflict = flexprompt.get_git_conflict()
     local ahead, behind = flexprompt.get_git_ahead_behind()
-    return { status=status, conflict=conflict, ahead=ahead, behind=behind, submodule=submodule, finished=true }
+    local info = { status=status, conflict=conflict, ahead=ahead, behind=behind, submodule=submodule, finished=true }
+    if not no_stashes and git.getstashcount then
+        local count = git.getstashcount()
+        if count and count > 0 then
+            info.stashcount = count
+        end
+    end
+    return info
 end
 
 local git_colors =
@@ -1049,9 +1057,10 @@ local function render_git(args)
 
         -- Collect or retrieve cached info.
         local noUntracked = flexprompt.parse_arg_keyword(args, "nu", "nountracked")
+        local noStashes = flexprompt.parse_arg_keyword(args, "ns", "nostashes")
         local includeSubmodules = flexprompt.parse_arg_keyword(args, "sm", "submodules")
-        info, refreshing = flexprompt.prompt_info(git, git_dir, branch, function ()
-            return collect_git_info(noUntracked, includeSubmodules)
+        info, refreshing = flexprompt.prompt_info(git_info, git_dir, branch, function ()
+            return collect_git_info(noUntracked, noStashes, includeSubmodules)
         end)
 
         -- Add remote to branch name if requested.
@@ -1144,6 +1153,14 @@ local function render_git(args)
             color, altcolor = parse_color_token(args, colors)
             table.insert(segments, { text, color, altcolor })
         end
+    end
+
+    -- Count of stashes.
+    if info and info.stashcount then
+        text = flexprompt.append_text("", flexprompt.get_symbol("stashcount") .. info.stashcount)
+        colors = git_colors.unknown
+        color, altcolor = parse_color_token(args, colors)
+        table.insert(segments, { text, color, altcolor })
     end
 
     return segments
@@ -1671,10 +1688,11 @@ local function render_python(args)
 end
 
 --------------------------------------------------------------------------------
--- SCM MODULE:  {scm:nostaged:noaheadbehind:counts:color_options}
+-- SCM MODULE:  {scm:nostaged:nostashes:noaheadbehind:counts:color_options}
 --  - 'noaheadbehind' omits the ahead/behind details.
 --  - 'noconflict' omits conflict info.
 --  - 'nostaged' omits the staged details.
+--  - 'nostashes' omits the count of stashes.
 --  - 'nosubmodules' omits status for submodules.
 --  - 'nountracked' omits untracked files.
 --  - 'showremote' shows the branch and its remote.
@@ -1685,7 +1703,7 @@ end
 --      - dirty=color_name,alt_color_name           When status is dirty.
 --      - remote=color_name,alt_color_name          For ahead/behind details.
 --      - staged=color_name,alt_color_name          For staged details.
---      - unknown=color_name,alt_color_name         When status is unknown.
+--      - unknown=color_name,alt_color_name         When status is unknown (also the stash count).
 --      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
 
 -- TODO: some way to postprocess the branch name string.
@@ -1742,6 +1760,7 @@ local function render_scm(args)
         local flags = {}
         flags.no_ahead_behind = flexprompt.settings.no_ahead_behind or flexprompt.parse_arg_keyword(args, "nab", "noaheadbehind")
         flags.no_conflict = flexprompt.settings.no_conflict or flexprompt.parse_arg_keyword(args, "nc", "noconflict")
+        flags.no_stashes = flexprompt.settings.no_stashes or flexprompt.parse_arg_keyword(args, "nsc", "nostashes")
         flags.no_submodules = flexprompt.settings.no_submodules or flexprompt.parse_arg_keyword(args, "ns", "nosubmodules")
         flags.no_untracked = flexprompt.settings.no_untracked or flexprompt.parse_arg_keyword(args, "nu", "nountracked")
         flags.show_remote = not flexprompt.settings.no_remote and flexprompt.parse_arg_keyword(args, "sr", "showremote")
@@ -1875,6 +1894,14 @@ local function render_scm(args)
             color, altcolor = parse_color_token(args, colors)
             table.insert(segments, { text, color, altcolor })
         end
+    end
+
+    -- Count of stashes.
+    if info.stashcount then
+        text = flexprompt.append_text("", flexprompt.get_symbol("stashcount") .. info.stashcount)
+        colors = scm_colors.unknown
+        color, altcolor = parse_color_token(args, colors)
+        table.insert(segments, { text, color, altcolor })
     end
 
     return segments
@@ -2130,6 +2157,10 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
     else
         if not flags.no_ahead_behind then
             info.ahead, info.behind = flexprompt.get_git_ahead_behind()
+        end
+        if not flags.no_stashes and git and git.getstashcount then
+            local count = git.getstashcount()
+            info.stashcount = count and count > 0 and count or nil
         end
         if not flags.no_conflict then
             info.conflict = flexprompt.get_git_conflict()

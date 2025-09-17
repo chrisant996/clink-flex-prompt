@@ -1,9 +1,9 @@
 --------------------------------------------------------------------------------
--- LBUBBLE MODULE:  {lbubble:darker:icons:levelicon:stashes}
+-- LBUBBLE MODULE:  {lbubble:darker:icons:levelicon:nostashes}
 --  - 'darker' uses darker gray colors (compensate for monitor gamma).
 --  - 'icons' shows icon for current directory segment.
 --  - 'levelicon' shows icons for battery level.
---  - 'stashes' shows a count of stashes.
+--  - 'nostashes' omits the count of stashes.
 --
 --------------------------------------------------------------------------------
 -- RBUBBLE MODULE:  {rbubble:darker:icons:colons:hex:format=format_string}
@@ -388,9 +388,9 @@ local function ellipsify(text, limit, fluent_restore_color)
     return s
 end
 
-local function collect_info(context)
+local function collect_info(flags)
     local info = {}
-    local scm_info = flexprompt.get_scm_info()
+    local scm_info = flexprompt.get_scm_info(nil, flags)
     info.cwd = os.getcwd()
     if scm_info then
         for key, value in pairs(scm_info) do
@@ -402,21 +402,13 @@ local function collect_info(context)
         info.staged = info.status.staged
         info.unpublished = info.status.unpublished
     end
-    if info.type == "git" and git and type(git) == "table" then
-        if git.getaction then
-            local action, step, num_steps = git.getaction()
-            if action then
-                info.action = action
-                if step and num_steps then
-                    info.step = step
-                    info.num_steps = num_steps
-                end
-            end
-        end
-        if context and context.stashes and git.getstashcount then
-            local count = git.getstashcount()
-            if count and count > 0 then
-                info.stashcount = count
+    if info.type == "git" and git and type(git) == "table" and git.getaction then
+        local action, step, num_steps = git.getaction()
+        if action then
+            info.action = action
+            if step and num_steps then
+                info.step = step
+                info.num_steps = num_steps
             end
         end
     end
@@ -716,12 +708,12 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
     local bc = flexprompt_bubbles.bubble_colors
 
     local darker = flexprompt.parse_arg_keyword(args, "d", "darker") or flexprompt_bubbles.darker
-    local stashes = flexprompt.parse_arg_keyword(args, "s", "stashes")
+    local nostashes = flexprompt.parse_arg_keyword(args, "ns", "nostashes")
     local include_icons = flexprompt.parse_arg_keyword(args, "i", "icons")
     local use_battery_level_icon = flexprompt.parse_arg_keyword(args, "li", "levelicon")
     local gray1, gray2, gray3 = get_grays(darker) -- luacheck: no unused
 
-    local info = get_info({ stashes=stashes })
+    local info = get_info({ no_stashes=nostashes })
 
     local segments = {}
     segments.bg = bc.bg_default
@@ -916,8 +908,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 local icon = flexprompt.get_symbol("stashcount")
                 if icon ~= "" then
                     local text = icon..info.stashcount
-                    fg = bc.fg_muted
-                    addtext(segments, fg, text, space_before)
+                    addtext(segments, bc.fg_muted, text, space_before)
                 end
             end
         end
