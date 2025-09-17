@@ -1,3 +1,27 @@
+--------------------------------------------------------------------------------
+-- LBUBBLE MODULE:  {lbubble:darker:icons:levelicon}
+--  - 'darker' uses darker gray colors (compensate for monitor gamma).
+--  - 'icons' shows icon for current directory segment.
+--  - 'levelicon' shows icons for battery level.
+--
+--------------------------------------------------------------------------------
+-- RBUBBLE MODULE:  {rbubble:darker:icons:colons:hex:format=format_string}
+--  - 'darker' uses darker gray colors (compensate for monitor gamma).
+--  - 'icons' shows icon for current directory segment.
+--  - 'colons' shows colons in the duration segment.
+--  - 'hex' shows exit code in hexadecimal for any value greater than 255.
+--  - 'format=format_string' specify format string for date/time segment.
+--
+-- If present, the 'format=' option must be last (otherwise it could never
+-- include colons).
+--
+--------------------------------------------------------------------------------
+-- TBUBBLE MODULE:  {tubble}
+--
+-- There are no options for the TBUBBLE module.
+--
+--------------------------------------------------------------------------------
+
 -- luacheck: globals flexprompt flexprompt_git flexprompt_bubbles
 if not flexprompt or not flexprompt.add_module then
     log.info("flexprompt_bubbles requires flexprompt.")
@@ -372,7 +396,6 @@ local function collect_info()
             info[key] = value
         end
     end
-    info.vpn = flexprompt.get_vpn_info()
     if info.status then
         info.working = info.status.working
         info.staged = info.status.staged
@@ -388,6 +411,12 @@ local function collect_info()
             end
         end
     end
+    return info
+end
+
+local function collect_right_info()
+    local info = {}
+    info.vpn = flexprompt.get_vpn_info()
     return info
 end
 
@@ -575,6 +604,7 @@ end
 --------------------------------------------------------------------------------
 
 local cached = {}
+local cached_right = {}
 
 local sep = {
     cap=flexprompt.choices.caps[sep_shape or "round"] or { "", "" },
@@ -623,6 +653,25 @@ local function get_info()
         cached.refreshing = true
     end
     return cached
+end
+
+local function get_right_info()
+    local wizard = flexprompt.get_wizard_state()
+    if wizard then
+        return {
+            ready = true,
+        }
+    end
+
+    local info = flexprompt.promptcoroutine(collect_right_info)
+    if info then
+        info.refreshing = nil
+        info.ready = true
+        cached_right = info
+    else
+        cached_right.refreshing = true
+    end
+    return cached_right
 end
 
 local function render_tbubble(args) -- luacheck: no unused
@@ -897,7 +946,7 @@ local function render_rbubble(args)
     end
 
     local gray1, gray2, gray3 = get_grays(darker) -- luacheck: no unused
-    local info = get_info()
+    local info = get_right_info()
 
     local segments = {}
     segments.bg = bc.bg_default
@@ -962,6 +1011,7 @@ clink.onbeginedit(function()
             detached=detect.detached,
             commit=detect.commit
         }
+        cached_right = {}
     end
 
     battery_coroutine = nil
