@@ -123,6 +123,7 @@ flexprompt.colors =
     vcs_staged      = { fg="95",    bg="105",   extfg="38;5;164",   extbg="48;5;164",   rainbow={ fg="35", bg="45", extfg="38;5;5", extbg="48;5;5", altcolor=realblack } },
     vcs_unpublished = { fg="95",    bg="105",   extfg="38;5;141",   extbg="48;5;141",   rainbow={ fg="35", bg="45", extfg="38;5;99", extbg="48;5;99", altcolor=realblack } },
     vcs_remote      = { fg="96",    bg="106",   extfg="38;5;44",    extbg="48;5;44",    rainbow={ fg="36", bg="46", extfg="38;5;6", extbg="48;5;6", altcolor=realblack } },
+    vcs_stashcount  = { fg="37",    bg="47",    extfg="38;5;248",   extbg="48;5;248",   rainbow={ fg="37", bg="47", extfg="38;5;248", extbg="48;5;248", altcolor=realblack } },
     vcs_unknown     = realwhite,
 
     -- Exit code colors.

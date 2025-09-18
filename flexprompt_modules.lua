@@ -932,7 +932,8 @@ end
 --      - dirty=color_name,alt_color_name           When status is dirty.
 --      - remote=color_name,alt_color_name          For ahead/behind details.
 --      - staged=color_name,alt_color_name          For staged details.
---      - unknown=color_name,alt_color_name         When status is unknown (also the stash count).
+--      - stashcount=color_name,alt_color_name      For count of stashes.
+--      - unknown=color_name,alt_color_name         When status is unknown.
 --      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
 
 -- luacheck: globals flexprompt_git
@@ -1018,6 +1019,7 @@ local git_colors =
     dirty       = { "d",   "dirty",        "vcs_dirty",         },
     remote      = { "r",   "remote",       "vcs_remote",        },
     staged      = { "s",   "staged",       "vcs_staged",        },
+    stashcount  = { "sc",  "stashcount",   "vcs_stashcount",    },
     unknown     = { "u",   "unknown",      "vcs_unknown",       },
     unpublished = { "up",  "unpublished",  "vcs_unpublished",   },
 }
@@ -1158,7 +1160,7 @@ local function render_git(args)
     -- Count of stashes.
     if info and info.stashcount then
         text = flexprompt.append_text("", flexprompt.get_symbol("stashcount") .. info.stashcount)
-        colors = git_colors.unknown
+        colors = git_colors.stashcount
         color, altcolor = parse_color_token(args, colors)
         table.insert(segments, { text, color, altcolor })
     end
@@ -1703,7 +1705,8 @@ end
 --      - dirty=color_name,alt_color_name           When status is dirty.
 --      - remote=color_name,alt_color_name          For ahead/behind details.
 --      - staged=color_name,alt_color_name          For staged details.
---      - unknown=color_name,alt_color_name         When status is unknown (also the stash count).
+--      - stashcount=color_name,alt_color_name      For count of stashes.
+--      - unknown=color_name,alt_color_name         When status is unknown.
 --      - unpublished=color_name,alt_color_name     When status is clean but branch is not published.
 
 -- TODO: some way to postprocess the branch name string.
@@ -1729,6 +1732,7 @@ local scm_colors =
     dirty       = { "d",   "dirty",        "vcs_dirty",         },
     remote      = { "r",   "remote",       "vcs_remote",        },
     staged      = { "s",   "staged",       "vcs_staged",        },
+    stashcount  = { "sc",  "stashcount",   "vcs_stashcount",    },
     unknown     = { "u",   "unknown",      "vcs_unknown",       },
     unpublished = { "up",  "unpublished",  "vcs_unpublished",   },
 }
@@ -1899,7 +1903,7 @@ local function render_scm(args)
     -- Count of stashes.
     if info.stashcount then
         text = flexprompt.append_text("", flexprompt.get_symbol("stashcount") .. info.stashcount)
-        colors = scm_colors.unknown
+        colors = scm_colors.stashcount
         color, altcolor = parse_color_token(args, colors)
         table.insert(segments, { text, color, altcolor })
     end
