@@ -81,14 +81,34 @@ flexprompt_bubbles.bubble_colors = {
 
     fg_green_prompt_char = sgr("92"),
     fg_red_prompt_char = sgr("91"),
-    fg_vpn = sgr("38;5;117"),
     fg_muted = sgr("38;5;248"),
     fg_fluent = sgr("30"),
-
-    fg_histlabel = "38;5;169",
     bg_blendmute = "48;2;0;0;0",
 
+    fg_histlabel = "38;5;169",
+    fg_vpn = "38;5;117",
+
     sgr = sgr,
+}
+
+-- Certain purposes can have custom colors defined in
+-- flexprompt_bubbles.bubble_colors.  If the custom color is defined then it's
+-- used (PREFERRED), otherwise a default color is used (FALLBACK).
+--
+-- Example:
+--  flexprompt_bubbles.bubble_colors.fg_stashes = "38;5;67"
+local purpose_colors = {
+    --PURPOSE            PREFERRED           FALLBACK
+    clean           = { "fg_clean",         "fg_green"      },
+    dirty           = { "fg_dirty",         "fg_yellow"     },
+    conflict        = { "bg_conflict",      "bg_red"        },
+    detached        = { "fg_detached",      "fg_muted"      },
+    staged          = { "fg_staged",        "fg_magenta"    },
+    stashcount      = { "fg_stashcount",    "fg_muted"      },
+    aheadbehind     = { "fg_aheadbehind",   "fg_cyan"       },
+    unpublished     = { "fg_unpublished",   "fg_lavender"   },
+    exitcode        = { "fg_exitcode",      "fg_red"        },
+    duration        = { "fg_duration",      "fg_orange"     },
 }
 
 -- luacheck: pop
@@ -150,6 +170,13 @@ end
 
 local function resolve_fluent_colors(text, fluent, normal)
     return text:gsub("\001", fluent):gsub("\002", normal)
+end
+
+local function get_purpose_color(purpose_name)
+    local definition = purpose_colors[purpose_name]
+    local bc = flexprompt_bubbles.bubble_colors
+    local code = bc[definition[1]]
+    return code and sgr(code) or bc[definition[2]]
 end
 
 --------------------------------------------------------------------------------
@@ -790,11 +817,11 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
     if not info.ready then
         status_color = bc.fg_muted
     elseif info.working then
-        status_color = bc.fg_yellow
+        status_color = get_purpose_color("dirty")
     elseif info.unpublished then
-        status_color = bc.fg_lavender
+        status_color = get_purpose_color("unpublished")
     else
-        status_color = bc.fg_green
+        status_color = get_purpose_color("clean")
     end
 
     -- addcsep(segments, sep, gray1)
@@ -809,7 +836,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             local which = which_icon(info)
             local icon = flexprompt.get_symbol(which)
             if which == "detached" and (icon == "" or flexprompt.get_flow() == "fluent") then
-                icon = make_fluent_text("detached", status_color, bc.fg_muted)
+                icon = make_fluent_text("detached", status_color, get_purpose_color("detached"))
             end
             if info.refreshing and icon then
                 local refresh = flexprompt.get_icon("refresh")
@@ -845,7 +872,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             addtext(segments, status_color, text, space_before)
         end
 
-        addcsep(segments, sep, (info.action or info.conflict) and bc.bg_red or gray3)
+        addcsep(segments, sep, (info.action or info.conflict) and get_purpose_color("conflict") or gray3)
         local ahead = info.ahead or "0"
         local behind = info.behind or "0"
         if info.action then
@@ -880,8 +907,8 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 if info.staged then
                     local count = info.staged.add + info.staged.modify + info.staged.delete + info.staged.rename
                     if count > 0 then
-                        fg = bc.fg_magenta
-                        text = flexprompt.append_text(text, bc.fg_magenta..flexprompt.get_symbol("staged")..count)
+                        fg = get_purpose_color("staged")
+                        text = flexprompt.append_text(text, fg..flexprompt.get_symbol("staged")..count)
                     end
                 end
                 if ahead ~= "0" or behind ~= "0" then
@@ -893,9 +920,9 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                         ab = flexprompt.append_text(ab, flexprompt.get_symbol("behindcount")..behind)
                     end
                     if fg then
-                        ab = bc.fg_cyan..ab
+                        ab = get_purpose_color("aheadbehind")..ab
                     else
-                        fg = bc.fg_cyan
+                        fg = get_purpose_color("aheadbehind")
                     end
                     text = flexprompt.append_text(text, ab)
                 end
@@ -908,7 +935,7 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
                 local icon = flexprompt.get_symbol("stashcount")
                 if icon ~= "" then
                     local text = icon..info.stashcount
-                    addtext(segments, bc.fg_muted, text, space_before)
+                    addtext(segments, get_purpose_color("stashcount"), text, space_before)
                 end
             end
         end
@@ -987,10 +1014,10 @@ local function render_rbubble(args)
     end
 
     addosep(segments, sep, gray3)
-    addtext(segments, bc.fg_red, get_exit_code(include_icons, hex), space_after)
+    addtext(segments, get_purpose_color("exitcode"), get_exit_code(include_icons, hex), space_after)
 
     addosep(segments, sep, gray2)
-    addtext(segments, bc.fg_orange, get_duration(include_icons, duration_colon), space_after)
+    addtext(segments, get_purpose_color("duration"), get_duration(include_icons, duration_colon), space_after)
 
     -- addosep(segments, sep, gray1)
 
@@ -1073,7 +1100,7 @@ clink.onbeginedit(function()
             clink.print(s)
         end
 
-        clink.print(sgr()..bc.bg_default..bc.fg_vpn.." vpn connection "..sgr())
+        clink.print(sgr()..bc.bg_default..sgr(bc.fg_vpn).." vpn connection "..sgr())
         if flexprompt_bubbles.vpn_colors then
             for vpn, fg in pairs(flexprompt_bubbles.vpn_colors) do
                 clink.print(sgr()..bc.bg_default..sgr(fg).." "..vpn.." connection "..sgr())
