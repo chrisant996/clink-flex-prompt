@@ -104,6 +104,7 @@ The `flexprompt.settings.left_prompt` and `flexprompt.settings.right_prompt` str
 - `"{break}"` shows a break between two modules; is automatically discarded if adjacent to only one visible module.
 - `"{conda}"` shows the current Conda environment, if `%CONDA_DEFAULT_ENV%` is set.
 - `"{cwd}"` shows the current working directory.
+- `"{diskspace}"` shows the percentage of used disk space.
 - `"{duration}"` shows the duration of the previous command, if more than 3 seconds.
 - `"{env}"` shows an environment variable.
 - `"{exit}"` shows the exit code of the previous command.
@@ -141,7 +142,7 @@ flexprompt.settings.right_prompt = "{exit}{duration}{time}"
 Example 1, with various config options:
 ```lua
 flexprompt.settings.left_prompt = "{battery:onlyicon}{user:type=computer}{cwd:color=magenta:type=folder}{git:nountracked:staged=blue}"
-flexprompt.settings.right_prompt = "{exit:always}{duration:format=colons:tenths}{time:format=%a %h %e %R}"
+flexprompt.settings.right_prompt = "{exit:always}{duration:format=colons:tenths}{diskspace:when=60}{time:format=%a %h %e %R}"
 ```
 
 Example 2, with various color config options:

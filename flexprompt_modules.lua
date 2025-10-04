@@ -720,6 +720,111 @@ local function render_cwd(args)
 end
 
 --------------------------------------------------------------------------------
+-- DISKSPACE MODULE:  {diskspace:when=threshold_percent:breakleft:breakright}
+--  - threshold_percent is the percentage above which to show used disk space
+--    (defaults to 0, which always shows the diskspace segment).
+--  - 'breakleft' adds an empty segment to left of battery in rainbow style.
+--  - 'breakright' adds an empty segment to right of battery in rainbow style.
+--
+-- The 'breakleft' and 'breakright' options may look better than having
+-- diskspace segment colors adjacent to other similarly colored segments in
+-- rainbow style.
+--
+-- This shows percentage of disk space used on the drive containing the current
+-- working directory.
+--
+-- Requires Clink v1.8.5 or newer, otherwise the module does nothing.
+
+local diskspace_used_colors =
+{
+    ["90"] = {
+        fg = "38;2;239;65;54",
+        bg = "48;2;239;65;54"
+    },
+    ["80"] = {
+        fg = "38;2;252;176;64",
+        bg = "48;2;252;176;64"
+    },
+    ["70"] = {
+        fg = "38;2;248;237;50",
+        bg = "48;2;248;237;50"
+    },
+    ["60"] = {
+        fg = "38;2;142;198;64",
+        bg = "48;2;142;198;64"
+    },
+    ["50"] = {
+        fg = "38;2;1;148;68",
+        bg = "48;2;1;148;68"
+    },
+}
+
+local function render_diskspace(args)
+    -- Get the disk free space details.
+    local free, total
+    if os.getdiskfreespace then
+        free, total = os.getdiskfreespace()
+    end
+    if not free or not total or total == 0 or free > total then
+        return
+    end
+
+    -- The 'when' arg overrides when to show the diskspace segment.
+    local when = flexprompt.parse_arg_token(args, "w", "when") or "0"
+    when = tonumber(when) / 100
+
+    -- Show nothing if the used percentage is below the threshold.
+    local used_percent = (total - free) / total
+    if used_percent < when then
+        return
+    end
+
+    -- Choose the color based on the used percentage.
+    local color
+    if used_percent > 0.9 then      color = diskspace_used_colors["90"]
+    elseif used_percent > 0.8 then  color = diskspace_used_colors["80"]
+    elseif used_percent > 0.7 then  color = diskspace_used_colors["70"]
+    elseif used_percent > 0.6 then  color = diskspace_used_colors["60"]
+    else                            color = diskspace_used_colors["50"]
+    end
+
+    -- Use the used disk space percentage as the text.
+    local text
+    used_percent = used_percent * 100
+    used_percent = math.min(used_percent, 100)
+    used_percent = math.max(used_percent, 0)
+    text = string.format("%.1f%%", used_percent)
+
+    -- Add icon or fluent text.
+    local icon
+    local flow = flexprompt.get_flow()
+    if flow ~= "fluent" then
+        icon = flexprompt.get_symbol("diskspace_module")
+    end
+    if icon == "" or flow == "fluent" then
+        icon = flexprompt.make_fluent_text("disk used")
+    end
+    text = flexprompt.append_text(icon, text)
+
+    -- The 'breakleft' and 'breakright' args add blank segments to force a color
+    -- break between rainbow segments, in case adjacent colors are too similar.
+    local bl, br
+    local style = flexprompt.get_style()
+    if style == "rainbow" then
+        bl = flexprompt.parse_arg_keyword(args, "bl", "breakleft")
+        br = flexprompt.parse_arg_keyword(args, "br", "breakright")
+    end
+
+    -- Return the segment(s).
+    local segments = {}
+    if bl then table.insert(segments, { "", "realblack" }) end
+    table.insert(segments, { text, color, "realblack" })
+    if br then table.insert(segments, { "", "realblack" }) end
+
+    return segments
+end
+
+--------------------------------------------------------------------------------
 -- DURATION MODULE:  {duration:format=format_name:tenths:color=color_name,alt_color_name}
 --  - format_name is the format to use:
 --      - "colons" is "H:M:S" format.
@@ -2385,6 +2490,7 @@ flexprompt.add_module( "battery",       render_battery                      )
 flexprompt.add_module( "break",         render_break                        )
 flexprompt.add_module( "conda",         render_conda,       { nerdfonts2={"🅒","🅒"}, nerdfonts3={"🅒","🅒"} } )
 flexprompt.add_module( "cwd",           render_cwd,         { coloremoji="📁", nerdfonts2={""," "}, nerdfonts3={""," "} } )
+flexprompt.add_module( "diskspace",     render_diskspace,   { nerdfonts2={"", " "}, nerdfonts3={"", " "} } )
 flexprompt.add_module( "duration",      render_duration,    { coloremoji="⌛", nerdfonts2={""," "}, nerdfonts3={""," "} } )
 flexprompt.add_module( "env",           render_env                          )
 flexprompt.add_module( "exit",          render_exit                         )
