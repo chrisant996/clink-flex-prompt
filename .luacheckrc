@@ -8,6 +8,7 @@ return {
         "clink",
         "console",
         "error",
+        "git",
         "io",
         "log",
         "os",
