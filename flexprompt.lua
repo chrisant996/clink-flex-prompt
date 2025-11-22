@@ -314,6 +314,9 @@ local symbols =
     behindcount     = { "<<",   unicode="↑" },
     staged          = { "#",    unicode="↗" },
 
+    branchref       = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
+    tagref          = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
+
     battery         = { "%" },
     charging        = { "++",   nerdfonts2={""," "}, nerdfonts3={""," "} },
     smartcharging   = { "%",    unicode="♥" },

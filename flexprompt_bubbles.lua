@@ -848,6 +848,9 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             local branch
             if info.detached then
                 branch = info.commit:sub(1, 8)
+                if info.detached_refname then
+                    branch = string.format("%s (%s)", branch, info.detached_refname)
+                end
             else
                 branch = info.branch
                 if info.type == "git" and flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then

@@ -1092,10 +1092,48 @@ local function maybe_git_fetch(info)
     end
 end
 
+local function get_git_detached_info(info, commit)
+    if commit then
+        local refname, reftype
+        if not refname then
+            local cmd = flexprompt.git_command('branch --no-color --format "%(refname)" --points-at=' .. commit)
+            local file = flexprompt.popenyield(cmd)
+            if file then
+                for line in file:lines() do
+                    refname = line:match("^refs/heads/(.*)$")
+                    if refname then
+                        reftype = "branch"
+                        break
+                    end
+                end
+                file:close()
+            end
+        end
+        if not refname then
+            local cmd = flexprompt.git_command('tag --no-color --format "%(refname)" --points-at=' .. commit)
+            local file = flexprompt.popenyield(cmd)
+            if file then
+                for line in file:lines() do
+                    refname = line:match("^refs/tags/(.*)$")
+                    if refname then
+                        reftype = "tag"
+                        break
+                    end
+                end
+                file:close()
+            end
+        end
+        info.detached = true
+        info.detached_commit = commit
+        info.detached_refname = refname
+        info.detached_reftype = reftype
+    end
+end
+
 -- Collects git status info.
 --
 -- Uses async coroutine calls.
-local function collect_git_info(no_untracked, no_stashes, includeSubmodules)
+local function collect_git_info(no_untracked, no_stashes, includeSubmodules, detached)
     local git_dir, wks_dir = flexprompt.get_git_dir()
     git_dir = git_dir and git_dir:lower()
     wks_dir = wks_dir and wks_dir:lower()
@@ -1113,6 +1151,11 @@ local function collect_git_info(no_untracked, no_stashes, includeSubmodules)
         if count and count > 0 then
             info.stashcount = count
         end
+    end
+
+    if detached then
+        local commit = detached:match("^HEAD detached.-([^%s]+)$")
+        get_git_detached_info(info, commit)
     end
     return info
 end
@@ -1167,7 +1210,7 @@ local function render_git(args)
         local noStashes = flexprompt.parse_arg_keyword(args, "ns", "nostashes")
         local includeSubmodules = flexprompt.parse_arg_keyword(args, "sm", "submodules")
         info, refreshing = flexprompt.prompt_info(git_info, git_dir, branch, function ()
-            return collect_git_info(noUntracked, noStashes, includeSubmodules)
+            return collect_git_info(noUntracked, noStashes, includeSubmodules, detached and branch)
         end)
 
         -- Add remote to branch name if requested.
@@ -1217,6 +1260,10 @@ local function render_git(args)
             text = add_details(text, gitStatus.working, include_counts)
         end
         return text
+    end
+
+    if info.detached_refname then
+        branch = "HEAD detached at " .. info.detached_refname
     end
 
     local text = make_text(branch)
@@ -1890,6 +1937,9 @@ local function render_scm(args)
         detached = info.detached
         if detached and info.commit then
             branch = info.commit:sub(1, 8)
+            if info.detached_refname then
+                branch = string.format("%s (%s)", branch, info.detached_refname)
+            end
         end
 
         if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
@@ -2279,6 +2329,9 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
         end
         if not flags.no_submodules then
             info.submodule = info.git_dir and info.git_dir:find(path.join(info.wks_dir, "modules\\"), 1, true) == 1
+        end
+        if info.detached then
+            get_git_detached_info(info, info.commit)
         end
     end
     info.type = "git"
