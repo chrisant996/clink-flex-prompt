@@ -1095,15 +1095,28 @@ end
 local function get_git_detached_info(info, commit)
     if commit then
         local refname, reftype
-        if not refname then
+        do
             local cmd = flexprompt.git_command('branch --no-color --format "%(refname)" --points-at=' .. commit)
             local file = flexprompt.popenyield(cmd)
             if file then
                 for line in file:lines() do
-                    refname = line:match("^refs/heads/(.*)$")
-                    if refname then
-                        reftype = "branch"
-                        break
+                    local n = line:match("^%(?HEAD detached at.-([^%s]*[^%s)])%)?")
+                    if n then
+                        local minlen = math.min(#n, #commit)
+                        if minlen >= 7 then
+                            local a = n:sub(1, minlen)
+                            local b = commit:sub(1, minlen)
+                            if a:lower() ~= b:lower() then
+                                refname = n
+                                break
+                            end
+                        end
+                    else
+                        refname = line:match("^refs/heads/(.*)$")
+                        if refname then
+                            reftype = "branch"
+                            break
+                        end
                     end
                 end
                 file:close()
