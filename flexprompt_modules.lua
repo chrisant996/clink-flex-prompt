@@ -1839,15 +1839,48 @@ local function has_py_files(dir)
     end)
 end
 
+local function has_poetry(dir)
+    return flexprompt.scan_upwards(dir, function (dir) -- luacheck: ignore 432
+        for _, x in pairs(os.globfiles(path.join(dir, "pyproject.toml"))) do -- luacheck: ignore 512
+            return dir .. "\\" .. x
+        end
+    end)
+end
+
+local function get_poetry_package_version(project_toml)
+    local file = io.open(project_toml, 'r')
+    if not file then return nil end
+
+    for line in file:lines() do
+        local param, value = line:match('^%s-([%w|_]+)%s-=%s+(.+)$')
+        if param and value ~= nil then
+            if param == "version" then
+                file:close()
+                return value:gsub("\"", "")
+            end
+        end
+    end
+    file:close()
+    return nil
+end
+
 local function render_python(args)
     -- flexprompt.python_virtual_env_variable can be nil.
     local venv = get_virtual_env(flexprompt.python_virtual_env_variable)
-    if not venv then return end
+    local text
+    if not venv then
+        poetry = has_poetry()
+        if not poetry then
+            return 
+        end
+        text = get_poetry_package_version(poetry)
+    else
+        local always = flexprompt.parse_arg_keyword(args, "a", "always")
+        if not always and not has_py_files() then return end
 
-    local always = flexprompt.parse_arg_keyword(args, "a", "always")
-    if not always and not has_py_files() then return end
+        text = "[" .. venv .. "]"
+    end
 
-    local text = "[" .. venv .. "]"
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)
 
     local color, altcolor = parse_color_token(args, { "c", "color", "mod_cyan" })
