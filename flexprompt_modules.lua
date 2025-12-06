@@ -2342,7 +2342,7 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
     if info.status and info.status.errmsg then
         info._error = true
     else
-        info.branch = info.status.branch or info.branch
+        info.branch = info.status and info.status.branch or info.branch
         if not flags.no_ahead_behind then
             info.ahead, info.behind = flexprompt.get_git_ahead_behind()
         end
