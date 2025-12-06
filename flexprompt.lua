@@ -3118,6 +3118,43 @@ local function git_command(command, dont_suppress_stderr)
     return command
 end
 
+local function get_git_branch_slow(git_dir)
+    local flags = ""
+    if type(git_dir) == "string" then
+        git_dir = git_dir:gsub('"', '')
+        flags = '--git-dir "'..git_dir..'" '
+    end
+
+    local file = io.popen(git_command(flags.."branch"))
+    if not file then return end
+
+    local branch, detached
+    for line in file:lines() do
+        local current = line:match("^%*%s+%((.*)%)")
+        if current then
+            detached = current:match("^HEAD detached at (.*)$")
+            branch = detached or current
+            detached = detached and true or nil
+            break
+        end
+    end
+    file:close()
+
+    local commit
+    if detached then
+        file = io.popen(git_command(flags.."rev-parse "..branch))
+        if file then
+            for line in file:lines() do -- luacheck: ignore 512
+                commit = line
+                break
+            end
+            file:close()
+        end
+    end
+
+    return branch, detached, commit
+end
+
 flexprompt.git_command = git_command
 
 -- Test whether dir is a git repo root, or workspace dir, or submodule dir.
@@ -3201,7 +3238,7 @@ end
 -- Newer versions return branch_name, is_detached, detached_commit.
 --
 -- Synchronous call.
-function flexprompt.get_git_branch(git_dir)
+function flexprompt.get_git_branch(git_dir, fast)
     git_dir = git_dir or flexprompt.get_git_dir()
 
     -- If git directory not found then we're probably outside of repo or
@@ -3218,10 +3255,25 @@ function flexprompt.get_git_branch(git_dir)
     -- If HEAD matches branch expression, then we're on named branch otherwise
     -- it is a detached commit.
     local branch_name = HEAD:match('ref: refs/heads/(.+)')
-    if branch_name then
-        return branch_name
+
+    if os.getenv('CLINK_DEBUG_GIT_REFTABLE') then
+        branch_name = '.invalid'
+    end
+
+    local detached
+    if branch_name ~= '.invalid' or fast then
+        if not branch_name then
+            branch_name = HEAD:sub(1, 7)
+            detached = true
+        end
     else
-        return 'HEAD detached at '..HEAD:sub(1, 7), true, HEAD
+        branch_name, detached, HEAD = get_git_branch_slow(git_dir)
+    end
+
+    if detached then
+        return 'HEAD detached at '..branch_name, true, HEAD
+    else
+        return branch_name
     end
 end
 

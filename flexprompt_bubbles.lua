@@ -854,10 +854,15 @@ local function render_lbubble(args, shorten) -- luacheck: no unused
             else
                 branch = info.branch
                 if info.type == "git" and flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
-                    local modified = flexprompt_git.postprocess_branch(branch)
-                    if modified then
-                        branch = resolve_fluent_colors(modified, bc.fg_fluent, status_color)
+                    if branch ~= ".invalid" then
+                        local modified = flexprompt_git.postprocess_branch(branch)
+                        if modified then
+                            branch = resolve_fluent_colors(modified, bc.fg_fluent, status_color)
+                        end
                     end
+                end
+                if branch == ".invalid" then
+                    branch = "Loading..."
                 end
                 if branch and shorten then
                     local target = math.max(console.getwidth() / 4, 20)
@@ -1041,7 +1046,7 @@ clink.onbeginedit(function()
     if (cwd ~= cached.cwd or
             detect.root ~= cached.root or
             detect.type ~= cached.type or
-            (detect.branch and detect.branch ~= cached.branch) or
+            (detect.branch and detect.branch ~= cached.branch and detect.branch ~= ".invalid") or
             detect.detached ~= cached.detached or
             detect.commit ~= cached.commit) then
         cached = {

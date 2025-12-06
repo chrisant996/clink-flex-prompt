@@ -1146,7 +1146,7 @@ end
 -- Collects git status info.
 --
 -- Uses async coroutine calls.
-local function collect_git_info(no_untracked, no_stashes, includeSubmodules, detached)
+local function collect_git_info(no_untracked, no_stashes, includeSubmodules)
     local git_dir, wks_dir = flexprompt.get_git_dir()
     git_dir = git_dir and git_dir:lower()
     wks_dir = wks_dir and wks_dir:lower()
@@ -1166,8 +1166,9 @@ local function collect_git_info(no_untracked, no_stashes, includeSubmodules, det
         end
     end
 
-    if detached then
-        local commit = detached:match("^HEAD detached.-([^%s]+)$")
+    local branch, detached, commit = flexprompt.get_git_branch()
+    info.branch = branch
+    if detached and commit then
         get_git_detached_info(info, commit)
     end
     return info
@@ -1187,7 +1188,7 @@ local git_colors =
 
 local function render_git(args)
     local git_dir, wks -- luacheck: no unused
-    local branch, detached
+    local branch
     local info
     local refreshing
     local wizard = flexprompt.get_wizard_state()
@@ -1208,8 +1209,23 @@ local function render_git(args)
         git_dir, wks = flexprompt.get_git_dir()
         if not git_dir then return end
 
-        branch, detached = flexprompt.get_git_branch(git_dir)
+        branch = flexprompt.get_git_branch(git_dir, true)
         if not branch then return end
+
+        -- Collect or retrieve cached info.
+        local noUntracked = flexprompt.parse_arg_keyword(args, "nu", "nountracked")
+        local noStashes = flexprompt.parse_arg_keyword(args, "ns", "nostashes")
+        local includeSubmodules = flexprompt.parse_arg_keyword(args, "sm", "submodules")
+        info, refreshing = flexprompt.prompt_info(git_info, git_dir, branch, function ()
+            return collect_git_info(noUntracked, noStashes, includeSubmodules)
+        end)
+
+        -- Show friendly text if git has a reftable (which makes it impossible
+        -- to efficiently find the branch name).
+        if branch == ".invalid" then
+            branch = "Loading..."
+        end
+        branch = info.branch or branch
 
         if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
             local modified = flexprompt_git.postprocess_branch(branch)
@@ -1217,14 +1233,6 @@ local function render_git(args)
                 branch = modified
             end
         end
-
-        -- Collect or retrieve cached info.
-        local noUntracked = flexprompt.parse_arg_keyword(args, "nu", "nountracked")
-        local noStashes = flexprompt.parse_arg_keyword(args, "ns", "nostashes")
-        local includeSubmodules = flexprompt.parse_arg_keyword(args, "sm", "submodules")
-        info, refreshing = flexprompt.prompt_info(git_info, git_dir, branch, function ()
-            return collect_git_info(noUntracked, noStashes, includeSubmodules, detached and branch)
-        end)
 
         -- Add remote to branch name if requested.
         if flexprompt.parse_arg_keyword(args, "sr", "showremote") then
@@ -1242,7 +1250,7 @@ local function render_git(args)
     local gitStatus = info.status
     local gitConflict = info.conflict
     local gitUnknown = not info.finished
-    local gitUnpublished = not detached and gitStatus and gitStatus.unpublished
+    local gitUnpublished = not info.detached and gitStatus and gitStatus.unpublished
     local gitError = gitStatus and gitStatus.errmsg
     local colors = git_colors.clean
     local color, altcolor
@@ -1955,16 +1963,22 @@ local function render_scm(args)
             end
         end
 
-        if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
-            local modified = flexprompt_git.postprocess_branch(branch)
-            if modified then
-                branch = modified
+        if branch == ".invalid" then
+            -- Show friendly text if git has a reftable (which makes it
+            -- impossible to efficiently find the branch name).
+            branch = "Loading..."
+        else
+            if flexprompt_git and type(flexprompt_git.postprocess_branch) == "function" then
+                local modified = flexprompt_git.postprocess_branch(branch)
+                if modified then
+                    branch = modified
+                end
             end
-        end
 
-        -- Add remote to branch name if requested.
-        if not info.detached and info.remote and flexprompt.parse_arg_keyword(args, "sr", "showremote") then
-            branch = branch .. flexprompt.make_fluent_text("->") .. info.remote
+            -- Add remote to branch name if requested.
+            if not info.detached and info.remote and flexprompt.parse_arg_keyword(args, "sr", "showremote") then
+                branch = branch .. flexprompt.make_fluent_text("->") .. info.remote
+            end
         end
     end
 
@@ -2310,15 +2324,16 @@ local function test_git(dir)
         local info = {}
         info.git_dir = git_dir
         info.wks_dir = wks_dir
-        info.branch, info.detached, info.commit = flexprompt.get_git_branch()
+        info.branch, info.detached, info.commit = flexprompt.get_git_branch(git_dir, true)
         return info
     end
 end
 
 local function info_git(dir, tested_info, flags) -- luacheck: no unused
+    -- REVIEW:  Oops, 'dir' isn't really used.
     local info = {}
     flags = flags or {}
-    if tested_info and tested_info.branch then
+    if tested_info and tested_info.branch and tested_info.branch ~= ".invalid" then
         info.branch, info.detached, info.commit = tested_info.branch, tested_info.detached, tested_info.commit
     else
         info.branch, info.detached, info.commit = flexprompt.get_git_branch()
@@ -2327,6 +2342,7 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
     if info.status and info.status.errmsg then
         info._error = true
     else
+        info.branch = info.status.branch or info.branch
         if not flags.no_ahead_behind then
             info.ahead, info.behind = flexprompt.get_git_ahead_behind()
         end
