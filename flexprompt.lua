@@ -3125,22 +3125,41 @@ local function get_git_branch_slow(git_dir)
         flags = '--git-dir "'..git_dir..'" '
     end
 
-    local file = io.popen(git_command(flags.."branch"))
-    if not file then return end
+    local file
+    local branch, detached, commit
 
-    local branch, detached
-    for line in file:lines() do
-        local current = line:match("^%*%s+%((.*)%)")
-        if current then
-            detached = current:match("^HEAD detached at (.*)$")
-            branch = detached or current
-            detached = detached and true or nil
-            break
+    -- Handle the most common case first.
+    if not branch then
+        file = io.popen(git_command(flags.."branch"))
+        if file then
+            for line in file:lines() do
+                local current = line:match("^%*%s+(.*)")
+                if current then
+                    detached = current:match("^%(HEAD detached at (.*)%)$")
+                    branch = detached or current
+                    detached = detached and true or nil
+                    break
+                end
+            end
+            file:close()
         end
     end
-    file:close()
 
-    local commit
+    -- Handle the cases where "git branch" output is empty, but
+    -- "git branch --show-current" shows the branch name (e.g. a new repo).
+    if not branch then
+        file = io.popen(git_command(flags.."branch --show-current"))
+        if file then
+            for line in file:lines() do -- luacheck: ignore 512
+                branch = line
+                break
+            end
+            file:close()
+        end
+    end
+
+    -- 'detached' might be a symbolic name or a commit hash.  If it's a
+    -- symbolic name then parse it also into a commit hash.
     if detached then
         file = io.popen(git_command(flags.."rev-parse "..branch))
         if file then
