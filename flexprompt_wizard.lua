@@ -865,8 +865,7 @@ local function choose_animate(settings, title)
 
     choices = "yn"
 
-    local _, row = console.getcursorpos()
-    local col = 14
+    local row, col = 3, 14
 
     local index = 1
     local anim_list = flexprompt.get_refreshing_icon_animation_list()
