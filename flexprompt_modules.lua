@@ -1819,8 +1819,9 @@ local function render_overtype(args)
 end
 
 --------------------------------------------------------------------------------
--- PYTHON MODULE:  {python:always:color=color_name,alt_color_name}
+-- PYTHON MODULE:  {python:always:full:color=color_name,alt_color_name}
 --  - 'always' shows the python module even if there are no python files.
+--  - 'full' shows the full path of the python module instead of just the tail.
 --  - color_name is a name like "green", or an sgr code like "38;5;60".
 --  - alt_color_name is optional; it is the text color in rainbow style.
 
@@ -1854,6 +1855,9 @@ local function render_python(args)
 
     local always = flexprompt.parse_arg_keyword(args, "a", "always")
     if not always and not has_py_files() then return end
+
+    local full = flexprompt.parse_arg_keyword(args, "f", "full")
+    if not full then venv = flexprompt.take_the_tail(venv) end
 
     local text = "[" .. venv .. "]"
     text = flexprompt.append_text(flexprompt.get_module_symbol(), text)

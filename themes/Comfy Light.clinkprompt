@@ -191,7 +191,7 @@ flexprompt.add_module("comfygit", function()
 end)
 
 flexprompt.add_module("comfyvenv", function()
-    local venv = os.getenv("VIRTUAL_ENV")
+    local venv = flexprompt.take_the_tail(os.getenv("VIRTUAL_ENV"))
     if venv then
         return venv, colors.VENV_b, colors.VENV_f
     end

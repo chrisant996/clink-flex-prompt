@@ -920,6 +920,15 @@ local function has_file(dir, file)
     return os.isfile(test) and test or nil
 end
 
+local function take_the_tail(text)
+    if type(text) == "string" then
+        text = text:gsub("\t\r\n", ""):gsub("^%s+", ""):gsub("%s+$", "")
+        local _, child = path.toparent(text) -- Get base name of dir where possible.
+        text = child ~= "" and child or text
+    end
+    return text
+end
+
 local function append_text(lhs, rhs)
     if not lhs then return rhs and tostring(rhs) or "" end
     if not rhs then return tostring(lhs) end
@@ -2738,6 +2747,11 @@ flexprompt.make_fluent_text = make_fluent_text
 -- string it's a named color to use instead of the fluent color, and if force
 -- is a table its fg field is used instead of the fluent color.
 flexprompt.abbrev_path = abbrev_path
+
+-- Function that takes a string and strips tab/cr/lf and leading/trailing
+-- whitespace, and then takes the base directory name (but preserves
+-- \\server\share or c:\).
+flexprompt.take_the_tail = take_the_tail
 
 -- Function that takes (lhs, rhs) and appends them together with a space in
 -- between.  If either string is empty or nil, the other string is returned
