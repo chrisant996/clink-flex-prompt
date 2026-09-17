@@ -1808,6 +1808,8 @@ end
 -- Module parsing and rendering.
 
 local _module_costs = {}
+local elapsed_this_pass
+local force_diag_flexprompt
 local function log_cost(tick, module)
     local elapsed = (os.clock() - tick) * 1000
     local cost = _module_costs[module] or {}
@@ -1818,6 +1820,14 @@ local function log_cost(tick, module)
     cost.count = (cost.count or 0) + 1
     cost.total = (cost.total or 0) + elapsed
     _module_costs[module] = cost
+
+    if elapsed_this_pass then
+        elapsed_this_pass = elapsed_this_pass + elapsed
+    elseif elapsed > 10 then
+        -- If a script directly calls render_module outside or render_modules
+        -- then force showing diagnostics if the module cost exceeds 10 ms.
+        force_diag_flexprompt = true
+    end
 end
 
 local _refilter_modules
@@ -1959,6 +1969,8 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
     local out = ""
     local init = 1
 
+    elapsed_this_pass = 0
+
     init_segmenter(side, frame_color)
 
     local oncommands
@@ -2079,6 +2091,11 @@ local function render_modules(prompt, side, frame_color, condense, anchors)
             end
         end
     end
+
+    if elapsed_this_pass > 25 then
+        force_diag_flexprompt = true
+    end
+    elapsed_this_pass = nil
 
     return out, any_condense_callbacks
 end
@@ -3642,9 +3659,12 @@ clink._diag_custom = function (arg)
         old_diag_custom(arg)
     end
 
-    if not arg or arg < 1 then
+    arg = (arg and arg >= 1)
+    if not arg and not force_diag_flexprompt then
         return
     end
+
+    local filter = not arg
 
     local longest = 4
     for key, _ in pairs(_module_costs) do
@@ -3655,25 +3675,33 @@ clink._diag_custom = function (arg)
     end
 
     if longest > 0 then
+        local filtered_out = 0
         clink.print('\x1b[0;1mflexprompt module cost:\x1b[m')
         clink.print(string.format('  \x1b[36mmodule%s     last    avg     peak\x1b[m', string.rep(' ', longest - 4)))
         for key, cost in spairs(_module_costs) do
-            local color
-            if cost.peak >= 10 then
-                color = '\x1b[91m'
-            elseif cost.peak >= 4 then
-                color = '\x1b[93m'
+            if not filter or cost.peak >= 1 then
+                local color
+                if cost.peak >= 10 then
+                    color = '\x1b[91m'
+                elseif cost.peak >= 4 then
+                    color = '\x1b[93m'
+                else
+                    color = ''
+                end
+                clink.print(string.format(
+                    '  %s{%s}%s  %4u ms %4u ms %4u ms\x1b[m',
+                    color,
+                    key,
+                    string.rep(' ', longest - console.cellcount(key)),
+                    cost.milliseconds,
+                    cost.total / cost.count,
+                    cost.peak))
             else
-                color = ''
+                filtered_out = filtered_out + 1
             end
-            clink.print(string.format(
-                '  %s{%s}%s  %4u ms %4u ms %4u ms\x1b[m',
-                color,
-                key,
-                string.rep(' ', longest - console.cellcount(key)),
-                cost.milliseconds,
-                cost.total / cost.count,
-                cost.peak))
+        end
+        if filtered_out > 0 then
+            print("  (filtered "..filtered_out.." with zero costs)")
         end
     end
 end
