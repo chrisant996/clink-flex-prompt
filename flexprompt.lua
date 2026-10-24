@@ -310,8 +310,8 @@ local symbols =
     untrackedcount  = { "?" },
     stashcount      = { "&",    unicode="≡", --[[ nerdfonts2={"", " "}, nerdfonts3={"", " "} ]] },
     aheadbehind     = { "" },   -- Optional symbol preceding ahead/behind counts.
-    aheadcount      = { ">>",   unicode="↓" },
-    behindcount     = { "<<",   unicode="↑" },
+    aheadcount      = { ">>",   unicode="↑" },
+    behindcount     = { "<<",   unicode="↓" },
     staged          = { "#",    unicode="↗" },
 
     branchref       = {         nerdfonts2={""," "}, nerdfonts3={""," "} },
@@ -3335,6 +3335,22 @@ end
 --
 -- Use in promptcoroutine callback function.
 function flexprompt.get_git_status(no_untracked, include_submodules)
+    if git and git.getstatus then
+        local status = git.getstatus(no_untracked, include_submodules)
+        if status then
+            if flexprompt.settings.dont_check_unpublished then
+                status.unpublished = nil
+            end
+            if status.staged and flexprompt.get_symbol("renamecount") == "" then
+                status.staged.modify = status.staged.modify + status.staged.rename
+                status.staged.rename = 0
+            end
+        else
+            status = { errmsg="[error]" }
+        end
+        return status
+    end
+
     local flags = ""
     if no_untracked then
         flags = flags .. "-uno "
@@ -3431,7 +3447,7 @@ end
 --
 -- Use in promptcoroutine callback function.
 function flexprompt.get_git_ahead_behind()
-    local file = flexprompt.popenyield(git_command("rev-list --count --left-right @{upstream}...HEAD"))
+    local file = flexprompt.popenyield(git_command("rev-list --count --left-right HEAD...@{upstream}"))
     if not file then
         return
     end
@@ -3457,7 +3473,7 @@ function flexprompt.get_git_conflict()
 
     for _ in file:lines() do -- luacheck: ignore 512
         file:close()
-        return true;
+        return true
     end
     file:close()
 

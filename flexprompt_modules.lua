@@ -1156,9 +1156,25 @@ local function collect_git_info(no_untracked, no_stashes, includeSubmodules)
     maybe_git_fetch({ type="git", root=git_dir })
 
     local status = flexprompt.get_git_status(no_untracked, includeSubmodules)
-    local conflict = flexprompt.get_git_conflict()
-    local ahead, behind = flexprompt.get_git_ahead_behind()
-    local info = { status=status, conflict=conflict, ahead=ahead, behind=behind, submodule=submodule, finished=true }
+    local conflict, ahead, behind
+    if git and git.getstatus and status then
+        conflict = status.conflict
+        ahead = status.ahead
+        behind = status.behind
+    else
+        conflict = flexprompt.get_git_conflict()
+        ahead, behind = flexprompt.get_git_ahead_behind()
+    end
+
+    local info = {
+        status=status,
+        conflict=conflict,
+        ahead=ahead,
+        behind=behind,
+        submodule=submodule,
+        finished=true,
+    }
+
     if not no_stashes and git.getstashcount then
         local count = git.getstashcount()
         if count and count > 0 then
@@ -2347,20 +2363,34 @@ local function info_git(dir, tested_info, flags) -- luacheck: no unused
         info._error = true
     else
         info.branch = info.status and info.status.branch or info.branch
-        if not flags.no_ahead_behind then
+        if flags.no_ahead_behind then
+            info.ahead = nil
+            info.behind = nil
+        elseif git and git.getstatus and info.status then
+            info.ahead = info.status.ahead
+            info.behind = info.status.behind
+        else
             info.ahead, info.behind = flexprompt.get_git_ahead_behind()
         end
         if not flags.no_stashes and git and git.getstashcount then
             local count = git.getstashcount()
             info.stashcount = count and count > 0 and count or nil
         end
-        if not flags.no_conflict then
+        if flags.no_conflict then
+            info.conflict = nil
+        elseif git and git.getstatus and info.status then
+            info.conflict = info.status.conflict
+        else
             info.conflict = flexprompt.get_git_conflict()
         end
         if not flags.no_remote then
             info.remote = flexprompt.get_git_remote()
         end
-        if not flags.no_submodules then
+        if flags.no_submodules then
+            info.submodule = nil
+        elseif git and git.getstatus and info.status then
+            info.submodule = info.status.submodule
+        else
             info.submodule = info.git_dir and info.git_dir:find(path.join(info.wks_dir, "modules\\"), 1, true) == 1
         end
         if info.detached then
